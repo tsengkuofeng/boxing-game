@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的聖誕夜怎麼那麼累</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+  <style>
+    /* =========================================
+   【新增】聖誕夜背景場景 CSS
+   ========================================= */
+
+/* 場景容器：放在最底層 */
+.scene-background {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  z-index: -1; /* 關鍵！放在攝影機畫面後面 */
+  overflow: hidden;
+}
+
+/* 1. 夜空 (深藍色漸層) */
+.night-sky {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 70%; /* 天空佔 70% 高度 */
+  background: linear-gradient(to bottom, #020111 10%, #191d3a 50%, #2d3e5e 90%);
+}
+
+/* 2. 月亮 (發光效果) */
+.moon {
+  position: absolute;
+  top: 50px; right: 50px;
+  width: 80px; height: 80px;
+  background: #fefcd7; /* 月亮顏色 */
+  border-radius: 50%;
+  box-shadow: 0 0 20px #fefcd7, 0 0 50px rgba(254, 252, 215, 0.4); /* 發光暈 */
+}
+
+/* 3. 雪地 (白色) */
+.snow-ground {
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 100%; height: 30%; /* 地面佔 30% 高度 */
+  background: #fffafa;
+  border-top: 5px solid #e3e3e3; /* 地面邊緣 */
+  border-radius: 50% 50% 0 0 / 20px 20px 0 0; /* 做出稍微隆起的雪堆感 */
+}
+
+/* 4. 雪花動畫 */
+.snowflake {
+  position: absolute;
+  top: -10px;
+  width: 10px; height: 10px;
+  background: white;
+  border-radius: 50%;
+  opacity: 0.8;
+  animation: fall linear infinite; /* 套用下墜動畫 */
+}
+
+/* 定義下墜動畫關鍵影格 */
+@keyframes fall {
+  0% {
+    top: -10%;
+    transform: translateX(0); /* 開始位置 */
+  }
+  100% {
+    top: 100%; /* 掉到地面 */
+    transform: translateX(20px); /* 稍微往右飄 */
+  }
+}
+
+/* 針對不同雪花設定不同大小和速度，更有層次感 */
+.snowflake:nth-child(2) { width: 8px; height: 8px; animation-duration: 7s; opacity: 0.6; }
+.snowflake:nth-child(3) { width: 12px; height: 12px; animation-duration: 5s; opacity: 0.9; }
+.snowflake:nth-child(4) { width: 6px; height: 6px; animation-duration: 8s; opacity: 0.5; }
+.snowflake:nth-child(5) { width: 10px; height: 10px; animation-duration: 6s; opacity: 0.7; }
+.snowflake:nth-child(6) { width: 9px; height: 9px; animation-duration: 9s; opacity: 0.8; }
+
+/* =========================================
+   原本的 CSS 放在這下面
+   (記得把你原本 body 的 background: #000 去掉，不然會擋住背景)
+   ========================================= */
+/* ... */
+
+/* 全局設定 */
+body { 
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+  text-align: center; 
+  /*background: #000; */
+background: transparent; /* 改成這樣 */
+  color: #fff; 
+  margin: 0; 
+  overflow: hidden; 
+}
+
+.container { 
+  position: relative; 
+  width: 100vw; 
+  height: 100vh; 
+}
+
+video, canvas { 
+  position: absolute; 
+  top: 0; left: 0; 
+  width: 100%; height: 100%; 
+  object-fit: cover; 
+  transform: scaleX(-1); 
+}
+
+/* --- 計分板預設樣式 (直立) --- */
+.score-board { 
+  position: absolute; 
+  top: 80px; 
+  left: 50%; 
+  transform: translateX(-50%); 
+  z-index: 10; 
+  background: rgba(0, 0, 0, 0.6); 
+  padding: 10px 40px; 
+  border-radius: 20px; 
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  pointer-events: none; 
+  transition: all 0.3s ease; /* 加入動畫讓切換滑順 */
+}
+#count { font-size: 70px; font-weight: 800; color: #fff; line-height: 1; }
+.count-title { font-size: 14px; color: #ccc; letter-spacing: 2px; }
+#status { margin-top: 5px; font-size: 18px; font-weight: bold; color: #ddd; }
+
+/* --- 開始按鈕預設樣式 --- */
+#start-btn { 
+  position: absolute; 
+  top: 50%; left: 50%; 
+  transform: translate(-50%, -50%); 
+  z-index: 50; 
+  padding: 25px 50px; 
+  font-size: 30px; 
+  font-weight: 900;
+  background: linear-gradient(135deg, #007bff, #0056b3); 
+  color: white; 
+  border: 4px solid rgba(255, 255, 255, 0.5); 
+  border-radius: 60px; 
+  cursor: pointer; 
+  box-shadow: 0 0 30px rgba(0, 123, 255, 0.6); 
+  white-space: nowrap;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.05); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* --- 歸零按鈕 --- */
+#reset-btn {
+  position: absolute;
+  bottom: 40px; right: 20px;
+  z-index: 100;
+  background: #ff4757;
+  color: white;
+  border: 2px solid white;
+  padding: 15px 30px;
+  font-size: 18px;
+  font-weight: bold;
+  border-radius: 30px;
+  cursor: pointer;
+  display: none; 
+}
+#reset-btn:active { transform: scale(0.9); }
+
+.pop-effect { animation: pop 0.1s ease-out; color: #00ff00 !important; }
+@keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+
+/* =========================================
+   【關鍵修改】針對手機橫向模式 (Landscape)
+   當螢幕高度小於 500px 時 (手機橫放通常是 300~450px)
+   自動縮小介面，避免擋住畫面
+   ========================================= */
+@media (max-height: 500px) and (orientation: landscape) {
+  
+  /* 計分板：移到左上角，縮小字體 */
+  .score-board {
+    top: 10px;          /* 貼近頂部 */
+    left: 20px;         /* 靠左，不要擋在中間 */
+    transform: none;    /* 取消置中 */
+    padding: 5px 20px;  /* 縮小內距 */
+  }
+  
+  #count { font-size: 40px; } /* 數字變小 */
+  .count-title { font-size: 10px; }
+  #status { font-size: 14px; margin-top: 0; }
+
+  /* 開始按鈕：稍微縮小，以免佔滿整個畫面 */
+  #start-btn {
+    padding: 15px 30px;
+    font-size: 20px;
+    border-width: 2px;
+  }
+
+  /* 歸零按鈕：移到右上角，避免被手指按到相機鏡頭 */
+  #reset-btn {
+    bottom: auto; /* 取消底部定位 */
+    top: 10px;    /* 改到右上角 */
+    right: 20px;
+    padding: 8px 15px;
+    font-size: 14px;
+  }
+}
+/* =========================================
+   【新增】計分板火焰燃燒特效
+   ========================================= */
+
+/* Level 1: 金黃色微火 (50拳觸發) */
+.fire-lv1 {
+  border-color: #ffd700 !important;
+  color: #ffd700 !important;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.6), inset 0 0 10px rgba(255, 215, 0, 0.4);
+  animation: burn-pulse 1s infinite alternate;
+}
+
+/* Level 2: 橘紅色烈火 (80拳觸發) */
+.fire-lv2 {
+  border-color: #ff4500 !important;
+  color: #ff4500 !important;
+  box-shadow: 0 0 30px rgba(255, 69, 0, 0.8), inset 0 0 20px rgba(255, 69, 0, 0.5);
+  animation: burn-pulse 0.4s infinite alternate; /* 閃爍變快 */
+}
+
+/* Level 3: 青藍色極限火焰 (100拳觸發 - MAX) */
+.fire-lv3 {
+  border-color: #00ffff !important;
+  color: #00ffff !important;
+  background: rgba(0, 255, 255, 0.1) !important;
+  box-shadow: 
+    0 0 20px #00ffff, 
+    0 0 40px #00ffff, 
+    0 0 60px #fff;
+  animation: burn-max 0.1s infinite; /* 極速抖動 */
+}
+
+/* 火焰呼吸動畫 */
+@keyframes burn-pulse {
+  0% { box-shadow: 0 0 15px currentColor, inset 0 0 5px currentColor; }
+  100% { box-shadow: 0 0 35px currentColor, inset 0 0 15px currentColor; transform: translateX(-50%) scale(1.05); }
+}
+
+/* MAX 極限抖動動畫 */
+@keyframes burn-max {
+  0% { transform: translateX(-50%) translate(1px, 1px) scale(1.1); }
+  25% { transform: translateX(-50%) translate(-1px, -2px) scale(1.1); }
+  50% { transform: translateX(-50%) translate(-2px, 1px) scale(1.1); }
+  75% { transform: translateX(-50%) translate(2px, 1px) scale(1.1); }
+  100% { transform: translateX(-50%) translate(-1px, -1px) scale(1.1); }
+}
+/* =========================================
+   【新增】針對筆電/大螢幕 (Desktop/Laptop)
+   當螢幕寬度大於 1024px 時 (平板橫放或筆電)
+   ========================================= */
+@media (min-width: 1024px) {
+  
+  /* 1. 計分板：整體放大，置中或稍微偏上 */
+  .score-board {
+    top: 60px;           /* 距離頂部的位置 */
+    padding: 20px 80px;  /* 【關鍵】內距加大，方框就會變得很寬、很霸氣 */
+    border-width: 3px;   /* 邊框加粗，更有質感 */
+    background: rgba(0, 0, 0, 0.7); /* 電腦版背景可以深一點 */
+    
+    /* 讓它維持在正中間 (如果你想移到角落，可以改 left: 20px; transform: none;) */
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* 2. 數字：超級巨大化 */
+  #count {
+    font-size: 140px; /* 手機是 60px，筆電直接開到 140px */
+    text-shadow: 0 0 30px currentColor; /* 發光效果增強 */
+  }
+
+  /* 3. 小標題：也跟著放大 */
+  .count-title {
+    font-size: 20px;
+    letter-spacing: 5px; /* 字距拉開，比較高級 */
+    margin-bottom: 10px;
+  }
+  
+  /* 4. 狀態文字 */
+  #status {
+    font-size: 24px;
+  }
+  
+  /* 5. 針對火焰特效做微調，讓光暈範圍更大 */
+  .fire-lv1 { box-shadow: 0 0 30px rgba(255, 215, 0, 0.6), inset 0 0 20px rgba(255, 215, 0, 0.4); }
+  .fire-lv2 { box-shadow: 0 0 50px rgba(255, 69, 0, 0.8), inset 0 0 30px rgba(255, 69, 0, 0.5); }
+  .fire-lv3 { box-shadow: 0 0 40px #00ffff, 0 0 80px #00ffff, 0 0 100px #fff; }
+}
+  </style>
+</head>
+
+<body>
+
+  <div class="scene-background">
+     </div>
+  <div class="container">
+     </div>
+  <script>
+    // --- 1. 取得網頁元素 ---
+const videoElement = document.getElementById('input_video');
+const canvasElement = document.getElementById('output_canvas');
+const canvasCtx = canvasElement.getContext('2d');
+const countElement = document.getElementById('count');
+// 【新增】取得計分板容器 (為了加火焰特效)
+const scoreBoard = document.querySelector('.score-board'); 
+const statusElement = document.getElementById('status');
+const startBtn = document.getElementById('start-btn'); 
+const resetBtn = document.getElementById('reset-btn'); 
+
+// --- 2. 參數設定 (遲滯門檻版) ---
+
+// 左手 (Jab)
+const LEFT_CONFIG = {
+  triggerRatio: 0.65, 
+  resetRatio: 0.50,    
+  angle: 100,          
+  visibility: 0.4,     
+  cooldownFrames: 5,   
+  noseBlock: 0.30      
+};
+
+// 右手 (Cross)
+const RIGHT_CONFIG = {
+  triggerRatio: 0.60,  
+  resetRatio: 0.45,    
+  angle: 90, 
+  visibility: 0.3,
+  cooldownFrames: 5,   
+  noseBlock: 0.30      
+};
+
+const DOMINANCE_BUFFER = -0.05; 
+const MAX_PUNCH_DURATION = 30; 
+const ELEVATION_TOLERANCE = 0.3;
+
+let count = 0;
+let leftStage = "down"; 
+let rightStage = "down";
+let leftCooldown = 0;
+let rightCooldown = 0;
+let leftPunchTimer = 0;
+let rightPunchTimer = 0;
+let floatingTexts = []; 
+
+// --- 3. 工具函數 ---
+function calculateAngle(a, b, c) {
+  let radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+  let angle = Math.abs(radians * 180.0 / Math.PI);
+  if (angle > 180.0) angle = 360 - angle;
+  return angle;
+}
+function calculateDistance(a, b) {
+  return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+}
+
+function drawVisualText(ctx, text, visualX, visualY, color, fontSize = "24px") {
+  ctx.save();
+  const internalX = ctx.canvas.width - visualX;
+  ctx.translate(internalX, visualY);
+  ctx.scale(-1, 1); 
+  ctx.font = `bold ${fontSize} Arial`;
+  ctx.fillStyle = color;
+  ctx.fillText(text, 0, 0); 
+  ctx.restore();
+}
+
+function spawnFloatingText(x, y, text, color) {
+  floatingTexts.push({ x, y, text, color, life: 15, offsetY: 0 });
+}
+
+// 【新增】火焰特效更新函數
+function updateFireEffect(currentCount) {
+  // 確保 scoreBoard 存在
+  if (!scoreBoard) return;
+
+  // 先移除舊的特效等級
+  scoreBoard.classList.remove('fire-lv1', 'fire-lv2', 'fire-lv3');
+
+  // 根據拳數添加對應等級
+  if (currentCount >= 100) {
+    scoreBoard.classList.add('fire-lv3'); // 青藍火 (MAX)
+  } else if (currentCount >= 80) {
+    scoreBoard.classList.add('fire-lv2'); // 紅火 (烈)
+  } else if (currentCount >= 50) {
+    scoreBoard.classList.add('fire-lv1'); // 黃火 (微)
+  }
+}
+
+function triggerScoreBoardEffect() {
+  countElement.classList.remove('pop-effect'); 
+  void countElement.offsetWidth; 
+  countElement.classList.add('pop-effect'); 
+  
+  // 【新增】每次得分都檢查一次是否升級火焰
+  updateFireEffect(count);
+}
+
+window.resetCount = function() {
+  count = 0; 
+  countElement.innerText = count; 
+  floatingTexts = []; 
+  leftCooldown = 0; rightCooldown = 0;
+  leftStage = "down"; rightStage = "down";
+  leftPunchTimer = 0; rightPunchTimer = 0;
+  
+  // 【新增】歸零時移除所有火焰
+  if (scoreBoard) {
+    scoreBoard.classList.remove('fire-lv1', 'fire-lv2', 'fire-lv3');
+  }
+  
+  statusElement.innerText = "RESET OK"; 
+  statusElement.style.color = "white";
+}
+
+// --- 4. 核心邏輯 ---
+function onResults(results) {
+  canvasElement.width = videoElement.videoWidth;
+  canvasElement.height = videoElement.videoHeight;
+  const cw = canvasElement.width;
+  const ch = canvasElement.height;
+
+  canvasCtx.save();
+  canvasCtx.clearRect(0, 0, cw, ch);
+  canvasCtx.drawImage(results.image, 0, 0, cw, ch);
+
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    let ft = floatingTexts[i];
+    ft.life--; ft.offsetY -= 5;
+    
+    const visualX = cw - ft.x; 
+    drawVisualText(canvasCtx, ft.text, visualX, ft.y + ft.offsetY, ft.color, "60px");
+    
+    if (ft.life <= 0) floatingTexts.splice(i, 1);
+  }
+
+  if (leftCooldown > 0) leftCooldown--;
+  if (rightCooldown > 0) rightCooldown--;
+
+  // 超時重置
+  if (leftStage === "punch" && ++leftPunchTimer > MAX_PUNCH_DURATION) { leftStage = "down"; leftPunchTimer = 0; }
+  else if (leftStage !== "punch") leftPunchTimer = 0;
+
+  if (rightStage === "punch" && ++rightPunchTimer > MAX_PUNCH_DURATION) { rightStage = "down"; rightPunchTimer = 0; }
+  else if (rightStage !== "punch") rightPunchTimer = 0;
+
+  if (results.poseLandmarks) {
+    drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: 'rgba(255, 255, 255, 0.2)', lineWidth: 1});
+    
+    const nose = results.poseLandmarks[0];
+    const leftShoulder = results.poseLandmarks[11];
+    const rightShoulder = results.poseLandmarks[12];
+    const leftElbow = results.poseLandmarks[13];
+    const rightElbow = results.poseLandmarks[14];
+    const leftWrist = results.poseLandmarks[15];
+    const rightWrist = results.poseLandmarks[16];
+
+    if (nose && leftShoulder && rightShoulder) {
+      const shoulderWidth = calculateDistance(leftShoulder, rightShoulder);
+      const noseToShoulder = calculateDistance(nose, leftShoulder);
+      const stableScale = Math.max(shoulderWidth, noseToShoulder * 1.8);
+
+      const targetX = (nose.x - (stableScale * 1.2)) * cw;
+      const targetY = nose.y * ch;
+
+      canvasCtx.beginPath();
+      canvasCtx.strokeStyle = "#00FF00"; 
+      canvasCtx.lineWidth = 4;
+      canvasCtx.arc(targetX, targetY, 20, 0, 2 * Math.PI); 
+      canvasCtx.stroke();
+      const visualTargetX = cw - targetX;
+      drawVisualText(canvasCtx, "TARGET", visualTargetX - 40, targetY - 30, "rgba(0,255,0,0.8)", "16px");
+
+      let leftRatio = 0, rightRatio = 0;
+      if (leftElbow && leftWrist) leftRatio = calculateDistance(leftShoulder, leftWrist) / stableScale;
+      if (rightElbow && rightWrist) rightRatio = calculateDistance(rightShoulder, rightWrist) / stableScale;
+
+      const isLeftDominant = leftRatio > (rightRatio + DOMINANCE_BUFFER);
+      const isRightDominant = rightRatio > (leftRatio + DOMINANCE_BUFFER);
+
+      // 左手處理
+      if ((isLeftDominant || leftStage === "punch" || leftStage === "retract") && leftElbow && leftWrist && leftWrist.visibility > LEFT_CONFIG.visibility) {
+        leftStage = processHand(leftShoulder, leftElbow, leftWrist, stableScale, leftStage, "L", nose, leftCooldown, LEFT_CONFIG);
+      }
+
+      // 右手處理
+      if ((isRightDominant || rightStage === "punch" || rightStage === "retract") && rightElbow && rightWrist && rightWrist.visibility > RIGHT_CONFIG.visibility) {
+        rightStage = processHand(rightShoulder, rightElbow, rightWrist, stableScale, rightStage, "R", nose, rightCooldown, RIGHT_CONFIG);
+      }
+    }
+  }
+  canvasCtx.restore();
+}
+
+function processHand(shoulder, elbow, wrist, scale, currentStage, label, nose, currentCooldown, config) {
+  const angle = calculateAngle(shoulder, elbow, wrist);
+  const wristDist = calculateDistance(shoulder, wrist);
+  const ratio = wristDist / scale;
+  const wristToNoseDist = calculateDistance(wrist, nose);
+  const noseRatio = wristToNoseDist / scale;
+
+  let nextStage = currentStage;
+  const isHighEnough = wrist.y < (shoulder.y + ELEVATION_TOLERANCE);
+
+  // --- 狀態機邏輯 (Schmitt Trigger) ---
+  if (currentStage === "down") {
+    if (currentCooldown === 0) {
+      if (ratio > config.triggerRatio && noseRatio > config.noseBlock && isHighEnough) {
+        nextStage = "punch";
+      }
+    }
+  }
+  else if (currentStage === "punch") {
+    if (ratio < config.triggerRatio) {
+      nextStage = "retract";
+      
+      count++;
+      countElement.innerText = count;
+      triggerScoreBoardEffect(); // 觸發火焰邏輯
+
+      if (label === "L") leftCooldown = config.cooldownFrames;
+      else rightCooldown = config.cooldownFrames;
+
+      const hitX = wrist.x * canvasElement.width;
+      const hitY = wrist.y * canvasElement.height;
+      const color = label === "L" ? "#00FFFF" : "#FFA500"; 
+      spawnFloatingText(hitX + (Math.random()*40-20), hitY, "+1", color);
+      statusElement.innerText = label === "L" ? "LEFT HIT!" : "RIGHT HIT!";
+      statusElement.style.color = color;
+    }
+  }
+  else if (currentStage === "retract") {
+    if (ratio < config.resetRatio) {
+      nextStage = "down"; 
+    }
+    else if (ratio > config.triggerRatio && currentCooldown === 0) {
+      nextStage = "punch";
+    }
+  }
+
+  return nextStage;
+}
+
+// --- 初始化 ---
+const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
+pose.setOptions({ modelComplexity: 0, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+pose.onResults(onResults);
+
+// --- 啟動函數 ---
+window.startCamera = function() {
+  const camera = new Camera(videoElement, {
+    onFrame: async () => { await pose.send({image: videoElement}); },
+    width: 640, height: 480
+  });
+  camera.start();
+  
+  const btn = document.getElementById('start-btn');
+  if (btn) {
+    btn.style.display = 'none'; 
+    btn.style.visibility = 'hidden'; 
+  }
+  const rBtn = document.getElementById('reset-btn');
+  if (rBtn) {
+    rBtn.style.display = 'block';
+  }
+}
+  </script>
+
+</body>
+</html>
