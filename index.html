@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>我的聖誕夜怎麼那麼累</title>
+  <title>我的聖誕夜怎麼那麼累 (含音效版)</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
@@ -14,7 +14,7 @@
     body { 
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
       text-align: center; 
-      background: transparent; /* 讓背景透出來 */
+      background: transparent; 
       color: #fff; 
       margin: 0; 
       overflow: hidden; 
@@ -41,7 +41,7 @@
       position: fixed;
       top: 0; left: 0;
       width: 100vw; height: 100vh;
-      z-index: -1; /* 關鍵！放在攝影機畫面後面 */
+      z-index: -1; 
       overflow: hidden;
       background: #000;
     }
@@ -291,6 +291,21 @@
   </div>
 
   <script>
+    // --- 0. 音效設定區 (請在這裡更換你的檔案名稱) ---
+    // 下載你的 mp3 後，放到跟這個 html 同一個資料夾，並將檔名填入下方
+    const PUNCH_SOUND_URL = 'punch.mp3'; 
+    const punchAudio = new Audio(PUNCH_SOUND_URL);
+    
+    // 播放音效的函式 (解決快速連擊時聲音被吃掉的問題)
+    function playPunchSound() {
+        // 如果音效還沒載入好，就忽略
+        if(!punchAudio) return;
+
+        // 將時間歸零，這樣如果上一次還沒播完，會直接切掉重播新的，產生機關槍般的效果
+        punchAudio.currentTime = 0;
+        punchAudio.play().catch(e => console.log("Audio play error:", e));
+    }
+
     // --- 1. 取得網頁元素 ---
     const videoElement = document.getElementById('input_video');
     const canvasElement = document.getElementById('output_canvas');
@@ -304,20 +319,20 @@
     // --- 2. 參數設定 (遲滯門檻版) ---
     const LEFT_CONFIG = {
       triggerRatio: 0.65, 
-      resetRatio: 0.50,    
-      angle: 100,          
-      visibility: 0.4,     
+      resetRatio: 0.50,     
+      angle: 100,           
+      visibility: 0.4,      
       cooldownFrames: 5,   
-      noseBlock: 0.30      
+      noseBlock: 0.30       
     };
 
     const RIGHT_CONFIG = {
-      triggerRatio: 0.60,  
-      resetRatio: 0.45,    
+      triggerRatio: 0.60,   
+      resetRatio: 0.45,     
       angle: 90, 
       visibility: 0.3,
       cooldownFrames: 5,   
-      noseBlock: 0.30      
+      noseBlock: 0.30       
     };
 
     const DOMINANCE_BUFFER = -0.05; 
@@ -495,6 +510,12 @@
           
           count++;
           countElement.innerText = count;
+          
+          // ==============================
+          // [重要] 這裡觸發音效
+          // ==============================
+          playPunchSound();
+
           triggerScoreBoardEffect();
 
           if (label === "L") leftCooldown = config.cooldownFrames;
@@ -527,6 +548,16 @@
 
     // --- 啟動函數 ---
     window.startCamera = function() {
+      // 在使用者第一次點擊互動時，先播放一次微小的聲音來「解鎖」手機瀏覽器的音效限制
+      if(punchAudio) {
+        punchAudio.volume = 0; // 先靜音
+        punchAudio.play().then(() => {
+          punchAudio.pause();
+          punchAudio.currentTime = 0;
+          punchAudio.volume = 1; // 恢復音量
+        }).catch(e => console.log("Audio unlock failed:", e));
+      }
+
       const camera = new Camera(videoElement, {
         onFrame: async () => { await pose.send({image: videoElement}); },
         width: 640, height: 480
