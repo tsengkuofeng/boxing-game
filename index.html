@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>我的聖誕夜怎麼那麼累 (含音效版)</title>
+  <title>聖誕拳賽</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
@@ -291,19 +291,37 @@
   </div>
 
   <script>
-    // --- 0. 音效設定區 (請在這裡更換你的檔案名稱) ---
+    // --- 0. 音效設定區 (多聲道音效池技術) ---
     // 下載你的 mp3 後，放到跟這個 html 同一個資料夾，並將檔名填入下方
     const PUNCH_SOUND_URL = 'punch.mp3'; 
-    const punchAudio = new Audio(PUNCH_SOUND_URL);
-    
-    // 播放音效的函式 (解決快速連擊時聲音被吃掉的問題)
-    function playPunchSound() {
-        // 如果音效還沒載入好，就忽略
-        if(!punchAudio) return;
 
-        // 將時間歸零，這樣如果上一次還沒播完，會直接切掉重播新的，產生機關槍般的效果
-        punchAudio.currentTime = 0;
-        punchAudio.play().catch(e => console.log("Audio play error:", e));
+    // 建立一個「音效池」，預備 12 個替身，這樣才能達成聲音重疊 (Polyphony)
+    // 解決快拳時聲音會被切斷或來不及播的問題
+    const MAX_CHANNELS = 12; 
+    const audioPool = [];
+    let poolIndex = 0;
+
+    // 初始化音效池
+    for (let i = 0; i < MAX_CHANNELS; i++) {
+        const audio = new Audio(PUNCH_SOUND_URL);
+        audio.preload = 'auto'; // 預先載入
+        audioPool.push(audio);
+    }
+
+    // 播放音效的函式 (輪播機制)
+    function playPunchSound() {
+        const currentAudio = audioPool[poolIndex];
+        if (currentAudio) {
+            // 強制時間歸零，確保從頭播放
+            currentAudio.currentTime = 0;
+            // 播放 (catch 用來避免某些瀏覽器未互動前的報錯)
+            currentAudio.play().catch(e => {
+                // 通常只有在使用者還沒點擊畫面時會報錯，遊戲開始後就好了
+                console.log("Audio play skipped:", e);
+            });
+        }
+        // 輪盤轉到下一個替身
+        poolIndex = (poolIndex + 1) % MAX_CHANNELS;
     }
 
     // --- 1. 取得網頁元素 ---
@@ -316,7 +334,7 @@
     const startBtn = document.getElementById('start-btn'); 
     const resetBtn = document.getElementById('reset-btn'); 
 
-    // --- 2. 參數設定 (遲滯門檻版) ---
+    // --- 2. 參數設定 ---
     const LEFT_CONFIG = {
       triggerRatio: 0.65, 
       resetRatio: 0.50,     
@@ -512,7 +530,7 @@
           countElement.innerText = count;
           
           // ==============================
-          // [重要] 這裡觸發音效
+          // [關鍵修改] 這裡呼叫音效池播放
           // ==============================
           playPunchSound();
 
@@ -548,14 +566,20 @@
 
     // --- 啟動函數 ---
     window.startCamera = function() {
-      // 在使用者第一次點擊互動時，先播放一次微小的聲音來「解鎖」手機瀏覽器的音效限制
-      if(punchAudio) {
-        punchAudio.volume = 0; // 先靜音
-        punchAudio.play().then(() => {
-          punchAudio.pause();
-          punchAudio.currentTime = 0;
-          punchAudio.volume = 1; // 恢復音量
-        }).catch(e => console.log("Audio unlock failed:", e));
+      // [關鍵優化] 手機音效解鎖
+      // 在第一次互動時，嘗試喚醒音效池中的第一個聲音，然後馬上暫停
+      // 這可以騙過 iOS/Android 的自動播放限制，讓後續的快拳聲音能順利出來
+      if(audioPool.length > 0) {
+          const unlockAudio = audioPool[0];
+          unlockAudio.volume = 0; // 靜音
+          unlockAudio.play().then(() => {
+              unlockAudio.pause();
+              unlockAudio.currentTime = 0;
+              unlockAudio.volume = 1; // 恢復音量
+              
+              // 確保所有替身都準備好
+              audioPool.forEach(a => a.volume = 1);
+          }).catch(e => console.log("Audio unlock warning:", e));
       }
 
       const camera = new Camera(videoElement, {
