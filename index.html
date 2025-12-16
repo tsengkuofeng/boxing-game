@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>聖誕拳賽</title>
+  <title>我的聖誕夜怎麼那麼累 (Turbo極速優化版)</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
@@ -18,6 +18,8 @@
       color: #fff; 
       margin: 0; 
       overflow: hidden; 
+      user-select: none; /* 防止連點選取文字 */
+      -webkit-user-select: none;
     }
 
     .container { 
@@ -46,7 +48,6 @@
       background: #000;
     }
 
-    /* 夜空 (深藍色漸層) */
     .night-sky {
       position: absolute;
       top: 0; left: 0;
@@ -54,7 +55,6 @@
       background: linear-gradient(to bottom, #020111 10%, #191d3a 50%, #2d3e5e 90%);
     }
 
-    /* 月亮 (發光效果) */
     .moon {
       position: absolute;
       top: 50px; right: 50px;
@@ -64,7 +64,6 @@
       box-shadow: 0 0 20px #fefcd7, 0 0 50px rgba(254, 252, 215, 0.4);
     }
 
-    /* 雪地 (白色) */
     .snow-ground {
       position: absolute;
       bottom: 0; left: 0;
@@ -74,7 +73,6 @@
       border-radius: 50% 50% 0 0 / 20px 20px 0 0;
     }
 
-    /* 雪花動畫 */
     .snowflake {
       position: absolute;
       top: -10px;
@@ -100,7 +98,6 @@
        UI 介面 CSS
        ========================================= */
 
-    /* 計分板預設樣式 (直立) */
     .score-board { 
       position: absolute; 
       top: 80px; 
@@ -112,13 +109,13 @@
       border-radius: 20px; 
       border: 1px solid rgba(255, 255, 255, 0.3);
       pointer-events: none; 
-      transition: all 0.3s ease;
+      transition: all 0.1s ease; /* 加快特效反應速度 */
+      will-change: transform, box-shadow; /* 效能優化 */
     }
     #count { font-size: 70px; font-weight: 800; color: #fff; line-height: 1; }
     .count-title { font-size: 14px; color: #ccc; letter-spacing: 2px; }
     #status { margin-top: 5px; font-size: 18px; font-weight: bold; color: #ddd; }
 
-    /* 開始按鈕 */
     #start-btn { 
       position: absolute; 
       top: 50%; left: 50%; 
@@ -143,7 +140,6 @@
       100% { transform: translate(-50%, -50%) scale(1); }
     }
 
-    /* 歸零按鈕 */
     #reset-btn {
       position: absolute;
       bottom: 100px; right: 20px;
@@ -163,95 +159,30 @@
     .pop-effect { animation: pop 0.1s ease-out; color: #00ff00 !important; }
     @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
 
-    /* =========================================
-       手機橫向模式 (Landscape) 優化
-       ========================================= */
+    /* Landscape 手機優化 */
     @media (max-height: 500px) and (orientation: landscape) {
-      .score-board {
-        top: 10px;          
-        left: 20px;         
-        transform: none;    
-        padding: 5px 20px;  
-      }
+      .score-board { top: 10px; left: 20px; transform: none; padding: 5px 20px; }
       #count { font-size: 40px; }
       .count-title { font-size: 10px; }
       #status { font-size: 14px; margin-top: 0; }
-      #start-btn {
-        padding: 15px 30px;
-        font-size: 20px;
-        border-width: 2px;
-      }
-      #reset-btn {
-        bottom: auto; 
-        top: 10px;    
-        right: 20px;
-        padding: 8px 15px;
-        font-size: 14px;
-      }
+      #start-btn { padding: 15px 30px; font-size: 20px; border-width: 2px; }
+      #reset-btn { bottom: auto; top: 10px; right: 20px; padding: 8px 15px; font-size: 14px; }
     }
 
-    /* =========================================
-       計分板火焰燃燒特效
-       ========================================= */
-    /* Level 1: 金黃色微火 */
-    .fire-lv1 {
-      border-color: #ffd700 !important;
-      color: #ffd700 !important;
-      box-shadow: 0 0 15px rgba(255, 215, 0, 0.6), inset 0 0 10px rgba(255, 215, 0, 0.4);
-      animation: burn-pulse 1s infinite alternate;
-    }
-    /* Level 2: 橘紅色烈火 */
-    .fire-lv2 {
-      border-color: #ff4500 !important;
-      color: #ff4500 !important;
-      box-shadow: 0 0 30px rgba(255, 69, 0, 0.8), inset 0 0 20px rgba(255, 69, 0, 0.5);
-      animation: burn-pulse 0.4s infinite alternate; 
-    }
-    /* Level 3: 青藍色極限火焰 */
-    .fire-lv3 {
-      border-color: #00ffff !important;
-      color: #00ffff !important;
-      background: rgba(0, 255, 255, 0.1) !important;
-      box-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff, 0 0 60px #fff;
-      animation: burn-max 0.1s infinite; 
-    }
+    /* 火焰特效 */
+    .fire-lv1 { border-color: #ffd700 !important; color: #ffd700 !important; box-shadow: 0 0 15px rgba(255, 215, 0, 0.6), inset 0 0 10px rgba(255, 215, 0, 0.4); animation: burn-pulse 1s infinite alternate; }
+    .fire-lv2 { border-color: #ff4500 !important; color: #ff4500 !important; box-shadow: 0 0 30px rgba(255, 69, 0, 0.8), inset 0 0 20px rgba(255, 69, 0, 0.5); animation: burn-pulse 0.4s infinite alternate; }
+    .fire-lv3 { border-color: #00ffff !important; color: #00ffff !important; background: rgba(0, 255, 255, 0.1) !important; box-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff, 0 0 60px #fff; animation: burn-max 0.1s infinite; }
 
-    @keyframes burn-pulse {
-      0% { box-shadow: 0 0 15px currentColor, inset 0 0 5px currentColor; }
-      100% { box-shadow: 0 0 35px currentColor, inset 0 0 15px currentColor; transform: translateX(-50%) scale(1.05); }
-    }
-    @keyframes burn-max {
-      0% { transform: translateX(-50%) translate(1px, 1px) scale(1.1); }
-      25% { transform: translateX(-50%) translate(-1px, -2px) scale(1.1); }
-      50% { transform: translateX(-50%) translate(-2px, 1px) scale(1.1); }
-      75% { transform: translateX(-50%) translate(2px, 1px) scale(1.1); }
-      100% { transform: translateX(-50%) translate(-1px, -1px) scale(1.1); }
-    }
+    @keyframes burn-pulse { 0% { box-shadow: 0 0 15px currentColor, inset 0 0 5px currentColor; } 100% { box-shadow: 0 0 35px currentColor, inset 0 0 15px currentColor; transform: translateX(-50%) scale(1.05); } }
+    @keyframes burn-max { 0% { transform: translateX(-50%) translate(1px, 1px) scale(1.1); } 25% { transform: translateX(-50%) translate(-1px, -2px) scale(1.1); } 50% { transform: translateX(-50%) translate(-2px, 1px) scale(1.1); } 75% { transform: translateX(-50%) translate(2px, 1px) scale(1.1); } 100% { transform: translateX(-50%) translate(-1px, -1px) scale(1.1); } }
 
-    /* =========================================
-       筆電/大螢幕 (Desktop/Laptop) 優化
-       ========================================= */
+    /* Desktop 優化 */
     @media (min-width: 1024px) {
-      .score-board {
-        top: 60px;            
-        padding: 20px 80px;   
-        border-width: 3px;    
-        background: rgba(0, 0, 0, 0.7); 
-        left: 50%;
-        transform: translateX(-50%);
-      }
-      #count {
-        font-size: 140px; 
-        text-shadow: 0 0 30px currentColor; 
-      }
-      .count-title {
-        font-size: 20px;
-        letter-spacing: 5px; 
-        margin-bottom: 10px;
-      }
-      #status {
-        font-size: 24px;
-      }
+      .score-board { top: 60px; padding: 20px 80px; border-width: 3px; background: rgba(0, 0, 0, 0.7); left: 50%; transform: translateX(-50%); }
+      #count { font-size: 140px; text-shadow: 0 0 30px currentColor; }
+      .count-title { font-size: 20px; letter-spacing: 5px; margin-bottom: 10px; }
+      #status { font-size: 24px; }
       .fire-lv1 { box-shadow: 0 0 30px rgba(255, 215, 0, 0.6), inset 0 0 20px rgba(255, 215, 0, 0.4); }
       .fire-lv2 { box-shadow: 0 0 50px rgba(255, 69, 0, 0.8), inset 0 0 30px rgba(255, 69, 0, 0.5); }
       .fire-lv3 { box-shadow: 0 0 40px #00ffff, 0 0 80px #00ffff, 0 0 100px #fff; }
@@ -281,53 +212,62 @@
     </div>
 
     <div class="video-container">
-      <video id="input_video" playsinline></video>
-      <canvas id="output_canvas"></canvas>
+      <video id="input_video" playsinline style="display:none"></video> <canvas id="output_canvas"></canvas>
     </div>
 
-    <button id="start-btn" onclick="startCamera()">🥊 點擊開始 (START)</button>
-
+    <button id="start-btn" onclick="initGame()">🥊 點擊開始 (START)</button>
     <button id="reset-btn" onclick="resetCount()">歸零重置 (RESET)</button>
   </div>
 
   <script>
-    // --- 0. 音效設定區 (多聲道音效池技術) ---
-    // 下載你的 mp3 後，放到跟這個 html 同一個資料夾，並將檔名填入下方
+    // --- 0. 專業級音效系統 (Web Audio API) ---
+    // 使用 Web Audio API 取代傳統 <audio> 標籤，解決快節奏卡頓問題
     const PUNCH_SOUND_URL = 'punch.mp3'; 
+    
+    let audioContext = null;
+    let punchBuffer = null;
 
-    // 建立一個「音效池」，預備 12 個替身，這樣才能達成聲音重疊 (Polyphony)
-    // 解決快拳時聲音會被切斷或來不及播的問題
-    const MAX_CHANNELS = 12; 
-    const audioPool = [];
-    let poolIndex = 0;
-
-    // 初始化音效池
-    for (let i = 0; i < MAX_CHANNELS; i++) {
-        const audio = new Audio(PUNCH_SOUND_URL);
-        audio.preload = 'auto'; // 預先載入
-        audioPool.push(audio);
+    // 載入並解碼音效檔 (只執行一次，存入記憶體)
+    async function loadSound() {
+        try {
+            // 建立音訊環境
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioContext = new AudioContext();
+            
+            // 下載檔案
+            const response = await fetch(PUNCH_SOUND_URL);
+            const arrayBuffer = await response.arrayBuffer();
+            
+            // 解碼成波形數據
+            punchBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            console.log("音效載入完成，Turbo 模式就緒");
+        } catch (error) {
+            console.error("音效載入失敗 (可能是檔案路徑錯誤):", error);
+            statusElement.innerText = "AUDIO ERROR";
+        }
     }
 
-    // 播放音效的函式 (輪播機制)
+    // 極速播放函式 (無延遲、無物件堆積)
     function playPunchSound() {
-        const currentAudio = audioPool[poolIndex];
-        if (currentAudio) {
-            // 強制時間歸零，確保從頭播放
-            currentAudio.currentTime = 0;
-            // 播放 (catch 用來避免某些瀏覽器未互動前的報錯)
-            currentAudio.play().catch(e => {
-                // 通常只有在使用者還沒點擊畫面時會報錯，遊戲開始後就好了
-                console.log("Audio play skipped:", e);
-            });
+        if (!audioContext || !punchBuffer) return;
+        
+        // 如果瀏覽器暫停了音訊環境，嘗試恢復
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
         }
-        // 輪盤轉到下一個替身
-        poolIndex = (poolIndex + 1) % MAX_CHANNELS;
+
+        // 建立一個輕量的「聲音源」
+        const source = audioContext.createBufferSource();
+        source.buffer = punchBuffer;
+        source.connect(audioContext.destination);
+        source.start(0); // 立即播放
+        // 播放完畢後，這個 source 會自動被垃圾回收，極度輕量
     }
 
     // --- 1. 取得網頁元素 ---
     const videoElement = document.getElementById('input_video');
     const canvasElement = document.getElementById('output_canvas');
-    const canvasCtx = canvasElement.getContext('2d');
+    const canvasCtx = canvasElement.getContext('2d', { alpha: false }); // 優化：關閉透明度運算
     const countElement = document.getElementById('count');
     const scoreBoard = document.querySelector('.score-board'); 
     const statusElement = document.getElementById('status');
@@ -335,74 +275,58 @@
     const resetBtn = document.getElementById('reset-btn'); 
 
     // --- 2. 參數設定 ---
-    const LEFT_CONFIG = {
-      triggerRatio: 0.65, 
-      resetRatio: 0.50,     
-      angle: 100,           
-      visibility: 0.4,      
-      cooldownFrames: 5,   
-      noseBlock: 0.30       
-    };
-
-    const RIGHT_CONFIG = {
-      triggerRatio: 0.60,   
-      resetRatio: 0.45,     
-      angle: 90, 
-      visibility: 0.3,
-      cooldownFrames: 5,   
-      noseBlock: 0.30       
-    };
-
+    const LEFT_CONFIG = { triggerRatio: 0.65, resetRatio: 0.50, visibility: 0.4, cooldownFrames: 5, noseBlock: 0.30 };
+    const RIGHT_CONFIG = { triggerRatio: 0.60, resetRatio: 0.45, visibility: 0.3, cooldownFrames: 5, noseBlock: 0.30 };
     const DOMINANCE_BUFFER = -0.05; 
     const MAX_PUNCH_DURATION = 30; 
     const ELEVATION_TOLERANCE = 0.3;
 
     let count = 0;
-    let leftStage = "down"; 
-    let rightStage = "down";
-    let leftCooldown = 0;
-    let rightCooldown = 0;
-    let leftPunchTimer = 0;
-    let rightPunchTimer = 0;
+    let leftStage = "down", rightStage = "down";
+    let leftCooldown = 0, rightCooldown = 0;
+    let leftPunchTimer = 0, rightPunchTimer = 0;
     let floatingTexts = []; 
 
     // --- 3. 工具函數 ---
-    function calculateAngle(a, b, c) {
-      let radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
-      let angle = Math.abs(radians * 180.0 / Math.PI);
-      if (angle > 180.0) angle = 360 - angle;
-      return angle;
-    }
     function calculateDistance(a, b) {
       return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
     }
 
     function drawVisualText(ctx, text, visualX, visualY, color, fontSize = "24px") {
       ctx.save();
-      const internalX = ctx.canvas.width - visualX;
-      ctx.translate(internalX, visualY);
+      // 因為 canvas 已經水平翻轉，我們不需要在這裡再翻轉，直接計算正確位置即可
+      // 注意：這裡的 visualX 是基於「已翻轉」的畫布
       ctx.scale(-1, 1); 
       ctx.font = `bold ${fontSize} Arial`;
       ctx.fillStyle = color;
-      ctx.fillText(text, 0, 0); 
+      // 因為 scale(-1, 1)，X 座標要變負的
+      ctx.fillText(text, -visualX, visualY); 
       ctx.restore();
     }
 
     function spawnFloatingText(x, y, text, color) {
-      floatingTexts.push({ x, y, text, color, life: 15, offsetY: 0 });
+        // 限制畫面上的文字數量，避免記憶體暴漲
+        if(floatingTexts.length > 20) floatingTexts.shift();
+        floatingTexts.push({ x, y, text, color, life: 15, offsetY: 0 });
     }
 
-    // 火焰特效更新函數
     function updateFireEffect(currentCount) {
       if (!scoreBoard) return;
-      scoreBoard.classList.remove('fire-lv1', 'fire-lv2', 'fire-lv3');
+      // 只有在等級變化時才操作 class，減少 DOM 操作
+      const currentClass = scoreBoard.classList.contains('fire-lv3') ? 3 : 
+                           scoreBoard.classList.contains('fire-lv2') ? 2 :
+                           scoreBoard.classList.contains('fire-lv1') ? 1 : 0;
+      
+      let targetClass = 0;
+      if (currentCount >= 100) targetClass = 3;
+      else if (currentCount >= 80) targetClass = 2;
+      else if (currentCount >= 50) targetClass = 1;
 
-      if (currentCount >= 100) {
-        scoreBoard.classList.add('fire-lv3'); 
-      } else if (currentCount >= 80) {
-        scoreBoard.classList.add('fire-lv2'); 
-      } else if (currentCount >= 50) {
-        scoreBoard.classList.add('fire-lv1'); 
+      if (currentClass !== targetClass) {
+          scoreBoard.classList.remove('fire-lv1', 'fire-lv2', 'fire-lv3');
+          if (targetClass === 3) scoreBoard.classList.add('fire-lv3');
+          if (targetClass === 2) scoreBoard.classList.add('fire-lv2');
+          if (targetClass === 1) scoreBoard.classList.add('fire-lv1');
       }
     }
 
@@ -417,65 +341,72 @@
       count = 0; 
       countElement.innerText = count; 
       floatingTexts = []; 
-      leftCooldown = 0; rightCooldown = 0;
-      leftStage = "down"; rightStage = "down";
-      leftPunchTimer = 0; rightPunchTimer = 0;
-      
-      if (scoreBoard) {
-        scoreBoard.classList.remove('fire-lv1', 'fire-lv2', 'fire-lv3');
-      }
-      
+      if (scoreBoard) scoreBoard.classList.remove('fire-lv1', 'fire-lv2', 'fire-lv3');
       statusElement.innerText = "RESET OK"; 
       statusElement.style.color = "white";
     }
 
-    // --- 4. 核心邏輯 ---
+    // --- 4. 核心邏輯 (渲染與計算) ---
     function onResults(results) {
-      canvasElement.width = videoElement.videoWidth;
-      canvasElement.height = videoElement.videoHeight;
+      // 優化 1: 鎖定 Canvas 解析度
+      // 很多手機攝影機是 1080p 或 4K，每秒畫 30 次會非常卡
+      // 我們強制將內部運算解析度降到 720p 寬度，但 CSS 會讓它看起來是全螢幕
+      const targetWidth = Math.min(window.innerWidth, 1280); 
+      const aspectRatio = videoElement.videoHeight / videoElement.videoWidth || 0.75;
+      const targetHeight = targetWidth * aspectRatio;
+
+      // 只有當尺寸改變時才重新設定，避免頻繁 layout thrashing
+      if (canvasElement.width !== targetWidth) {
+          canvasElement.width = targetWidth;
+          canvasElement.height = targetHeight;
+      }
+
       const cw = canvasElement.width;
       const ch = canvasElement.height;
 
+      // 繪製影像
       canvasCtx.save();
       canvasCtx.clearRect(0, 0, cw, ch);
       canvasCtx.drawImage(results.image, 0, 0, cw, ch);
 
+      // 處理浮動文字
       for (let i = floatingTexts.length - 1; i >= 0; i--) {
         let ft = floatingTexts[i];
         ft.life--; ft.offsetY -= 5;
-        
-        const visualX = cw - ft.x; 
-        drawVisualText(canvasCtx, ft.text, visualX, ft.y + ft.offsetY, ft.color, "60px");
-        
+        // 視覺修正：因為畫布翻轉，計算視覺 X
+        const visualX = cw - (ft.x * cw); 
+        drawVisualText(canvasCtx, ft.text, visualX, (ft.y * ch) + ft.offsetY, ft.color, "60px");
         if (ft.life <= 0) floatingTexts.splice(i, 1);
       }
 
+      // 處理冷卻
       if (leftCooldown > 0) leftCooldown--;
       if (rightCooldown > 0) rightCooldown--;
 
+      // 處理動作逾時
       if (leftStage === "punch" && ++leftPunchTimer > MAX_PUNCH_DURATION) { leftStage = "down"; leftPunchTimer = 0; }
       else if (leftStage !== "punch") leftPunchTimer = 0;
 
       if (rightStage === "punch" && ++rightPunchTimer > MAX_PUNCH_DURATION) { rightStage = "down"; rightPunchTimer = 0; }
       else if (rightStage !== "punch") rightPunchTimer = 0;
 
+      // 骨架偵測
       if (results.poseLandmarks) {
+        // 簡單繪製骨架，降低線條複雜度
         drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: 'rgba(255, 255, 255, 0.2)', lineWidth: 1});
         
-        const nose = results.poseLandmarks[0];
-        const leftShoulder = results.poseLandmarks[11];
-        const rightShoulder = results.poseLandmarks[12];
-        const leftElbow = results.poseLandmarks[13];
-        const rightElbow = results.poseLandmarks[14];
-        const leftWrist = results.poseLandmarks[15];
-        const rightWrist = results.poseLandmarks[16];
+        const lm = results.poseLandmarks;
+        const nose = lm[0];
+        const leftShoulder = lm[11], rightShoulder = lm[12];
+        const leftElbow = lm[13], rightElbow = lm[14];
+        const leftWrist = lm[15], rightWrist = lm[16];
 
         if (nose && leftShoulder && rightShoulder) {
           const shoulderWidth = calculateDistance(leftShoulder, rightShoulder);
-          const noseToShoulder = calculateDistance(nose, leftShoulder);
-          const stableScale = Math.max(shoulderWidth, noseToShoulder * 1.8);
+          const stableScale = shoulderWidth * 2.0; // 簡化計算
 
-          const targetX = (nose.x - (stableScale * 1.2)) * cw;
+          // 繪製目標點
+          const targetX = (nose.x - (stableScale * 0.6)) * cw; // 調整位置參數
           const targetY = nose.y * ch;
 
           canvasCtx.beginPath();
@@ -483,77 +414,62 @@
           canvasCtx.lineWidth = 4;
           canvasCtx.arc(targetX, targetY, 20, 0, 2 * Math.PI); 
           canvasCtx.stroke();
-          const visualTargetX = cw - targetX;
-          drawVisualText(canvasCtx, "TARGET", visualTargetX - 40, targetY - 30, "rgba(0,255,0,0.8)", "16px");
 
-          let leftRatio = 0, rightRatio = 0;
-          if (leftElbow && leftWrist) leftRatio = calculateDistance(leftShoulder, leftWrist) / stableScale;
-          if (rightElbow && rightWrist) rightRatio = calculateDistance(rightShoulder, rightWrist) / stableScale;
-
-          const isLeftDominant = leftRatio > (rightRatio + DOMINANCE_BUFFER);
-          const isRightDominant = rightRatio > (leftRatio + DOMINANCE_BUFFER);
-
-          if ((isLeftDominant || leftStage === "punch" || leftStage === "retract") && leftElbow && leftWrist && leftWrist.visibility > LEFT_CONFIG.visibility) {
-            leftStage = processHand(leftShoulder, leftElbow, leftWrist, stableScale, leftStage, "L", nose, leftCooldown, LEFT_CONFIG);
+          // 判斷慣用手 & 處理出拳
+          // 這裡不做過多視覺文字繪製，節省效能
+          
+          if (leftElbow && leftWrist && leftWrist.visibility > LEFT_CONFIG.visibility) {
+            leftStage = processHand(leftShoulder, leftWrist, stableScale, leftStage, "L", nose, leftCooldown, LEFT_CONFIG);
           }
-
-          if ((isRightDominant || rightStage === "punch" || rightStage === "retract") && rightElbow && rightWrist && rightWrist.visibility > RIGHT_CONFIG.visibility) {
-            rightStage = processHand(rightShoulder, rightElbow, rightWrist, stableScale, rightStage, "R", nose, rightCooldown, RIGHT_CONFIG);
+          if (rightElbow && rightWrist && rightWrist.visibility > RIGHT_CONFIG.visibility) {
+            rightStage = processHand(rightShoulder, rightWrist, stableScale, rightStage, "R", nose, rightCooldown, RIGHT_CONFIG);
           }
         }
       }
       canvasCtx.restore();
     }
 
-    function processHand(shoulder, elbow, wrist, scale, currentStage, label, nose, currentCooldown, config) {
-      const angle = calculateAngle(shoulder, elbow, wrist);
+    function processHand(shoulder, wrist, scale, currentStage, label, nose, currentCooldown, config) {
       const wristDist = calculateDistance(shoulder, wrist);
       const ratio = wristDist / scale;
-      const wristToNoseDist = calculateDistance(wrist, nose);
-      const noseRatio = wristToNoseDist / scale;
+      const noseDist = calculateDistance(wrist, nose);
+      const noseRatio = noseDist / scale;
 
       let nextStage = currentStage;
       const isHighEnough = wrist.y < (shoulder.y + ELEVATION_TOLERANCE);
 
       if (currentStage === "down") {
-        if (currentCooldown === 0) {
-          if (ratio > config.triggerRatio && noseRatio > config.noseBlock && isHighEnough) {
+        if (currentCooldown === 0 && ratio > config.triggerRatio && noseRatio > config.noseBlock && isHighEnough) {
             nextStage = "punch";
-          }
         }
       }
       else if (currentStage === "punch") {
         if (ratio < config.triggerRatio) {
           nextStage = "retract";
           
+          // 擊中判定！
           count++;
           countElement.innerText = count;
-          
-          // ==============================
-          // [關鍵修改] 這裡呼叫音效池播放
-          // ==============================
-          playPunchSound();
-
+          playPunchSound(); // Web Audio API 極速播放
           triggerScoreBoardEffect();
 
           if (label === "L") leftCooldown = config.cooldownFrames;
           else rightCooldown = config.cooldownFrames;
 
-          const hitX = wrist.x * canvasElement.width;
-          const hitY = wrist.y * canvasElement.height;
           const color = label === "L" ? "#00FFFF" : "#FFA500"; 
-          spawnFloatingText(hitX + (Math.random()*40-20), hitY, "+1", color);
-          statusElement.innerText = label === "L" ? "LEFT HIT!" : "RIGHT HIT!";
-          statusElement.style.color = color;
+          // 傳入正規化座標 (0~1)，在 draw 時再乘上寬高
+          spawnFloatingText(wrist.x, wrist.y, "+1", color);
+          
+          // 減少 DOM 操作頻率，只有狀態改變時才寫入
+          if (statusElement.innerText !== (label === "L" ? "LEFT HIT!" : "RIGHT HIT!")) {
+             statusElement.innerText = label === "L" ? "LEFT HIT!" : "RIGHT HIT!";
+             statusElement.style.color = color;
+          }
         }
       }
       else if (currentStage === "retract") {
-        if (ratio < config.resetRatio) {
-          nextStage = "down"; 
-        }
-        else if (ratio > config.triggerRatio && currentCooldown === 0) {
-          nextStage = "punch";
-        }
+        if (ratio < config.resetRatio) nextStage = "down"; 
+        else if (ratio > config.triggerRatio && currentCooldown === 0) nextStage = "punch";
       }
 
       return nextStage;
@@ -561,42 +477,29 @@
 
     // --- 初始化 ---
     const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
+    // modelComplexity: 0 (速度最快), 1 (預設), 2 (最精準但慢)
     pose.setOptions({ modelComplexity: 0, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
     pose.onResults(onResults);
 
     // --- 啟動函數 ---
-    window.startCamera = function() {
-      // [關鍵優化] 手機音效解鎖
-      // 在第一次互動時，嘗試喚醒音效池中的第一個聲音，然後馬上暫停
-      // 這可以騙過 iOS/Android 的自動播放限制，讓後續的快拳聲音能順利出來
-      if(audioPool.length > 0) {
-          const unlockAudio = audioPool[0];
-          unlockAudio.volume = 0; // 靜音
-          unlockAudio.play().then(() => {
-              unlockAudio.pause();
-              unlockAudio.currentTime = 0;
-              unlockAudio.volume = 1; // 恢復音量
-              
-              // 確保所有替身都準備好
-              audioPool.forEach(a => a.volume = 1);
-          }).catch(e => console.log("Audio unlock warning:", e));
+    window.initGame = async function() {
+      // 1. 初始化音效系統 (必須在使用者點擊後觸發)
+      await loadSound();
+      
+      // 2. 確保音訊環境運作 (解鎖 iOS Safari)
+      if (audioContext && audioContext.state === 'suspended') {
+          await audioContext.resume();
       }
 
+      // 3. 啟動攝影機
       const camera = new Camera(videoElement, {
         onFrame: async () => { await pose.send({image: videoElement}); },
-        width: 640, height: 480
+        width: 1280, height: 720 // 限制攝影機輸入解析度，不需 4K
       });
-      camera.start();
+      await camera.start();
       
-      const btn = document.getElementById('start-btn');
-      if (btn) {
-        btn.style.display = 'none'; 
-        btn.style.visibility = 'hidden'; 
-      }
-      const rBtn = document.getElementById('reset-btn');
-      if (rBtn) {
-        rBtn.style.display = 'block';
-      }
+      startBtn.style.display = 'none'; 
+      resetBtn.style.display = 'block';
     }
   </script>
 </body>
