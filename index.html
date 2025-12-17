@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>V5 終極拳擊 - 互斥鎖鎖定版</title>
+  <title>聖誕揍人</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
@@ -34,6 +34,13 @@
     #count { font-size: 100px; font-weight: 800; color: #fff; line-height: 1; text-shadow: 0 0 20px rgba(0,0,0,0.5); }
     .count-title { font-size: 16px; color: #ccc; letter-spacing: 2px; }
     #status { margin-top: 5px; font-size: 20px; font-weight: bold; color: #ddd; text-shadow: 0 0 5px #000; }
+    
+    /* 提示訊息 (如：請架好防禦) */
+    #guard-hint {
+        position: absolute; top: 200px; left: 50%; transform: translateX(-50%);
+        font-size: 24px; color: #ff4757; font-weight: bold; 
+        text-shadow: 2px 2px 0 #000; display: none; z-index: 20;
+    }
 
     #start-btn { 
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 50; 
@@ -72,6 +79,8 @@
       <div id="count">0</div>
       <div id="status">READY</div>
     </div>
+    
+    <div id="guard-hint">⚠️ 架好防禦！手要在下巴旁</div>
 
     <div class="video-container">
       <video id="input_video" playsinline style="display:none"></video>
@@ -113,28 +122,26 @@
     const countElement = document.getElementById('count');
     const scoreBoard = document.querySelector('.score-board'); 
     const statusElement = document.getElementById('status');
+    const guardHint = document.getElementById('guard-hint');
     const startBtn = document.getElementById('start-btn'); 
     const resetBtn = document.getElementById('reset-btn'); 
 
-    // [V5 關鍵參數調整]
+    // [V6 關鍵參數]
     const CONFIG = {
-        triggerRatio: 0.82, // 觸發距離 (太難打可改 0.80)
-        resetRatio: 0.45,   // 重置距離 (太難連打可改 0.50)
+        triggerRatio: 0.80, // 出拳距離 (稍微調降一點，讓有架勢的人好打)
+        resetRatio: 0.50,   // 重置距離
+        minSpeed: 0.020,    // 速度門檻 (防止靜止誤判)
+        minAngle: 125,      // 手肘伸直角度
         
-        // [修改] 提高速度門檻，防止「不動也計數」
-        // 從 0.015 提升到 0.025，手一定要有明確移動才算
-        minSpeed: 0.025,    
+        // [新增] 防禦判定距離
+        // 手腕離鼻子的距離比例。數字越小越嚴格 (必須貼越近)
+        // 0.45 大約是肩膀寬度的一半不到，也就是臉頰附近
+        guardDistRatio: 0.55, 
         
-        // [修改] 嚴格角度，防止「彎手偷雞」
-        // 必須伸直到 135 度以上
-        minAngle: 135,      
-        
-        // [修改] 極速冷卻，支援快拳
         cooldownFrames: 2 
     };
 
     let count = 0;
-    // 狀態機: down (放下), punch (出拳), retract (收拳)
     let leftStage = "down", rightStage = "down";
     let leftCooldown = 0, rightCooldown = 0;
     let floatingTexts = []; 
@@ -176,52 +183,60 @@
        statusElement.style.color = color;
     }
 
-    // --- 3. 核心邏輯 (含互斥鎖) ---
-    function processHand(shoulder, wrist, scale, currentStage, label, currentCooldown, config, speed, angle, otherHandStage) {
+    // --- 3. 核心邏輯 (加入架勢判定) ---
+    function processHand(shoulder, wrist, scale, currentStage, label, currentCooldown, config, speed, angle, nose, otherWrist) {
       const wristDist = calculateDistance(shoulder, wrist);
       const ratio = wristDist / scale;
       let nextStage = currentStage;
       const isLeft = label === "L";
 
       // ============================================
-      // 智慧互斥鎖 (Smart Mutex)
+      // V6 新增：架勢判定 (Guard Check)
       // ============================================
       
-      if (currentStage === "down") {
-        // [鎖定邏輯]
-        // 如果「對手」正在出拳 (punch)，我這隻手強制鎖住！
-        // 這樣絕對不會有左手出拳、右手誤判的情況
-        if (otherHandStage === "punch") {
-            return "down";
-        }
+      // 計算「另一隻手」離鼻子的距離
+      const otherHandToNose = calculateDistance(otherWrist, nose);
+      const guardRatio = otherHandToNose / scale;
+      
+      // 判斷是否架好防禦 (另一隻手要在臉附近)
+      const isGuarding = guardRatio < config.guardDistRatio;
 
+      if (currentStage === "down") {
+        // [修正] 取消舊的互斥鎖，改用 Guard Check
+        
         // 觸發條件：
         // 1. 冷卻結束
-        // 2. 距離夠遠 (ratio)
-        // 3. 速度夠快 (speed) -> 解決「不動也計數」
-        // 4. 手臂夠直 (angle) -> 解決「彎手偷雞」
+        // 2. 距離夠遠
+        // 3. 速度夠快
+        // 4. 手臂伸直
+        // 5. [關鍵] 另一隻手有架好防禦 (isGuarding)
+        
         if (currentCooldown === 0 && ratio > config.triggerRatio && speed > config.minSpeed && angle > config.minAngle) {
-            nextStage = "punch";
+            if (isGuarding) {
+                nextStage = "punch";
+                guardHint.style.display = 'none'; // 隱藏警告
+            } else {
+                // 如果動作對了，但沒架防禦，顯示提示，但不計分
+                // 這樣使用者就知道為什麼沒反應
+                guardHint.style.display = 'block';
+                guardHint.innerText = isLeft ? "右手護好下巴！" : "左手護好下巴！";
+            }
         }
       }
       else if (currentStage === "punch") {
         // 擊中判定
         if (ratio < config.triggerRatio) {
-           // 1. 加分
            count++;
            updateUI(count, wrist.x, wrist.y, isLeft);
            playPunchSound();
 
-           // 2. 設定極短冷卻
            if (isLeft) leftCooldown = config.cooldownFrames;
            else rightCooldown = config.cooldownFrames;
 
-           // 3. 擊中後立刻轉為收拳 (此時會解開對手的鎖)
            nextStage = "retract";
         }
       }
       else if (currentStage === "retract") {
-        // 重置判定
         if (ratio < config.resetRatio) {
             nextStage = "down"; 
         }
@@ -231,7 +246,6 @@
     }
 
     function onResults(results) {
-      // 解析度調整
       const targetWidth = Math.min(window.innerWidth, 1280); 
       const targetHeight = targetWidth * (videoElement.videoHeight / videoElement.videoWidth || 0.75);
       if (canvasElement.width !== targetWidth) {
@@ -239,12 +253,10 @@
       }
       const cw = canvasElement.width, ch = canvasElement.height;
 
-      // 繪圖
       canvasCtx.save();
       canvasCtx.clearRect(0, 0, cw, ch);
       canvasCtx.drawImage(results.image, 0, 0, cw, ch);
 
-      // 浮動文字
       for (let i = floatingTexts.length - 1; i >= 0; i--) {
         let ft = floatingTexts[i];
         ft.life--; ft.offsetY -= 5;
@@ -255,7 +267,6 @@
         if (ft.life <= 0) floatingTexts.splice(i, 1);
       }
 
-      // 冷卻
       if (leftCooldown > 0) leftCooldown--;
       if (rightCooldown > 0) rightCooldown--;
 
@@ -272,26 +283,33 @@
           const shoulderWidth = calculateDistance(leftShoulder, rightShoulder);
           const stableScale = shoulderWidth * 2.5; 
 
-          // 繪製目標圈圈 (稍微遠一點，增加真實感)
+          // 目標圈圈
           const targetX = (nose.x - (stableScale * 0.8)) * cw; 
           const targetY = nose.y * ch;
           canvasCtx.beginPath();
           canvasCtx.strokeStyle = "#00FF00"; canvasCtx.lineWidth = 3;
           canvasCtx.arc(targetX, targetY, 15, 0, 2 * Math.PI); canvasCtx.stroke();
 
-          // 計算兩手參數
+          // 架勢檢查輔助線 (非必要，但有助於理解)
+          // 畫出鼻子的「防禦圈」，手要在這裡面
+          // canvasCtx.beginPath();
+          // canvasCtx.strokeStyle = "rgba(255, 255, 0, 0.3)";
+          // canvasCtx.arc(nose.x * cw, nose.y * ch, stableScale * CONFIG.guardDistRatio * cw, 0, 2 * Math.PI);
+          // canvasCtx.stroke();
+
           let leftSpeed = calculateDistance(leftWrist, prevLeftWrist);
           let leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
           
           let rightSpeed = calculateDistance(rightWrist, prevRightWrist);
           let rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
 
-          // [V5 核心] 
-          // 1. 將 leftStage 傳給右手處理函數，將 rightStage 傳給左手處理函數
-          // 2. 實現互斥鎖
+          // [V6 關鍵] 傳入 Nose 和 OtherWrist 進行架勢檢查
           
-          const newLeftStage = processHand(leftShoulder, leftWrist, stableScale, leftStage, "L", leftCooldown, CONFIG, leftSpeed, leftAngle, rightStage);
-          const newRightStage = processHand(rightShoulder, rightWrist, stableScale, rightStage, "R", rightCooldown, CONFIG, rightSpeed, rightAngle, leftStage);
+          // 計算左手 (檢查右手是否有架好)
+          const newLeftStage = processHand(leftShoulder, leftWrist, stableScale, leftStage, "L", leftCooldown, CONFIG, leftSpeed, leftAngle, nose, rightWrist);
+          
+          // 計算右手 (檢查左手是否有架好)
+          const newRightStage = processHand(rightShoulder, rightWrist, stableScale, rightStage, "R", rightCooldown, CONFIG, rightSpeed, rightAngle, nose, leftWrist);
 
           leftStage = newLeftStage;
           rightStage = newRightStage;
