@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>聖誕拳擊特訓 V2 - Christmas Boxing</title>
+<title>聖誕拳擊特訓 V2 (高敏度版)</title>
 <style>
 /* =========================================
    【背景與場景】
@@ -142,17 +142,17 @@ function playHitSound(type) {
     clone.volume = 0.8;
     
     if (type === 'heavy') {
-        // 重拳：稍微放慢速度，聲音會變低沉
+        // 重拳 (Cross)：聲音變低、變慢
         clone.playbackRate = 0.9; 
     } else {
-        // 輕拳：稍微加快速度，聲音會變清脆
+        // 輕拳 (Jab)：聲音變高、變快
         clone.playbackRate = 1.2; 
     }
     
     clone.play().catch(e => console.log("Audio play failed:", e));
 }
 
-// --- 1. 變數與設定 ---
+// --- 1. 變數與設定 (高敏度版) ---
 const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
@@ -162,22 +162,23 @@ const statusElement = document.getElementById('status');
 const startBtn = document.getElementById('start-btn'); 
 const resetBtn = document.getElementById('reset-btn'); 
 
-// 【正面判定參數調整】
-// 正面打拳時，手伸直的視覺比例會因為透視變短，所以 triggerRatio 要調小
+// 【正面判定參數 - 高靈敏度調整】
 const FRONT_PUNCH_CONFIG = {
-  // 觸發判定：手腕離肩膀的距離 / 肩寬
-  // 0.55 代表手伸出一半以上就算，正面透視下這已經很長了
-  triggerRatio: 0.55, 
+  // 觸發判定 (Trigger Ratio)：
+  // 原本 0.55，降為 0.45 -> 手臂伸出一半左右就算擊中
+  triggerRatio: 0.45, 
   
-  // 縮回判定：手回到身體附近
-  resetRatio: 0.40,
+  // 縮回判定 (Reset Ratio)：
+  // 必須小於此數值才能打下一拳
+  resetRatio: 0.35,
   
-  // 冷卻時間 (Frames)
-  cooldownFrames: 4,
+  // 冷卻時間 (Frames)：
+  // 原本 4，降為 3 -> 可以更快速連打
+  cooldownFrames: 3,
   
-  // 防誤判：手必須高於腰部 (手腕.y < 手肘.y + tolerance)
-  // 正面時 y 軸判斷比角度判斷更準
-  elevationTolerance: 0.2 
+  // 高度容忍 (Elevation Tolerance)：
+  // 原本 0.2，升為 0.5 -> 允許出拳位置比較低，不容易因為手垂下來就沒反應
+  elevationTolerance: 0.5 
 };
 
 let count = 0;
@@ -260,7 +261,6 @@ function onResults(results) {
     drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: 'rgba(255, 255, 255, 0.3)', lineWidth: 2});
     
     const lm = results.poseLandmarks;
-    const nose = lm[0];
     const leftShoulder = lm[11];
     const rightShoulder = lm[12];
     const leftElbow = lm[13];
@@ -271,10 +271,6 @@ function onResults(results) {
     if (leftShoulder && rightShoulder) {
       // 基準尺：肩寬 (這是相對穩定的長度)
       const shoulderWidth = calculateDistance(leftShoulder, rightShoulder);
-      
-      // 我們不畫圓圈了，因為正面打擊是任意方向
-      // 只需要簡單的提示文字
-      // drawVisualText(canvasCtx, "BOXING MODE", cw/2, 50, "#FFF", "20px");
 
       // 左手處理
       if (leftWrist && leftElbow && leftWrist.visibility > 0.5) {
@@ -297,8 +293,6 @@ function processFrontHand(shoulder, wrist, elbow, scale, currentStage, label, co
   const ratio = dist / scale;
   
   // 2. 高度檢查：手腕不能掉到太下面 (防止放下手時誤判)
-  // MediaPipe Y軸向下是正，所以 wrist.y < elbow.y 代表手舉起來
-  // 我們放寬一點，加上 tolerance
   const isHighEnough = wrist.y < (elbow.y + FRONT_PUNCH_CONFIG.elevationTolerance);
 
   let nextStage = currentStage;
@@ -306,14 +300,12 @@ function processFrontHand(shoulder, wrist, elbow, scale, currentStage, label, co
   // 狀態機
   if (currentStage === "down") {
     // 準備狀態 -> 出拳
-    // 條件：手伸長 + 手有舉高 + 冷卻結束
     if (ratio > FRONT_PUNCH_CONFIG.triggerRatio && isHighEnough && cooldown === 0) {
       nextStage = "punch";
     }
   }
   else if (currentStage === "punch") {
-    // 出拳狀態 -> 收拳 (或判定擊中)
-    // 這裡我們簡化：只要一達到 punch 狀態就算擊中，然後強制進入 retract 避免連發
+    // 出拳狀態 -> 判定擊中
     
     // === 擊中判定 ===
     count++;
@@ -325,8 +317,7 @@ function processFrontHand(shoulder, wrist, elbow, scale, currentStage, label, co
     countElement.classList.add('pop-effect'); 
     updateFireEffect(count);
 
-    // 音效 (Punch.mp3)
-    // 左手當刺拳(輕)，右手當重拳(重)
+    // 音效 (Punch.mp3 變速)
     if (label === "L") {
        playHitSound('light'); 
     } else {
@@ -350,7 +341,6 @@ function processFrontHand(shoulder, wrist, elbow, scale, currentStage, label, co
   }
   else if (currentStage === "retract") {
     // 收拳狀態 -> 回到準備
-    // 條件：手縮回到身體附近
     if (ratio < FRONT_PUNCH_CONFIG.resetRatio) {
       nextStage = "down"; 
     }
