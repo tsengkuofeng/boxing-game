@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>V25 暴漲拳頭版</title>
+  <title>V26 聖誕寬容版</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
@@ -35,11 +35,9 @@
         animation: fall linear infinite;
     }
     @keyframes fall { to { transform: translateY(110vh); } }
-    
     .intro-box { z-index: 10; text-align: center; }
     h1 { font-size: 60px; text-shadow: 0 0 20px #00d2ff; margin-bottom: 20px; }
     p { font-size: 18px; color: #ccc; margin-bottom: 40px; }
-    
     .btn-main {
         padding: 15px 50px; font-size: 24px; border: none; border-radius: 50px;
         background: #e17055; color: white; cursor: pointer; font-weight: bold;
@@ -70,13 +68,12 @@
         position: absolute; top: 20px; left: 20px;
         background: rgba(0, 0, 0, 0.6); border: 1px solid #444;
         padding: 15px; border-radius: 10px; text-align: left;
-        color: #fff; font-size: 12px; width: 230px; pointer-events: auto;
+        color: #fff; font-size: 12px; width: 220px; pointer-events: auto;
     }
     .debug-header { border-bottom: 1px solid #555; margin-bottom: 5px; color: #aaa; font-size: 11px; }
     .debug-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
     .val { font-weight: bold; font-family: monospace; }
-    .pass { color: #00ff00; } .fail { color: #555; } /* fail 改暗色，不搶眼 */
-    .locked { color: #ff5555; }
+    .pass { color: #00ff00; } .fail { color: #ff5555; }
 
     /* 計分板 */
     .score-container { 
@@ -94,7 +91,7 @@
     /* 浮動文字 */
     .float-text { position: absolute; font-weight: 900; font-size: 40px; color: white; pointer-events: none; }
 
-    /* 盾牌狀態 */
+    /* 盾牌狀態文字 */
     #shield-status {
         margin-top: 10px; font-size: 16px; font-weight: bold; color: #555; text-shadow: 0 0 5px black;
         transition: color 0.3s, text-shadow 0.3s;
@@ -113,7 +110,7 @@
     <div id="snow-container"></div>
     <div class="intro-box">
         <h1>XMAS BOXING</h1>
-        <p>V25 暴漲拳頭版 - 視覺衝擊判定</p>
+        <p>V26 聖誕寬容版 - 輕鬆連擊</p>
         <button class="btn-main" onclick="startCalibrationFlow()">我準備好了!</button>
     </div>
 </div>
@@ -121,28 +118,26 @@
 <div id="scene-calibration">
     <div id="calib-step-text" class="calib-step">步驟 1/2</div>
     <div id="calib-instr-text" class="calib-instr">
-        <b>防禦校正：</b><br>
-        請將雙手握拳，放在臉頰兩側防禦，保持不動。
+        請打出<b>左直拳</b>並定住不動。<br>
+        系統將紀錄你的臂長，不需要伸到極限。
     </div>
     <div class="calib-data">
-        Fist Size (Guard): <span id="calib-live-val">0.00</span>
+        Extension Ratio: <span id="calib-live-ratio">0.00</span> %
     </div>
-    <button id="calib-btn" class="btn-main" onclick="runCalibrationStep()">開始紀錄 (3秒)</button>
+    <button id="calib-btn" class="btn-main" onclick="runCalibrationStep()">開始偵測 (3秒)</button>
 </div>
 
 <div id="scene-game">
     <div class="debug-panel">
-        <div class="debug-header">LEFT FIST <span>(Guard: <span id="g-l-val">0</span> / Hit: ><span id="h-l-val">0</span>)</span></div>
-        <div class="debug-row"><span>Size Scale:</span> <span id="val-l-scale" class="val">0.00</span></div>
-        <div class="debug-row"><span>Is Punching:</span> <span id="val-l-punch" class="val">NO</span></div>
+        <div class="debug-header">LEFT ARM (Target: ><span id="limit-lr">0.00</span>)</div>
+        <div class="debug-row"><span>Ratio:</span> <span id="val-lr" class="val">0.00</span></div>
+        <div class="debug-row"><span>Speed:</span> <span id="val-ls" class="val">0.00</span></div>
+        <div class="debug-row"><span>Other Guard:</span> <span id="val-lg" class="val">NO</span></div>
         
-        <div class="debug-header" style="margin-top:10px;">RIGHT FIST <span>(Guard: <span id="g-r-val">0</span> / Hit: ><span id="h-r-val">0</span>)</span></div>
-        <div class="debug-row"><span>Size Scale:</span> <span id="val-r-scale" class="val">0.00</span></div>
-        <div class="debug-row"><span>Is Punching:</span> <span id="val-r-punch" class="val">NO</span></div>
-
-        <div style="margin-top:10px; border-top:1px solid #555; padding-top:5px; color:#aaa;">
-            Other Hand Guard: <span id="val-guard-ok" class="val">NO</span>
-        </div>
+        <div class="debug-header" style="margin-top:10px;">RIGHT ARM (Target: ><span id="limit-rr">0.00</span>)</div>
+        <div class="debug-row"><span>Ratio:</span> <span id="val-rr" class="val">0.00</span></div>
+        <div class="debug-row"><span>Speed:</span> <span id="val-rs" class="val">0.00</span></div>
+        <div class="debug-row"><span>Other Guard:</span> <span id="val-rg" class="val">NO</span></div>
     </div>
 
     <div class="score-container">
@@ -155,7 +150,7 @@
 </div>
 
 <script>
-// --- 0. 雪花 ---
+// --- 0. 雪花特效 ---
 function createSnow() {
     const container = document.getElementById('snow-container');
     for (let i = 0; i < 50; i++) {
@@ -170,30 +165,36 @@ function createSnow() {
 }
 createSnow();
 
-// --- 1. 變數 ---
+// --- 1. 變數與設定 ---
 let mode = 'INTRO';
 let count = 0;
-let leftState = 0, rightState = 0; // 0:Ready, 1:Punch
+let leftState = 0, rightState = 0;
 let leftCooldown = 0, rightCooldown = 0;
 let floatTexts = [];
-let shieldAlpha = 0;
+let lastLeftSpan = 0, lastRightSpan = 0; 
+let shieldAlpha = 0; 
 
-// 校正數據
+// 防禦記憶 (V26 增強)
+let leftGuardTime = 0;
+let rightGuardTime = 0;
+const GUARD_MEMORY_MS = 800; // [大寬容] 防禦記憶延長到 0.8 秒
+
+// 校正與遊戲參數
 let calibration = {
-    step: 0, // 0:Guard, 1:Punch, 2:Done
-    guardScaleL: 0, guardScaleR: 0, // 防禦時的大小
-    punchScaleL: 0, punchScaleR: 0, // 出拳時的大小
+    step: 0,
+    maxLeftRatio: 0, maxRightRatio: 0,
     isMeasuring: false
 };
 
-// 遊戲門檻 (動態計算)
 let GAME_CONFIG = {
-    thresholdL: 0.0, // 超過此值算 Punch
-    thresholdR: 0.0,
-    resetL: 0.0,     // 低於此值算 Reset
-    resetR: 0.0,
-    cooldownFrames: 5,
-    guardTolerance: 1.2 // 防禦手大小容許倍率 (防禦手不能變太大)
+    triggerRatio_L: 0.85, 
+    triggerRatio_R: 0.85,
+    
+    resetRatio: 0.60,      
+    minSpeed: 0.012,       // [寬容] 速度門檻再降一點
+    
+    guardDistRatio: 0.95,  // [大寬容] 防禦圈加大，幾乎只要手在頭附近就算
+    cooldownFrames: 5      
 };
 
 // DOM
@@ -226,17 +227,22 @@ function playSound() {
     src.start(0);
 }
 
-// --- 2. 核心算法：拳頭透視係數 ---
-// 這裡我們不看角度，只看 "手看起來有多大"
-// Scale = (手腕到食指距離) / (肩寬)
-function getFistScale(wrist, index, shoulderWidth) {
-    // 計算 2D 距離 (只看 X, Y) -> 因為透視效果主要反映在 2D 投影大小
-    const dist = Math.hypot(wrist.x - index.x, wrist.y - index.y);
-    if (shoulderWidth === 0) return 0;
-    return dist / shoulderWidth;
+// --- 2. 核心幾何計算 (彈力繩 V24 Logic) ---
+
+function getDist(a, b) {
+    return Math.sqrt(Math.pow(a.x-b.x, 2) + Math.pow(a.y-b.y, 2) + Math.pow(a.z-b.z, 2));
 }
 
-// --- 3. 流程控制 ---
+function getExtensionRatio(shoulder, elbow, wrist) {
+    const upperArm = getDist(shoulder, elbow);
+    const foreArm = getDist(elbow, wrist);
+    const totalArmLength = upperArm + foreArm;
+    const currentSpan = getDist(shoulder, wrist);
+    if (totalArmLength === 0) return 0;
+    return currentSpan / totalArmLength;
+}
+
+// --- 3. 流程與校正 ---
 
 async function startCalibrationFlow() {
     await loadSound();
@@ -251,6 +257,7 @@ async function startCalibrationFlow() {
     const camera = new Camera(video, { onFrame: async () => { await pose.send({image: video}); }, width: 1280, height: 720 });
     await camera.start();
     mode = 'CALIBRATING';
+    canvas.style.opacity = 0.4;
 }
 
 function runCalibrationStep() {
@@ -260,22 +267,20 @@ function runCalibrationStep() {
     btn.disabled = true;
     
     const timer = setInterval(() => {
-        btn.innerText = `紀錄中... ${timeLeft}`;
+        btn.innerText = `偵測中... ${timeLeft}`;
         timeLeft--;
         if (timeLeft < 0) {
             clearInterval(timer);
             calibration.isMeasuring = false;
             
             if (calibration.step === 0) {
-                // 完成防禦校正
                 playSound();
                 calibration.step = 1;
                 document.getElementById('calib-step-text').innerText = "步驟 2/2";
-                document.getElementById('calib-instr-text').innerHTML = "<b>攻擊校正：</b><br>請向鏡頭打出<b>雙手直拳</b>(定格)，讓拳頭看起來最大。";
-                btn.innerText = "開始紀錄 (3秒)";
+                document.getElementById('calib-instr-text').innerHTML = "紀錄完成。<br>請打出<b>右直拳</b>並定住。";
+                btn.innerText = "開始偵測 (3秒)";
                 btn.disabled = false;
             } else {
-                // 完成攻擊校正
                 playSound();
                 finishCalibration();
             }
@@ -284,19 +289,10 @@ function runCalibrationStep() {
 }
 
 function finishCalibration() {
-    // 計算門檻
-    // Threshold = 防禦大小 + (攻擊大小 - 防禦大小) * 0.4 
-    // 不需要完全達到最大值，只要有明顯變大(超過40%行程)就算
-    const rangeL = calibration.punchScaleL - calibration.guardScaleL;
-    const rangeR = calibration.punchScaleR - calibration.guardScaleR;
-    
-    // 設定攻擊門檻 (降低一點難度)
-    GAME_CONFIG.thresholdL = calibration.guardScaleL + (rangeL * 0.4);
-    GAME_CONFIG.thresholdR = calibration.guardScaleR + (rangeR * 0.4);
-    
-    // 設定重置門檻 (稍微高於防禦值)
-    GAME_CONFIG.resetL = calibration.guardScaleL + (rangeL * 0.15);
-    GAME_CONFIG.resetR = calibration.guardScaleR + (rangeR * 0.15);
+    // [大寬容修改]：取校正值的 80% 作為門檻 (原本90%)
+    // 這樣你出拳只要有8分直，就算過關
+    GAME_CONFIG.triggerRatio_L = Math.max(0.65, calibration.maxLeftRatio * 0.80);
+    GAME_CONFIG.triggerRatio_R = Math.max(0.65, calibration.maxRightRatio * 0.80);
     
     console.log("Config:", GAME_CONFIG);
 
@@ -304,53 +300,57 @@ function finishCalibration() {
     document.getElementById('scene-game').style.display = 'block';
     canvas.style.opacity = 1;
     
-    // Debug 顯示
-    document.getElementById('g-l-val').innerText = calibration.guardScaleL.toFixed(2);
-    document.getElementById('h-l-val').innerText = GAME_CONFIG.thresholdL.toFixed(2);
-    document.getElementById('g-r-val').innerText = calibration.guardScaleR.toFixed(2);
-    document.getElementById('h-r-val').innerText = GAME_CONFIG.thresholdR.toFixed(2);
+    document.getElementById('limit-lr').innerText = GAME_CONFIG.triggerRatio_L.toFixed(2);
+    document.getElementById('limit-rr').innerText = GAME_CONFIG.triggerRatio_R.toFixed(2);
     
     mode = 'GAME';
 }
 
-// --- 4. 遊戲邏輯 ---
+// --- 4. 遊戲主迴圈 ---
 
-function processHand(scale, state, cooldown, threshold, resetVal, isOtherHandGuarding, label) {
+function processHand(ratio, state, cooldown, lastSpan, oppGuardLastTime, label) {
     let newState = state;
     let hit = false;
     
+    const velocity = ratio - lastSpan;
     const isLeft = (label === 'L');
-    const elScale = document.getElementById(`val-${isLeft?'l':'r'}-scale`);
-    const elPunch = document.getElementById(`val-${isLeft?'l':'r'}-punch`);
+    const threshold = isLeft ? GAME_CONFIG.triggerRatio_L : GAME_CONFIG.triggerRatio_R;
     
-    // Debug Display
-    if(elScale) {
-        elScale.innerText = scale.toFixed(3);
-        // 如果 Scale 超過門檻，數字變綠
-        elScale.className = (scale > threshold) ? "val pass" : "val fail";
-    }
+    // [寬容] 檢查防禦記憶 (只要 800ms 內有防禦過就算)
+    const now = Date.now();
+    const isGuarded = (now - oppGuardLastTime) < GUARD_MEMORY_MS;
+
+    const elR = document.getElementById(`val-${isLeft?'l':'r'}r`);
+    const elS = document.getElementById(`val-${isLeft?'l':'r'}s`);
+    const elG = document.getElementById(`val-${isLeft?'l':'r'}g`);
 
     if (state === 0) { // Ready
-        // 條件：拳頭變大 + 另一手有防禦
-        if (scale > threshold && isOtherHandGuarding && cooldown <= 0) {
+        const passRatio = ratio > threshold;
+        const passSpeed = velocity > GAME_CONFIG.minSpeed; 
+        const passGuard = isGuarded;
+
+        // 如果三者都通過
+        if (passRatio && passSpeed && passGuard && cooldown <= 0) {
             newState = 1;
             hit = true;
+        }
+
+        if (elR) {
+            elR.innerText = ratio.toFixed(2);
+            elS.innerText = velocity.toFixed(3);
+            elG.innerText = isGuarded ? "YES" : "NO";
+            
+            elR.className = passRatio ? "val pass" : "val fail";
+            elS.className = passSpeed ? "val pass" : "val fail";
+            elG.className = passGuard ? "val pass" : "val fail";
         }
     } 
     else if (state === 1) { newState = 2; } 
     else if (state === 2) { 
-        // 拳頭變小回歸
-        if (scale < resetVal) {
+        if (ratio < GAME_CONFIG.resetRatio) {
             newState = 0; 
         }
     }
-    
-    if(elPunch) {
-        if(state === 1) { elPunch.innerText = "HIT!"; elPunch.className = "val pass"; }
-        else if(state === 2) { elPunch.innerText = "RETRACT"; elPunch.className = "val locked"; }
-        else { elPunch.innerText = "READY"; elPunch.className = "val fail"; }
-    }
-
     return { newState, hit };
 }
 
@@ -370,66 +370,67 @@ function onResults(results) {
     
     const lm = results.poseLandmarks;
     const nose = lm[0];
-    const lS = lm[11], rS = lm[12];
-    const lW = lm[15], rW = lm[16];
-    const lIndex = lm[19], rIndex = lm[20]; // 使用食指指尖，變化幅度最大
-    
-    // 肩寬作為基準
-    const shoulderWidth = Math.hypot(lS.x - rS.x, lS.y - rS.y);
-    if (shoulderWidth === 0) { ctx.restore(); return; }
-    
-    // 計算拳頭係數 (核心)
-    const scaleL = getFistScale(lW, lIndex, shoulderWidth);
-    const scaleR = getFistScale(rW, rIndex, shoulderWidth);
+    const lS = lm[11], lE = lm[13], lW = lm[15];
+    const rS = lm[12], rE = lm[14], rW = lm[16];
+    const scale = Math.hypot(lS.x - rS.x, lS.y - rS.y);
+    const chin = { x: (lm[9].x + lm[10].x)/2, y: (lm[9].y + lm[10].y)/2 };
+
+    if (!nose || !lS || !rS) { ctx.restore(); return; }
+
+    const lRatio = getExtensionRatio(lS, lE, lW);
+    const rRatio = getExtensionRatio(rS, rE, rW);
 
     if (mode === 'CALIBRATING') {
         drawSkeleton(lm, cw, ch);
-        // 顯示即時數值
-        document.getElementById('calib-live-val').innerText = 
-            `L:${scaleL.toFixed(2)} | R:${scaleR.toFixed(2)}`;
-            
+        const isLeft = (calibration.step === 0);
+        document.getElementById('calib-live-ratio').innerText = ((isLeft ? lRatio : rRatio) * 100).toFixed(1);
+
         if (calibration.isMeasuring) {
-            if (calibration.step === 0) { // Guard
-                calibration.guardScaleL = (calibration.guardScaleL * 0.9) + (scaleL * 0.1); // 簡單平滑
-                calibration.guardScaleR = (calibration.guardScaleR * 0.9) + (scaleR * 0.1);
-            } else { // Punch
-                if(scaleL > calibration.punchScaleL) calibration.punchScaleL = scaleL;
-                if(scaleR > calibration.punchScaleR) calibration.punchScaleR = scaleR;
+            if (isLeft) {
+                if (lRatio > calibration.maxLeftRatio) calibration.maxLeftRatio = lRatio;
+            } else {
+                if (rRatio > calibration.maxRightRatio) calibration.maxRightRatio = rRatio;
             }
         }
-    }
+    } 
     else if (mode === 'GAME') {
         drawSkeleton(lm, cw, ch);
         
-        // 防禦檢查：
-        // 檢查方式：另一隻手的大小必須「接近防禦大小」，不能太大
-        // 這裡設定：大小不能超過 Reset 門檻的 1.2 倍 (給點空間，但不能是出拳狀態)
-        const isGuardL = scaleL < (GAME_CONFIG.resetL * 1.5);
-        const isGuardR = scaleR < (GAME_CONFIG.resetR * 1.5);
+        // --- 1. 防禦判斷 (更新時間戳) ---
+        const gDist = scale * GAME_CONFIG.guardDistRatio; 
+        const now = Date.now();
         
-        // UI 更新
-        document.getElementById('val-guard-ok').innerText = (isGuardL && isGuardR) ? "BOTH" : (isGuardL ? "L-OK" : (isGuardR ? "R-OK" : "NONE"));
-        document.getElementById('val-guard-ok').className = (isGuardL || isGuardR) ? "val pass" : "val fail";
+        // 只要手腕進入下巴範圍，就更新防禦時間
+        if (Math.hypot(lW.x - chin.x, lW.y - chin.y) < gDist) leftGuardTime = now;
+        if (Math.hypot(rW.x - chin.x, rW.y - chin.y) < gDist) rightGuardTime = now;
+        
+        // UI 顯示：使用寬容的時間戳
+        const l_active = (now - leftGuardTime) < GUARD_MEMORY_MS;
+        const r_active = (now - rightGuardTime) < GUARD_MEMORY_MS;
 
-        // 盾牌顯示 (只要有一手防禦就算有盾，雙手防禦盾更亮)
-        if (isGuardL && isGuardR) {
-            shieldAlpha = Math.min(shieldAlpha + 0.1, 0.9);
+        // 盾牌與光罩
+        if (l_active && r_active) {
+            shieldAlpha = Math.min(shieldAlpha + 0.1, 0.8);
             shieldStatus.classList.add('active');
-        } else if (isGuardL || isGuardR) {
-             shieldAlpha = Math.min(shieldAlpha + 0.05, 0.5);
-             shieldStatus.classList.remove('active');
+        } else if (l_active || r_active) {
+            shieldAlpha = Math.max(shieldAlpha - 0.05, 0.2); // 單手也給一點點光
+            shieldStatus.classList.remove('active');
         } else {
             shieldAlpha = Math.max(shieldAlpha - 0.1, 0);
             shieldStatus.classList.remove('active');
         }
-        if (shieldAlpha > 0) drawShield(nose, cw, ch, shoulderWidth * 2.5, shieldAlpha);
+        if (shieldAlpha > 0) drawShield(nose, cw, ch, scale * 3, shieldAlpha);
 
-        // 判定 (左手打擊時，右手要在防禦範圍內)
-        const resL = processHand(scaleL, leftState, leftCooldown, GAME_CONFIG.thresholdL, GAME_CONFIG.resetL, isGuardR, 'L');
-        const resR = processHand(scaleR, rightState, rightCooldown, GAME_CONFIG.thresholdR, GAME_CONFIG.resetR, isGuardL, 'R');
+        // --- 2. 出拳判斷 ---
+        if (lastLeftSpan === 0) { lastLeftSpan = lRatio; lastRightSpan = rRatio; }
 
-        leftState = resL.newState;
-        rightState = resR.newState;
+        // 左手攻擊 -> 檢查右手防禦時間
+        const resL = processHand(lRatio, leftState, leftCooldown, lastLeftSpan, rightGuardTime, 'L');
+        // 右手攻擊 -> 檢查左手防禦時間
+        const resR = processHand(rRatio, rightState, rightCooldown, lastRightSpan, leftGuardTime, 'R');
+
+        leftState = resL.newState; lastLeftSpan = lRatio;
+        rightState = resR.newState; lastRightSpan = rRatio;
 
         if (resL.hit) hitLogic(true, lW.x, lW.y);
         if (resR.hit) hitLogic(false, rW.x, rW.y);
@@ -437,9 +438,10 @@ function onResults(results) {
         if (leftCooldown > 0) leftCooldown--;
         if (rightCooldown > 0) rightCooldown--;
         
+        drawDot(lW, l_active, cw, ch);
+        drawDot(rW, r_active, cw, ch);
         drawFloatingTexts(cw, ch);
     }
-    
     ctx.restore();
 }
 
@@ -447,59 +449,37 @@ function drawShield(center, cw, ch, radiusBase, alpha) {
     const x = center.x * cw;
     const y = center.y * ch;
     const r = radiusBase * cw; 
-
-    const grad = ctx.createRadialGradient(x, y, r * 0.4, x, y, r);
+    const grad = ctx.createRadialGradient(x, y, r * 0.5, x, y, r);
     grad.addColorStop(0, `rgba(255, 215, 0, 0)`);
-    grad.addColorStop(0.8, `rgba(255, 215, 0, ${alpha * 0.2})`);
-    grad.addColorStop(1, `rgba(255, 255, 0, ${alpha * 0.5})`);
-
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, 2 * Math.PI);
-    ctx.fillStyle = grad;
-    ctx.fill();
-    
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, 2 * Math.PI);
-    ctx.strokeStyle = `rgba(255, 255, 200, ${alpha})`;
-    ctx.lineWidth = 3;
-    ctx.stroke();
+    grad.addColorStop(0.8, `rgba(255, 215, 0, ${alpha * 0.3})`);
+    grad.addColorStop(1, `rgba(255, 255, 0, ${alpha * 0.6})`);
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.fillStyle = grad; ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.strokeStyle = `rgba(255, 255, 200, ${alpha})`; ctx.lineWidth = 5; ctx.stroke();
 }
 
 function drawSkeleton(lm, cw, ch) {
     ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0, 255, 255, 0.4)"; ctx.lineCap = "round";
-    // 畫手臂
-    ctx.beginPath();
-    ctx.moveTo(lm[11].x*cw, lm[11].y*ch); ctx.lineTo(lm[13].x*cw, lm[13].y*ch); ctx.lineTo(lm[15].x*cw, lm[15].y*ch);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(lm[12].x*cw, lm[12].y*ch); ctx.lineTo(lm[14].x*cw, lm[14].y*ch); ctx.lineTo(lm[16].x*cw, lm[16].y*ch);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lm[11].x*cw, lm[11].y*ch); ctx.lineTo(lm[13].x*cw, lm[13].y*ch); ctx.lineTo(lm[15].x*cw, lm[15].y*ch); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lm[12].x*cw, lm[12].y*ch); ctx.lineTo(lm[14].x*cw, lm[14].y*ch); ctx.lineTo(lm[16].x*cw, lm[16].y*ch); ctx.stroke();
 }
-
+function drawDot(w, active, cw, ch) {
+    ctx.beginPath(); ctx.fillStyle = active ? "#00ff00" : "#d63031";
+    ctx.arc(w.x * cw, w.y * ch, 10, 0, 2*Math.PI); ctx.fill();
+}
 function hitLogic(isLeft, x, y) {
-    count++;
-    countEl.innerText = count;
-    countEl.classList.remove('hit-pop'); void countEl.offsetWidth; countEl.classList.add('hit-pop');
-    board.style.transform = "translateX(-50%) scale(1.1)";
-    setTimeout(()=> board.style.transform = "translateX(-50%) scale(1)", 100);
-
+    count++; countEl.innerText = count; countEl.classList.remove('hit-pop'); void countEl.offsetWidth; countEl.classList.add('hit-pop');
+    board.style.transform = "translateX(-50%) scale(1.1)"; setTimeout(()=> board.style.transform = "translateX(-50%) scale(1)", 100);
     if(isLeft) leftCooldown = GAME_CONFIG.cooldownFrames; else rightCooldown = GAME_CONFIG.cooldownFrames;
     playSound();
-    
     if (floatTexts.length > 10) floatTexts.shift();
     floatTexts.push({ x, y, text: "HIT!", color: isLeft ? '#00d2ff' : '#ff9f43', life: 20, vy: -5 });
 }
-
 function drawFloatingTexts(cw, ch) {
-    ctx.scale(-1, 1);
-    ctx.font = "900 60px Arial"; ctx.strokeStyle = "white"; ctx.lineWidth = 3;
+    ctx.scale(-1, 1); ctx.font = "900 60px Arial"; ctx.strokeStyle = "white"; ctx.lineWidth = 3;
     for(let i=floatTexts.length-1; i>=0; i--){
-        let t = floatTexts[i];
-        let rx = -(cw - t.x*cw);
-        ctx.fillStyle = t.color;
-        ctx.strokeText(t.text, rx, t.y*ch); ctx.fillText(t.text, rx, t.y*ch);
-        t.y += t.vy/ch; t.life--;
-        if(t.life<=0) floatTexts.splice(i, 1);
+        let t = floatTexts[i]; let rx = -(cw - t.x*cw);
+        ctx.fillStyle = t.color; ctx.strokeText(t.text, rx, t.y*ch); ctx.fillText(t.text, rx, t.y*ch);
+        t.y += t.vy/ch; t.life--; if(t.life<=0) floatTexts.splice(i, 1);
     }
 }
 </script>
