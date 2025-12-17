@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>聖誕揍人 (V8 全域鎖定修正版)</title>
+  <title>聖誕揍人 (V9 極速修正版)</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
@@ -28,13 +28,13 @@
     .score-board { 
       position: absolute; top: 50px; left: 50%; transform: translateX(-50%); z-index: 10; 
       background: rgba(0, 0, 0, 0.7); 
-      padding: 10px 50px; width: 450px;
+      padding: 10px 40px; width: 420px;
       border-radius: 25px; 
       border: 4px solid rgba(255, 255, 255, 0.3); pointer-events: none; 
       display: flex; flex-direction: column; align-items: center;
     }
-    #count { font-size: 120px; font-weight: 800; color: #fff; line-height: 1; text-shadow: 0 0 20px rgba(0,0,0,0.5); margin: 5px 0; }
-    .count-title { font-size: 18px; color: #ccc; letter-spacing: 3px; }
+    #count { font-size: 110px; font-weight: 800; color: #fff; line-height: 1; text-shadow: 0 0 20px rgba(0,0,0,0.5); margin: 5px 0; }
+    .count-title { font-size: 16px; color: #ccc; letter-spacing: 3px; }
     #status { font-size: 20px; font-weight: bold; color: #ddd; min-height: 25px; margin-bottom: 5px;}
 
     /* 警告燈號 */
@@ -44,11 +44,9 @@
     .indicator {
         font-size: 16px; font-weight: bold; padding: 4px 12px; border-radius: 8px;
         background: #333; color: #555; border: 2px solid #555;
-        transition: all 0.2s;
+        transition: all 0.1s;
     }
-    /* 激活狀態 (紅燈) */
     .indicator.active { background: #ff4757; color: white; border-color: white; box-shadow: 0 0 10px #ff4757; }
-    /* 綠燈 (安全) - 可以選擇性加入，目前先用紅燈警示 */
     
     #start-btn { 
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 50; 
@@ -67,7 +65,6 @@
 
     .pop-effect { animation: pop 0.1s ease-out; color: #00ff00 !important; }
     @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
-    
     .fire-lv3 { border-color: #00ffff !important; box-shadow: 0 0 60px #00ffff; background: rgba(0,255,255,0.2); }
   </style>
 </head>
@@ -83,7 +80,6 @@
       <div class="count-title">TOTAL HITS</div>
       <div id="count">0</div>
       <div id="status">READY</div>
-      
       <div class="guard-indicators">
           <div id="ind-left" class="indicator">⚠️ 左手抬高</div>
           <div id="ind-right" class="indicator">⚠️ 右手抬高</div>
@@ -123,7 +119,7 @@
         source.start(0);
     }
 
-    // --- 1. 變數設定 ---
+    // --- 1. 變數 ---
     const videoElement = document.getElementById('input_video');
     const canvasElement = document.getElementById('output_canvas');
     const canvasCtx = canvasElement.getContext('2d', { alpha: false });
@@ -135,29 +131,33 @@
     const startBtn = document.getElementById('start-btn'); 
     const resetBtn = document.getElementById('reset-btn'); 
 
-    // [V8 參數調整]
+    // [V9 關鍵參數調整]
     const CONFIG = {
-        triggerRatio: 0.75, // [放寬] 讓出拳更容易觸發
+        baseTriggerRatio: 0.72, // 基礎出拳距離
+        fastTriggerRatio: 0.55, // [新增] 快拳距離 (只要速度夠快，伸一半就算分)
         resetRatio: 0.45,   
-        minSpeed: 0.015,    // [放寬] 降低速度要求，避免快拳被吃掉
-        minAngle: 120,      // [放寬] 角度稍微放鬆
         
-        // [放寬] 防禦圈加大，解決右手打不出來的問題
-        // 0.70 是一個很大的範圍，只要手在下巴附近一大圈都算防禦成功
-        guardDistRatio: 0.70, 
+        minSpeed: 0.015,     // 基礎速度
+        fastSpeed: 0.05,     // [新增] 快拳速度門檻
         
+        minAngle: 120,      
+        
+        guardDistRatio: 0.70, // 防禦圈大小
         cooldownFrames: 2 
     };
 
     let count = 0;
     let leftStage = "down", rightStage = "down";
     let leftCooldown = 0, rightCooldown = 0;
-    
-    // [V8 新增] 全域冷卻鎖：防止左右互搏
     let globalHitCooldown = 0;
-
     let floatingTexts = []; 
     let prevLeftWrist = { x: 0, y: 0 }, prevRightWrist = { x: 0, y: 0 };
+    
+    // [V9] 防禦寬容值 (Grace Period)
+    // 即使手離開防禦圈，只要這個計數器還沒歸零，仍視為防禦中
+    let leftGuardGrace = 0;
+    let rightGuardGrace = 0;
+    const MAX_GRACE_FRAMES = 5; // 約 0.15 秒的寬容
 
     // --- 2. 運算 ---
     function calculateDistance(a, b) {
@@ -189,40 +189,61 @@
        statusElement.style.color = color;
     }
 
-    // --- 3. 核心邏輯 ---
-    function processHand(shoulder, wrist, scale, currentStage, label, currentCooldown, config, speed, angle, otherHandIsGuarding) {
+    // --- 3. 核心邏輯 (V9 大改版) ---
+    function processHand(shoulder, wrist, scale, currentStage, label, currentCooldown, config, speed, angle, otherHandIsGuarding, nose) {
       const wristDist = calculateDistance(shoulder, wrist);
       const ratio = wristDist / scale;
       let nextStage = currentStage;
       const isLeft = label === "L";
 
+      // [V9] 高度檢查 (Sanity Check)
+      // 如果手腕掉到太下面 (大於鼻子下方很多)，視為誤判或垂手，直接忽略
+      // y座標越大越下面。如果 wrist.y > nose.y + 0.5 (大約胸部以下)，禁止出拳
+      const isTooLow = wrist.y > (nose.y + 1.2 * (scale/1280*720)); // 粗估比例
+      // 這裡簡單用：如果手腕比肩膀低很多，就不算攻擊
+      if (wrist.y > shoulder.y + 0.1) {
+          return "down"; // 強制歸零
+      }
+
+      // [V9] 左右邊界檢查 (防止左手打完 右手被誤判)
+      // 左手出拳時，手腕應該不會跑到身體的最右側，反之亦然
+      // 簡單判定：左手 x < 右肩 x，右手 x > 左肩 x (鏡像反轉要注意)
+      // 這裡先不做太嚴格，避免Hook打不出來，主要靠高度檢查過濾
+
       if (currentStage === "down") {
-        // [V8 核心修正]
-        // 1. 全域冷卻 (globalHitCooldown == 0)：如果剛剛才打中一拳，現在這隻手不能打
-        // 2. 另一隻手防禦 (otherHandIsGuarding)：架勢判定
-        if (globalHitCooldown === 0 && currentCooldown === 0 && ratio > config.triggerRatio && speed > config.minSpeed && angle > config.minAngle) {
+        // [V9] 速度補償機制
+        // 如果速度超快 (speed > fastSpeed)，觸發門檻降低 (fastTriggerRatio)
+        // 否則使用標準門檻 (baseTriggerRatio)
+        const activeTriggerRatio = (speed > config.fastSpeed) ? config.fastTriggerRatio : config.baseTriggerRatio;
+
+        if (globalHitCooldown === 0 && currentCooldown === 0 && ratio > activeTriggerRatio && speed > config.minSpeed && angle > config.minAngle) {
+            
+            // 檢查防禦 (包含寬容值)
             if (otherHandIsGuarding) {
                 nextStage = "punch";
             }
         }
       }
       else if (currentStage === "punch") {
-        if (ratio < config.triggerRatio) {
-           count++;
-           updateUI(count, wrist.x, wrist.y, isLeft);
-           playPunchSound();
+        // 擊中判定：只要還維持在延伸狀態
+        // 這裡不需要再次檢查 ratio，因為進來這個 stage 就代表已經觸發了
+        // 我們直接算分，然後進入 retract
+        
+        // 但為了避免重複算，我們檢查是否真的有效觸發了
+        // V9: 只要進入 punch 狀態就直接算分，不等待下一幀，解決快拳消失問題
+        count++;
+        updateUI(count, wrist.x, wrist.y, isLeft);
+        playPunchSound();
 
-           if (isLeft) leftCooldown = config.cooldownFrames;
-           else rightCooldown = config.cooldownFrames;
+        if (isLeft) leftCooldown = config.cooldownFrames;
+        else rightCooldown = config.cooldownFrames;
+        
+        globalHitCooldown = 5; // 全域鎖定
 
-           // [V8] 觸發全域冷卻 6 frames (約0.1-0.2秒)
-           // 這段時間內，另一隻手絕對無法觸發攻擊，完美解決雙重計數
-           globalHitCooldown = 6;
-
-           nextStage = "retract";
-        }
+        nextStage = "retract";
       }
       else if (currentStage === "retract") {
+        // 必須縮回到一定程度才能重置
         if (ratio < config.resetRatio) {
             nextStage = "down"; 
         }
@@ -253,10 +274,9 @@
         if (ft.life <= 0) floatingTexts.splice(i, 1);
       }
 
-      // 冷卻倒數
       if (leftCooldown > 0) leftCooldown--;
       if (rightCooldown > 0) rightCooldown--;
-      if (globalHitCooldown > 0) globalHitCooldown--; // 全域冷卻
+      if (globalHitCooldown > 0) globalHitCooldown--;
 
       if (results.poseLandmarks) {
         drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: 'rgba(255, 255, 255, 0.1)', lineWidth: 1});
@@ -272,19 +292,9 @@
           const shoulderWidth = calculateDistance(leftShoulder, rightShoulder);
           const stableScale = shoulderWidth * 2.5; 
           
-          // 使用嘴巴作為下巴參考點
           const chin = { x: (mouthLeft.x + mouthRight.x) / 2, y: (mouthLeft.y + mouthRight.y) / 2 };
 
-          // 1. 繪製攻擊觸發圈 (綠色空心) - 這裡就是你要伸到的地方
-          const attackRadius = stableScale * CONFIG.triggerRatio;
-          const targetX = (nose.x - (attackRadius)) * cw; 
-          const targetY = nose.y * ch;
-          // 這裡只是視覺參考，實際邏輯是比距離
-          canvasCtx.beginPath();
-          canvasCtx.strokeStyle = "rgba(0, 255, 0, 0.5)"; canvasCtx.lineWidth = 2;
-          canvasCtx.arc(targetX, targetY, 10, 0, 2 * Math.PI); canvasCtx.stroke();
-
-          // 2. 繪製防禦圈 (黃色半透明大圈)
+          // 繪製防禦圈
           const guardRadius = stableScale * CONFIG.guardDistRatio;
           canvasCtx.beginPath();
           canvasCtx.fillStyle = "rgba(255, 255, 0, 0.1)";
@@ -292,35 +302,49 @@
           canvasCtx.fill();
           canvasCtx.strokeStyle = "rgba(255, 255, 0, 0.3)"; canvasCtx.stroke();
 
-          // 3. 判定與視覺化手腕
-          const leftDistToChin = calculateDistance(leftWrist, chin);
-          const rightDistToChin = calculateDistance(rightWrist, chin);
-          const isLeftGuarding = (leftDistToChin / stableScale) < CONFIG.guardDistRatio;
-          const isRightGuarding = (rightDistToChin / stableScale) < CONFIG.guardDistRatio;
+          // --- [V9] 防禦狀態邏輯 (含寬容值) ---
+          
+          // 1. 原始判定
+          const isLeftInZone = (calculateDistance(leftWrist, chin) / stableScale) < CONFIG.guardDistRatio;
+          const isRightInZone = (calculateDistance(rightWrist, chin) / stableScale) < CONFIG.guardDistRatio;
 
-          // [視覺除錯] 畫出手腕點 (紅=沒防禦, 綠=有防禦)
-          // 讓你一眼就知道為什麼不能打
+          // 2. 更新寬容值計數器
+          // 如果在圈內，補滿寬容值；如果在圈外，扣除寬容值
+          if (isLeftInZone) leftGuardGrace = MAX_GRACE_FRAMES; else if (leftGuardGrace > 0) leftGuardGrace--;
+          if (isRightInZone) rightGuardGrace = MAX_GRACE_FRAMES; else if (rightGuardGrace > 0) rightGuardGrace--;
+
+          // 3. 最終判定 (只要寬容值 > 0 就算有防禦)
+          const isLeftGuarding = leftGuardGrace > 0;
+          const isRightGuarding = rightGuardGrace > 0;
+
+          // --- 視覺化 ---
           function drawWristDebug(wrist, isGuarding) {
               canvasCtx.beginPath();
-              canvasCtx.fillStyle = isGuarding ? "#00FF00" : "#FF0000";
+              // 如果在寬容期但不在圈內，顯示橘色；完全在圈內綠色；完全沒防禦紅色
+              if (isGuarding && !((calculateDistance(wrist, chin) / stableScale) < CONFIG.guardDistRatio)) {
+                  canvasCtx.fillStyle = "#FFA500"; // 寬容期 (橘燈)
+              } else {
+                  canvasCtx.fillStyle = isGuarding ? "#00FF00" : "#FF0000";
+              }
               canvasCtx.arc(wrist.x * cw, wrist.y * ch, 10, 0, 2 * Math.PI);
               canvasCtx.fill();
           }
           drawWristDebug(leftWrist, isLeftGuarding);
           drawWristDebug(rightWrist, isRightGuarding);
 
-          // 4. 更新 UI 警告
+          // 更新 UI
           if (!isLeftGuarding) indLeft.classList.add('active'); else indLeft.classList.remove('active');
           if (!isRightGuarding) indRight.classList.add('active'); else indRight.classList.remove('active');
 
-          // 5. 處理出拳
+          // --- 處理出拳 ---
           let leftSpeed = calculateDistance(leftWrist, prevLeftWrist);
           let leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
           let rightSpeed = calculateDistance(rightWrist, prevRightWrist);
           let rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
 
-          const newLeftStage = processHand(leftShoulder, leftWrist, stableScale, leftStage, "L", leftCooldown, CONFIG, leftSpeed, leftAngle, isRightGuarding);
-          const newRightStage = processHand(rightShoulder, rightWrist, stableScale, rightStage, "R", rightCooldown, CONFIG, rightSpeed, rightAngle, isLeftGuarding);
+          // 傳入 nose 進行高度檢查
+          const newLeftStage = processHand(leftShoulder, leftWrist, stableScale, leftStage, "L", leftCooldown, CONFIG, leftSpeed, leftAngle, isRightGuarding, nose);
+          const newRightStage = processHand(rightShoulder, rightWrist, stableScale, rightStage, "R", rightCooldown, CONFIG, rightSpeed, rightAngle, isLeftGuarding, nose);
 
           leftStage = newLeftStage;
           rightStage = newRightStage;
@@ -338,7 +362,7 @@
     pose.onResults(onResults);
 
     window.initGame = async function() {
-      console.log("啟動 V8...");
+      console.log("啟動 V9...");
       statusElement.innerText = "STARTING..."; statusElement.style.color = "yellow";
       await loadSound();
       if (audioContext && audioContext.state === 'suspended') await audioContext.resume();
