@@ -1,486 +1,547 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>V26 聖誕寬容版</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>聖誕拳擊特訓 - Christmas Boxing</title>
+<style>
+/* =========================================
+   【新增】聖誕夜背景場景 CSS
+   ========================================= */
 
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+/* 場景容器：放在最底層 */
+.scene-background {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  z-index: -1; /* 關鍵！放在攝影機畫面後面 */
+  overflow: hidden;
+  background: linear-gradient(to bottom, #020111 10%, #191d3a 50%, #2d3e5e 90%);
+}
 
-  <style>
-    /* 全局設定 */
-    body { font-family: 'Segoe UI', monospace; margin: 0; overflow: hidden; background: #000; color: white; }
-    canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; transform: scaleX(-1); z-index: 1; opacity: 0; transition: opacity 1s; }
-    video { display: none; }
+/* 1. 月亮 (發光效果) */
+.moon {
+  position: absolute;
+  top: 50px; right: 50px;
+  width: 80px; height: 80px;
+  background: #fefcd7;
+  border-radius: 50%;
+  box-shadow: 0 0 20px #fefcd7, 0 0 50px rgba(254, 252, 215, 0.4);
+}
 
-    /* ==================== */
-    /* Phase 1: 聖誕夜空   */
-    /* ==================== */
-    #scene-intro {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100;
-        background: linear-gradient(to bottom, #000011, #0a0a2a);
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        transition: opacity 1s;
-    }
-    .moon {
-        position: absolute; top: 10%; right: 15%;
-        width: 100px; height: 100px; background: #fff; border-radius: 50%;
-        box-shadow: 0 0 40px #fff, 0 0 80px #ffffcc;
-        animation: glow 3s infinite alternate;
-    }
-    @keyframes glow { from { box-shadow: 0 0 40px #fff; } to { box-shadow: 0 0 60px #fff, 0 0 100px #ffffcc; } }
-    .snowflake {
-        position: absolute; top: -10px; color: #fff; font-size: 1em; opacity: 0.8;
-        animation: fall linear infinite;
-    }
-    @keyframes fall { to { transform: translateY(110vh); } }
-    .intro-box { z-index: 10; text-align: center; }
-    h1 { font-size: 60px; text-shadow: 0 0 20px #00d2ff; margin-bottom: 20px; }
-    p { font-size: 18px; color: #ccc; margin-bottom: 40px; }
-    .btn-main {
-        padding: 15px 50px; font-size: 24px; border: none; border-radius: 50px;
-        background: #e17055; color: white; cursor: pointer; font-weight: bold;
-        box-shadow: 0 0 20px rgba(225, 112, 85, 0.6); transition: transform 0.2s;
-    }
-    .btn-main:hover { transform: scale(1.1); background: #fab1a0; }
+/* 2. 雪地 (白色) */
+.snow-ground {
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 100%; height: 30%;
+  background: #fffafa;
+  border-top: 5px solid #e3e3e3;
+  border-radius: 50% 50% 0 0 / 20px 20px 0 0;
+}
 
-    /* ==================== */
-    /* Phase 2: 校正畫面   */
-    /* ==================== */
-    #scene-calibration {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 90;
-        background: rgba(0,0,0,0.85); display: none;
-        flex-direction: column; align-items: center; justify-content: center;
-        text-align: center;
-    }
-    .calib-step { font-size: 36px; margin-bottom: 20px; color: #00d2ff; font-weight: bold; }
-    .calib-instr { font-size: 20px; color: #ddd; margin-bottom: 40px; max-width: 600px; line-height: 1.5; }
-    .calib-data { font-family: monospace; font-size: 24px; color: #fab1a0; margin-bottom: 30px; border: 1px solid #555; padding: 15px; border-radius: 10px; background: rgba(0,0,0,0.5); }
+/* 3. 雪花動畫 */
+.snowflake {
+  position: absolute;
+  top: -10px;
+  background: white;
+  border-radius: 50%;
+  opacity: 0.8;
+  animation: fall linear infinite;
+}
 
-    /* ==================== */
-    /* Phase 3: 遊戲介面   */
-    /* ==================== */
-    #scene-game { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; display: none; }
+@keyframes fall {
+  0% { top: -10%; transform: translateX(0); }
+  100% { top: 100%; transform: translateX(20px); }
+}
 
-    /* Debug 儀表板 */
-    .debug-panel {
-        position: absolute; top: 20px; left: 20px;
-        background: rgba(0, 0, 0, 0.6); border: 1px solid #444;
-        padding: 15px; border-radius: 10px; text-align: left;
-        color: #fff; font-size: 12px; width: 220px; pointer-events: auto;
-    }
-    .debug-header { border-bottom: 1px solid #555; margin-bottom: 5px; color: #aaa; font-size: 11px; }
-    .debug-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
-    .val { font-weight: bold; font-family: monospace; }
-    .pass { color: #00ff00; } .fail { color: #ff5555; }
+/* 針對不同雪花設定不同大小和速度 */
+.snowflake:nth-child(2) { width: 8px; height: 8px; animation-duration: 7s; opacity: 0.6; }
+.snowflake:nth-child(3) { width: 12px; height: 12px; animation-duration: 5s; opacity: 0.9; }
+.snowflake:nth-child(4) { width: 6px; height: 6px; animation-duration: 8s; opacity: 0.5; }
+.snowflake:nth-child(5) { width: 10px; height: 10px; animation-duration: 6s; opacity: 0.7; }
+.snowflake:nth-child(6) { width: 9px; height: 9px; animation-duration: 9s; opacity: 0.8; }
 
-    /* 計分板 */
-    .score-container { 
-        position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-        display: flex; flex-direction: column; align-items: center;
-    }
-    .score-board { 
-        padding: 10px 50px; border-radius: 20px; text-align: center; 
-        background: rgba(0, 0, 0, 0.6); border: 3px solid #555; 
-        transition: transform 0.1s;
-    }
-    #count { font-size: 110px; font-weight: 900; line-height: 1; color: #fff; }
-    .count-label { font-size: 14px; color: #aaa; letter-spacing: 4px; font-weight: bold; }
-    
-    /* 浮動文字 */
-    .float-text { position: absolute; font-weight: 900; font-size: 40px; color: white; pointer-events: none; }
+/* =========================================
+   UI 與 遊戲介面 CSS
+   ========================================= */
+body { 
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+  text-align: center; 
+  background: transparent; /* 讓背景透出 */
+  color: #fff; 
+  margin: 0; 
+  overflow: hidden; 
+}
 
-    /* 盾牌狀態文字 */
-    #shield-status {
-        margin-top: 10px; font-size: 16px; font-weight: bold; color: #555; text-shadow: 0 0 5px black;
-        transition: color 0.3s, text-shadow 0.3s;
-    }
-    #shield-status.active { color: #ffd700; text-shadow: 0 0 15px #ffd700; }
+.container { 
+  position: relative; 
+  width: 100vw; 
+  height: 100vh; 
+}
 
+/* 讓 canvas 覆蓋在背景上，但要在 UI 之下 */
+video, canvas { 
+  position: absolute; 
+  top: 0; left: 0; 
+  width: 100%; height: 100%; 
+  object-fit: cover; 
+  transform: scaleX(-1);
+  z-index: 0; 
+}
+
+/* --- 計分板 --- */
+.score-board { 
+  position: absolute; 
+  top: 80px; 
+  left: 50%; 
+  transform: translateX(-50%); 
+  z-index: 10; 
+  background: rgba(0, 0, 0, 0.6); 
+  padding: 10px 40px; 
+  border-radius: 20px; 
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  pointer-events: none; 
+  transition: all 0.3s ease;
+}
+#count { font-size: 70px; font-weight: 800; color: #fff; line-height: 1; }
+.count-title { font-size: 14px; color: #ccc; letter-spacing: 2px; }
+#status { margin-top: 5px; font-size: 18px; font-weight: bold; color: #ddd; }
+
+/* --- 開始按鈕 --- */
+#start-btn { 
+  position: absolute; 
+  top: 50%; left: 50%; 
+  transform: translate(-50%, -50%); 
+  z-index: 50; 
+  padding: 25px 50px; 
+  font-size: 30px; 
+  font-weight: 900;
+  background: linear-gradient(135deg, #007bff, #0056b3); 
+  color: white; 
+  border: 4px solid rgba(255, 255, 255, 0.5); 
+  border-radius: 60px; 
+  cursor: pointer; 
+  box-shadow: 0 0 30px rgba(0, 123, 255, 0.6); 
+  white-space: nowrap;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.05); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* --- 歸零按鈕 --- */
+#reset-btn {
+  position: absolute;
+  bottom: 40px; right: 20px;
+  z-index: 100;
+  background: #ff4757;
+  color: white;
+  border: 2px solid white;
+  padding: 15px 30px;
+  font-size: 18px;
+  font-weight: bold;
+  border-radius: 30px;
+  cursor: pointer;
+  display: none; 
+}
+#reset-btn:active { transform: scale(0.9); }
+
+.pop-effect { animation: pop 0.1s ease-out; color: #00ff00 !important; }
+@keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+
+/* =========================================
+   手機橫向模式 (Landscape) 優化
+   ========================================= */
+@media (max-height: 500px) and (orientation: landscape) {
+  .score-board {
+    top: 10px; left: 20px; transform: none; padding: 5px 20px; 
+  }
+  #count { font-size: 40px; }
+  .count-title { font-size: 10px; }
+  #status { font-size: 14px; margin-top: 0; }
+  #start-btn { padding: 15px 30px; font-size: 20px; border-width: 2px; }
+  #reset-btn { bottom: auto; top: 10px; right: 20px; padding: 8px 15px; font-size: 14px; }
+}
+
+/* =========================================
+   大螢幕 (Desktop) 優化
+   ========================================= */
+@media (min-width: 1024px) {
+  .score-board {
+    top: 60px; padding: 20px 80px; border-width: 3px; background: rgba(0, 0, 0, 0.7); 
+    left: 50%; transform: translateX(-50%);
+  }
+  #count { font-size: 140px; text-shadow: 0 0 30px currentColor; }
+  .count-title { font-size: 20px; letter-spacing: 5px; margin-bottom: 10px; }
+  #status { font-size: 24px; }
+}
+
+/* =========================================
+   火焰燃燒特效 (依照分數變色)
+   ========================================= */
+.fire-lv1 {
+  border-color: #ffd700 !important; color: #ffd700 !important;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.6), inset 0 0 10px rgba(255, 215, 0, 0.4);
+  animation: burn-pulse 1s infinite alternate;
+}
+.fire-lv2 {
+  border-color: #ff4500 !important; color: #ff4500 !important;
+  box-shadow: 0 0 30px rgba(255, 69, 0, 0.8), inset 0 0 20px rgba(255, 69, 0, 0.5);
+  animation: burn-pulse 0.4s infinite alternate;
+}
+.fire-lv3 {
+  border-color: #00ffff !important; color: #00ffff !important;
+  background: rgba(0, 255, 255, 0.1) !important;
+  box-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff, 0 0 60px #fff;
+  animation: burn-max 0.1s infinite;
+}
+
+@keyframes burn-pulse {
+  0% { box-shadow: 0 0 15px currentColor, inset 0 0 5px currentColor; }
+  100% { box-shadow: 0 0 35px currentColor, inset 0 0 15px currentColor; transform: translateX(-50%) scale(1.05); }
+}
+@keyframes burn-max {
+  0% { transform: translateX(-50%) translate(1px, 1px) scale(1.1); }
+  25% { transform: translateX(-50%) translate(-1px, -2px) scale(1.1); }
+  50% { transform: translateX(-50%) translate(-2px, 1px) scale(1.1); }
+  75% { transform: translateX(-50%) translate(2px, 1px) scale(1.1); }
+  100% { transform: translateX(-50%) translate(-1px, -1px) scale(1.1); }
+}
 </style>
 </head>
 <body>
 
-<video id="input_video" playsinline></video>
-<canvas id="output_canvas"></canvas>
-
-<div id="scene-intro">
+<div class="scene-background">
+  <div class="night-sky">
     <div class="moon"></div>
-    <div id="snow-container"></div>
-    <div class="intro-box">
-        <h1>XMAS BOXING</h1>
-        <p>V26 聖誕寬容版 - 輕鬆連擊</p>
-        <button class="btn-main" onclick="startCalibrationFlow()">我準備好了!</button>
-    </div>
+  </div>
+  <div class="snowflake" style="left: 10%; animation-delay: 0s;"></div>
+  <div class="snowflake" style="left: 30%; animation-delay: 2s;"></div>
+  <div class="snowflake" style="left: 50%; animation-delay: 4s;"></div>
+  <div class="snowflake" style="left: 70%; animation-delay: 1s;"></div>
+  <div class="snowflake" style="left: 90%; animation-delay: 3s;"></div>
+  
+  <div class="snow-ground"></div>
 </div>
 
-<div id="scene-calibration">
-    <div id="calib-step-text" class="calib-step">步驟 1/2</div>
-    <div id="calib-instr-text" class="calib-instr">
-        請打出<b>左直拳</b>並定住不動。<br>
-        系統將紀錄你的臂長，不需要伸到極限。
-    </div>
-    <div class="calib-data">
-        Extension Ratio: <span id="calib-live-ratio">0.00</span> %
-    </div>
-    <button id="calib-btn" class="btn-main" onclick="runCalibrationStep()">開始偵測 (3秒)</button>
+<div class="container">
+  <div class="score-board">
+    <div class="count-title">TOTAL HITS</div>
+    <div id="count">0</div>
+    <div id="status">READY</div>
+  </div>
+
+  <div class="video-container">
+    <video id="input_video" playsinline></video>
+    <canvas id="output_canvas"></canvas>
+  </div>
+
+  <button id="start-btn" onclick="startCamera()">🥊 點擊開始 (START)</button>
+  <button id="reset-btn" onclick="resetCount()">歸零重置 (RESET)</button>
 </div>
 
-<div id="scene-game">
-    <div class="debug-panel">
-        <div class="debug-header">LEFT ARM (Target: ><span id="limit-lr">0.00</span>)</div>
-        <div class="debug-row"><span>Ratio:</span> <span id="val-lr" class="val">0.00</span></div>
-        <div class="debug-row"><span>Speed:</span> <span id="val-ls" class="val">0.00</span></div>
-        <div class="debug-row"><span>Other Guard:</span> <span id="val-lg" class="val">NO</span></div>
-        
-        <div class="debug-header" style="margin-top:10px;">RIGHT ARM (Target: ><span id="limit-rr">0.00</span>)</div>
-        <div class="debug-row"><span>Ratio:</span> <span id="val-rr" class="val">0.00</span></div>
-        <div class="debug-row"><span>Speed:</span> <span id="val-rs" class="val">0.00</span></div>
-        <div class="debug-row"><span>Other Guard:</span> <span id="val-rg" class="val">NO</span></div>
-    </div>
-
-    <div class="score-container">
-        <div class="score-board" id="score-board">
-            <div class="count-label">COMBO</div>
-            <div id="count">0</div>
-        </div>
-        <div id="shield-status">🛡️ SHIELD ACTIVE 🛡️</div>
-    </div>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
 
 <script>
-// --- 0. 雪花特效 ---
-function createSnow() {
-    const container = document.getElementById('snow-container');
-    for (let i = 0; i < 50; i++) {
-        const d = document.createElement('div');
-        d.className = 'snowflake';
-        d.innerHTML = '❄';
-        d.style.left = Math.random() * 100 + 'vw';
-        d.style.animationDuration = (Math.random() * 3 + 2) + 's';
-        d.style.fontSize = (Math.random() * 10 + 10) + 'px';
-        container.appendChild(d);
-    }
-}
-createSnow();
+// --- 0. 音效設定 (Sound Effect) ---
+// 使用短促的音效網址，支援重複播放
+const punchSoundLight = new Audio('https://assets.mixkit.co/active_storage/sfx/2151/2151-preview.mp3'); // 較輕的聲音 (Jab)
+const punchSoundHeavy = new Audio('https://assets.mixkit.co/active_storage/sfx/2152/2152-preview.mp3'); // 較重的聲音 (Cross)
 
-// --- 1. 變數與設定 ---
-let mode = 'INTRO';
+// 預先載入
+punchSoundLight.load();
+punchSoundHeavy.load();
+
+// 播放音效函式 (解決快速連打時聲音被切斷的問題)
+function playHitSound(type) {
+    let soundToPlay = type === 'heavy' ? punchSoundHeavy : punchSoundLight;
+    // 複製節點，允許重疊播放
+    let clone = soundToPlay.cloneNode();
+    clone.volume = 0.8; // 音量微調
+    clone.play().catch(e => console.log("Audio play failed:", e));
+}
+
+
+// --- 1. 取得網頁元素 ---
+const videoElement = document.getElementById('input_video');
+const canvasElement = document.getElementById('output_canvas');
+const canvasCtx = canvasElement.getContext('2d');
+const countElement = document.getElementById('count');
+const scoreBoard = document.querySelector('.score-board'); 
+const statusElement = document.getElementById('status');
+const startBtn = document.getElementById('start-btn'); 
+const resetBtn = document.getElementById('reset-btn'); 
+
+// --- 2. 參數設定 (側面判定邏輯) ---
+// 左手 (Jab)
+const LEFT_CONFIG = {
+  triggerRatio: 0.65, 
+  resetRatio: 0.50,    
+  angle: 100,           
+  visibility: 0.4,      
+  cooldownFrames: 5,    
+  noseBlock: 0.30       
+};
+
+// 右手 (Cross)
+const RIGHT_CONFIG = {
+  triggerRatio: 0.60,  
+  resetRatio: 0.45,    
+  angle: 90, 
+  visibility: 0.3,
+  cooldownFrames: 5,    
+  noseBlock: 0.30       
+};
+
+const DOMINANCE_BUFFER = -0.05; 
+const MAX_PUNCH_DURATION = 30; 
+const ELEVATION_TOLERANCE = 0.3;
+
 let count = 0;
-let leftState = 0, rightState = 0;
-let leftCooldown = 0, rightCooldown = 0;
-let floatTexts = [];
-let lastLeftSpan = 0, lastRightSpan = 0; 
-let shieldAlpha = 0; 
+let leftStage = "down"; 
+let rightStage = "down";
+let leftCooldown = 0;
+let rightCooldown = 0;
+let leftPunchTimer = 0;
+let rightPunchTimer = 0;
+let floatingTexts = []; 
 
-// 防禦記憶 (V26 增強)
-let leftGuardTime = 0;
-let rightGuardTime = 0;
-const GUARD_MEMORY_MS = 800; // [大寬容] 防禦記憶延長到 0.8 秒
-
-// 校正與遊戲參數
-let calibration = {
-    step: 0,
-    maxLeftRatio: 0, maxRightRatio: 0,
-    isMeasuring: false
-};
-
-let GAME_CONFIG = {
-    triggerRatio_L: 0.85, 
-    triggerRatio_R: 0.85,
-    
-    resetRatio: 0.60,      
-    minSpeed: 0.012,       // [寬容] 速度門檻再降一點
-    
-    guardDistRatio: 0.95,  // [大寬容] 防禦圈加大，幾乎只要手在頭附近就算
-    cooldownFrames: 5      
-};
-
-// DOM
-const canvas = document.getElementById('output_canvas');
-const ctx = canvas.getContext('2d', { alpha: false });
-const video = document.getElementById('input_video');
-const countEl = document.getElementById('count');
-const board = document.getElementById('score-board');
-const shieldStatus = document.getElementById('shield-status');
-
-// 音效
-const PUNCH_SOUND_URL = 'punch.mp3'; 
-let audioContext, punchBuffer;
-async function loadSound() {
-    try {
-        window.AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioContext = new AudioContext();
-        const res = await fetch(PUNCH_SOUND_URL);
-        const buf = await res.arrayBuffer();
-        punchBuffer = await audioContext.decodeAudioData(buf);
-    } catch(e) {}
+// --- 3. 工具函數 ---
+function calculateAngle(a, b, c) {
+  let radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+  let angle = Math.abs(radians * 180.0 / Math.PI);
+  if (angle > 180.0) angle = 360 - angle;
+  return angle;
 }
-function playSound() {
-    if (!audioContext || !punchBuffer) return;
-    if (audioContext.state === 'suspended') audioContext.resume();
-    const src = audioContext.createBufferSource();
-    src.buffer = punchBuffer;
-    src.connect(audioContext.destination);
-    src.playbackRate.value = 0.9 + Math.random() * 0.2;
-    src.start(0);
+function calculateDistance(a, b) {
+  return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 }
 
-// --- 2. 核心幾何計算 (彈力繩 V24 Logic) ---
-
-function getDist(a, b) {
-    return Math.sqrt(Math.pow(a.x-b.x, 2) + Math.pow(a.y-b.y, 2) + Math.pow(a.z-b.z, 2));
+function drawVisualText(ctx, text, visualX, visualY, color, fontSize = "24px") {
+  ctx.save();
+  const internalX = ctx.canvas.width - visualX;
+  ctx.translate(internalX, visualY);
+  ctx.scale(-1, 1); 
+  ctx.font = `bold ${fontSize} Arial`;
+  ctx.fillStyle = color;
+  ctx.fillText(text, 0, 0); 
+  ctx.restore();
 }
 
-function getExtensionRatio(shoulder, elbow, wrist) {
-    const upperArm = getDist(shoulder, elbow);
-    const foreArm = getDist(elbow, wrist);
-    const totalArmLength = upperArm + foreArm;
-    const currentSpan = getDist(shoulder, wrist);
-    if (totalArmLength === 0) return 0;
-    return currentSpan / totalArmLength;
+function spawnFloatingText(x, y, text, color) {
+  floatingTexts.push({ x, y, text, color, life: 15, offsetY: 0 });
 }
 
-// --- 3. 流程與校正 ---
+// 火焰特效更新
+function updateFireEffect(currentCount) {
+  if (!scoreBoard) return;
+  scoreBoard.classList.remove('fire-lv1', 'fire-lv2', 'fire-lv3');
 
-async function startCalibrationFlow() {
-    await loadSound();
-    document.getElementById('scene-intro').style.opacity = 0;
-    setTimeout(() => { document.getElementById('scene-intro').style.display = 'none'; }, 1000);
-    document.getElementById('scene-calibration').style.display = 'flex';
-    
-    const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
-    pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
-    pose.onResults(onResults);
-    
-    const camera = new Camera(video, { onFrame: async () => { await pose.send({image: video}); }, width: 1280, height: 720 });
-    await camera.start();
-    mode = 'CALIBRATING';
-    canvas.style.opacity = 0.4;
+  if (currentCount >= 100) {
+    scoreBoard.classList.add('fire-lv3'); // MAX
+  } else if (currentCount >= 80) {
+    scoreBoard.classList.add('fire-lv2'); // Heavy
+  } else if (currentCount >= 50) {
+    scoreBoard.classList.add('fire-lv1'); // Light
+  }
 }
 
-function runCalibrationStep() {
-    const btn = document.getElementById('calib-btn');
-    calibration.isMeasuring = true;
-    let timeLeft = 3;
-    btn.disabled = true;
-    
-    const timer = setInterval(() => {
-        btn.innerText = `偵測中... ${timeLeft}`;
-        timeLeft--;
-        if (timeLeft < 0) {
-            clearInterval(timer);
-            calibration.isMeasuring = false;
-            
-            if (calibration.step === 0) {
-                playSound();
-                calibration.step = 1;
-                document.getElementById('calib-step-text').innerText = "步驟 2/2";
-                document.getElementById('calib-instr-text').innerHTML = "紀錄完成。<br>請打出<b>右直拳</b>並定住。";
-                btn.innerText = "開始偵測 (3秒)";
-                btn.disabled = false;
-            } else {
-                playSound();
-                finishCalibration();
-            }
-        }
-    }, 1000);
+function triggerScoreBoardEffect() {
+  countElement.classList.remove('pop-effect'); 
+  void countElement.offsetWidth; 
+  countElement.classList.add('pop-effect'); 
+  updateFireEffect(count);
 }
 
-function finishCalibration() {
-    // [大寬容修改]：取校正值的 80% 作為門檻 (原本90%)
-    // 這樣你出拳只要有8分直，就算過關
-    GAME_CONFIG.triggerRatio_L = Math.max(0.65, calibration.maxLeftRatio * 0.80);
-    GAME_CONFIG.triggerRatio_R = Math.max(0.65, calibration.maxRightRatio * 0.80);
-    
-    console.log("Config:", GAME_CONFIG);
-
-    document.getElementById('scene-calibration').style.display = 'none';
-    document.getElementById('scene-game').style.display = 'block';
-    canvas.style.opacity = 1;
-    
-    document.getElementById('limit-lr').innerText = GAME_CONFIG.triggerRatio_L.toFixed(2);
-    document.getElementById('limit-rr').innerText = GAME_CONFIG.triggerRatio_R.toFixed(2);
-    
-    mode = 'GAME';
+window.resetCount = function() {
+  count = 0; 
+  countElement.innerText = count; 
+  floatingTexts = []; 
+  leftCooldown = 0; rightCooldown = 0;
+  leftStage = "down"; rightStage = "down";
+  leftPunchTimer = 0; rightPunchTimer = 0;
+  
+  if (scoreBoard) {
+    scoreBoard.classList.remove('fire-lv1', 'fire-lv2', 'fire-lv3');
+  }
+  
+  statusElement.innerText = "RESET OK"; 
+  statusElement.style.color = "white";
 }
 
-// --- 4. 遊戲主迴圈 ---
-
-function processHand(ratio, state, cooldown, lastSpan, oppGuardLastTime, label) {
-    let newState = state;
-    let hit = false;
-    
-    const velocity = ratio - lastSpan;
-    const isLeft = (label === 'L');
-    const threshold = isLeft ? GAME_CONFIG.triggerRatio_L : GAME_CONFIG.triggerRatio_R;
-    
-    // [寬容] 檢查防禦記憶 (只要 800ms 內有防禦過就算)
-    const now = Date.now();
-    const isGuarded = (now - oppGuardLastTime) < GUARD_MEMORY_MS;
-
-    const elR = document.getElementById(`val-${isLeft?'l':'r'}r`);
-    const elS = document.getElementById(`val-${isLeft?'l':'r'}s`);
-    const elG = document.getElementById(`val-${isLeft?'l':'r'}g`);
-
-    if (state === 0) { // Ready
-        const passRatio = ratio > threshold;
-        const passSpeed = velocity > GAME_CONFIG.minSpeed; 
-        const passGuard = isGuarded;
-
-        // 如果三者都通過
-        if (passRatio && passSpeed && passGuard && cooldown <= 0) {
-            newState = 1;
-            hit = true;
-        }
-
-        if (elR) {
-            elR.innerText = ratio.toFixed(2);
-            elS.innerText = velocity.toFixed(3);
-            elG.innerText = isGuarded ? "YES" : "NO";
-            
-            elR.className = passRatio ? "val pass" : "val fail";
-            elS.className = passSpeed ? "val pass" : "val fail";
-            elG.className = passGuard ? "val pass" : "val fail";
-        }
-    } 
-    else if (state === 1) { newState = 2; } 
-    else if (state === 2) { 
-        if (ratio < GAME_CONFIG.resetRatio) {
-            newState = 0; 
-        }
-    }
-    return { newState, hit };
-}
-
+// --- 4. 核心邏輯 (包含音效觸發) ---
 function onResults(results) {
-    if (video.videoWidth > 0 && canvas.width !== video.videoWidth) {
-        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-    }
-    const cw = canvas.width, ch = canvas.height;
+  canvasElement.width = videoElement.videoWidth;
+  canvasElement.height = videoElement.videoHeight;
+  const cw = canvasElement.width;
+  const ch = canvasElement.height;
 
-    ctx.save();
-    ctx.clearRect(0, 0, cw, ch);
-    ctx.globalAlpha = (mode === 'CALIBRATING') ? 0.5 : 1.0;
-    ctx.drawImage(results.image, 0, 0, cw, ch);
-    ctx.globalAlpha = 1.0;
+  canvasCtx.save();
+  // 清除畫布，讓背景透出來
+  canvasCtx.clearRect(0, 0, cw, ch);
+  
+  // 繪製半透明的攝影機畫面，讓背景和人影稍微融合 (可選)
+  // 若要很清楚的人像，globalAlpha 設為 1.0，或直接 drawImage
+  canvasCtx.drawImage(results.image, 0, 0, cw, ch);
 
-    if (!results.poseLandmarks) { ctx.restore(); return; }
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    let ft = floatingTexts[i];
+    ft.life--; ft.offsetY -= 5;
     
-    const lm = results.poseLandmarks;
-    const nose = lm[0];
-    const lS = lm[11], lE = lm[13], lW = lm[15];
-    const rS = lm[12], rE = lm[14], rW = lm[16];
-    const scale = Math.hypot(lS.x - rS.x, lS.y - rS.y);
-    const chin = { x: (lm[9].x + lm[10].x)/2, y: (lm[9].y + lm[10].y)/2 };
+    const visualX = cw - ft.x; 
+    drawVisualText(canvasCtx, ft.text, visualX, ft.y + ft.offsetY, ft.color, "60px");
+    
+    if (ft.life <= 0) floatingTexts.splice(i, 1);
+  }
 
-    if (!nose || !lS || !rS) { ctx.restore(); return; }
+  if (leftCooldown > 0) leftCooldown--;
+  if (rightCooldown > 0) rightCooldown--;
 
-    const lRatio = getExtensionRatio(lS, lE, lW);
-    const rRatio = getExtensionRatio(rS, rE, rW);
+  // 超時重置
+  if (leftStage === "punch" && ++leftPunchTimer > MAX_PUNCH_DURATION) { leftStage = "down"; leftPunchTimer = 0; }
+  else if (leftStage !== "punch") leftPunchTimer = 0;
 
-    if (mode === 'CALIBRATING') {
-        drawSkeleton(lm, cw, ch);
-        const isLeft = (calibration.step === 0);
-        document.getElementById('calib-live-ratio').innerText = ((isLeft ? lRatio : rRatio) * 100).toFixed(1);
+  if (rightStage === "punch" && ++rightPunchTimer > MAX_PUNCH_DURATION) { rightStage = "down"; rightPunchTimer = 0; }
+  else if (rightStage !== "punch") rightPunchTimer = 0;
 
-        if (calibration.isMeasuring) {
-            if (isLeft) {
-                if (lRatio > calibration.maxLeftRatio) calibration.maxLeftRatio = lRatio;
-            } else {
-                if (rRatio > calibration.maxRightRatio) calibration.maxRightRatio = rRatio;
-            }
-        }
-    } 
-    else if (mode === 'GAME') {
-        drawSkeleton(lm, cw, ch);
-        
-        // --- 1. 防禦判斷 (更新時間戳) ---
-        const gDist = scale * GAME_CONFIG.guardDistRatio; 
-        const now = Date.now();
-        
-        // 只要手腕進入下巴範圍，就更新防禦時間
-        if (Math.hypot(lW.x - chin.x, lW.y - chin.y) < gDist) leftGuardTime = now;
-        if (Math.hypot(rW.x - chin.x, rW.y - chin.y) < gDist) rightGuardTime = now;
-        
-        // UI 顯示：使用寬容的時間戳
-        const l_active = (now - leftGuardTime) < GUARD_MEMORY_MS;
-        const r_active = (now - rightGuardTime) < GUARD_MEMORY_MS;
+  if (results.poseLandmarks) {
+    drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: 'rgba(255, 255, 255, 0.4)', lineWidth: 1});
+    
+    const nose = results.poseLandmarks[0];
+    const leftShoulder = results.poseLandmarks[11];
+    const rightShoulder = results.poseLandmarks[12];
+    const leftElbow = results.poseLandmarks[13];
+    const rightElbow = results.poseLandmarks[14];
+    const leftWrist = results.poseLandmarks[15];
+    const rightWrist = results.poseLandmarks[16];
 
-        // 盾牌與光罩
-        if (l_active && r_active) {
-            shieldAlpha = Math.min(shieldAlpha + 0.1, 0.8);
-            shieldStatus.classList.add('active');
-        } else if (l_active || r_active) {
-            shieldAlpha = Math.max(shieldAlpha - 0.05, 0.2); // 單手也給一點點光
-            shieldStatus.classList.remove('active');
-        } else {
-            shieldAlpha = Math.max(shieldAlpha - 0.1, 0);
-            shieldStatus.classList.remove('active');
-        }
-        if (shieldAlpha > 0) drawShield(nose, cw, ch, scale * 3, shieldAlpha);
+    if (nose && leftShoulder && rightShoulder) {
+      const shoulderWidth = calculateDistance(leftShoulder, rightShoulder);
+      const noseToShoulder = calculateDistance(nose, leftShoulder);
+      const stableScale = Math.max(shoulderWidth, noseToShoulder * 1.8);
 
-        // --- 2. 出拳判斷 ---
-        if (lastLeftSpan === 0) { lastLeftSpan = lRatio; lastRightSpan = rRatio; }
+      const targetX = (nose.x - (stableScale * 1.2)) * cw;
+      const targetY = nose.y * ch;
 
-        // 左手攻擊 -> 檢查右手防禦時間
-        const resL = processHand(lRatio, leftState, leftCooldown, lastLeftSpan, rightGuardTime, 'L');
-        // 右手攻擊 -> 檢查左手防禦時間
-        const resR = processHand(rRatio, rightState, rightCooldown, lastRightSpan, leftGuardTime, 'R');
+      canvasCtx.beginPath();
+      canvasCtx.strokeStyle = "#00FF00"; 
+      canvasCtx.lineWidth = 4;
+      canvasCtx.arc(targetX, targetY, 20, 0, 2 * Math.PI); 
+      canvasCtx.stroke();
+      const visualTargetX = cw - targetX;
+      drawVisualText(canvasCtx, "TARGET", visualTargetX - 40, targetY - 30, "rgba(0,255,0,0.8)", "16px");
 
-        leftState = resL.newState; lastLeftSpan = lRatio;
-        rightState = resR.newState; lastRightSpan = rRatio;
+      let leftRatio = 0, rightRatio = 0;
+      if (leftElbow && leftWrist) leftRatio = calculateDistance(leftShoulder, leftWrist) / stableScale;
+      if (rightElbow && rightWrist) rightRatio = calculateDistance(rightShoulder, rightWrist) / stableScale;
 
-        if (resL.hit) hitLogic(true, lW.x, lW.y);
-        if (resR.hit) hitLogic(false, rW.x, rW.y);
+      const isLeftDominant = leftRatio > (rightRatio + DOMINANCE_BUFFER);
+      const isRightDominant = rightRatio > (leftRatio + DOMINANCE_BUFFER);
 
-        if (leftCooldown > 0) leftCooldown--;
-        if (rightCooldown > 0) rightCooldown--;
-        
-        drawDot(lW, l_active, cw, ch);
-        drawDot(rW, r_active, cw, ch);
-        drawFloatingTexts(cw, ch);
+      // 左手處理
+      if ((isLeftDominant || leftStage === "punch" || leftStage === "retract") && leftElbow && leftWrist && leftWrist.visibility > LEFT_CONFIG.visibility) {
+        leftStage = processHand(leftShoulder, leftElbow, leftWrist, stableScale, leftStage, "L", nose, leftCooldown, LEFT_CONFIG);
+      }
+
+      // 右手處理
+      if ((isRightDominant || rightStage === "punch" || rightStage === "retract") && rightElbow && rightWrist && rightWrist.visibility > RIGHT_CONFIG.visibility) {
+        rightStage = processHand(rightShoulder, rightElbow, rightWrist, stableScale, rightStage, "R", nose, rightCooldown, RIGHT_CONFIG);
+      }
     }
-    ctx.restore();
+  }
+  canvasCtx.restore();
 }
 
-function drawShield(center, cw, ch, radiusBase, alpha) {
-    const x = center.x * cw;
-    const y = center.y * ch;
-    const r = radiusBase * cw; 
-    const grad = ctx.createRadialGradient(x, y, r * 0.5, x, y, r);
-    grad.addColorStop(0, `rgba(255, 215, 0, 0)`);
-    grad.addColorStop(0.8, `rgba(255, 215, 0, ${alpha * 0.3})`);
-    grad.addColorStop(1, `rgba(255, 255, 0, ${alpha * 0.6})`);
-    ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.fillStyle = grad; ctx.fill();
-    ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.strokeStyle = `rgba(255, 255, 200, ${alpha})`; ctx.lineWidth = 5; ctx.stroke();
-}
+function processHand(shoulder, elbow, wrist, scale, currentStage, label, nose, currentCooldown, config) {
+  const angle = calculateAngle(shoulder, elbow, wrist);
+  const wristDist = calculateDistance(shoulder, wrist);
+  const ratio = wristDist / scale;
+  const wristToNoseDist = calculateDistance(wrist, nose);
+  const noseRatio = wristToNoseDist / scale;
 
-function drawSkeleton(lm, cw, ch) {
-    ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0, 255, 255, 0.4)"; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(lm[11].x*cw, lm[11].y*ch); ctx.lineTo(lm[13].x*cw, lm[13].y*ch); ctx.lineTo(lm[15].x*cw, lm[15].y*ch); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(lm[12].x*cw, lm[12].y*ch); ctx.lineTo(lm[14].x*cw, lm[14].y*ch); ctx.lineTo(lm[16].x*cw, lm[16].y*ch); ctx.stroke();
-}
-function drawDot(w, active, cw, ch) {
-    ctx.beginPath(); ctx.fillStyle = active ? "#00ff00" : "#d63031";
-    ctx.arc(w.x * cw, w.y * ch, 10, 0, 2*Math.PI); ctx.fill();
-}
-function hitLogic(isLeft, x, y) {
-    count++; countEl.innerText = count; countEl.classList.remove('hit-pop'); void countEl.offsetWidth; countEl.classList.add('hit-pop');
-    board.style.transform = "translateX(-50%) scale(1.1)"; setTimeout(()=> board.style.transform = "translateX(-50%) scale(1)", 100);
-    if(isLeft) leftCooldown = GAME_CONFIG.cooldownFrames; else rightCooldown = GAME_CONFIG.cooldownFrames;
-    playSound();
-    if (floatTexts.length > 10) floatTexts.shift();
-    floatTexts.push({ x, y, text: "HIT!", color: isLeft ? '#00d2ff' : '#ff9f43', life: 20, vy: -5 });
-}
-function drawFloatingTexts(cw, ch) {
-    ctx.scale(-1, 1); ctx.font = "900 60px Arial"; ctx.strokeStyle = "white"; ctx.lineWidth = 3;
-    for(let i=floatTexts.length-1; i>=0; i--){
-        let t = floatTexts[i]; let rx = -(cw - t.x*cw);
-        ctx.fillStyle = t.color; ctx.strokeText(t.text, rx, t.y*ch); ctx.fillText(t.text, rx, t.y*ch);
-        t.y += t.vy/ch; t.life--; if(t.life<=0) floatTexts.splice(i, 1);
+  let nextStage = currentStage;
+  const isHighEnough = wrist.y < (shoulder.y + ELEVATION_TOLERANCE);
+
+  // --- 狀態機邏輯 ---
+  if (currentStage === "down") {
+    if (currentCooldown === 0) {
+      if (ratio > config.triggerRatio && noseRatio > config.noseBlock && isHighEnough) {
+        nextStage = "punch";
+      }
     }
+  }
+  else if (currentStage === "punch") {
+    if (ratio < config.triggerRatio) {
+      nextStage = "retract";
+      
+      // === 擊中判定成功 ===
+      count++;
+      countElement.innerText = count;
+      triggerScoreBoardEffect(); 
+
+      // 【音效觸發區】
+      // 左手輕拳，右手重拳
+      if (label === "L") {
+          playHitSound('light'); // 播放 Jab 音效
+      } else {
+          playHitSound('heavy'); // 播放 Cross 音效
+      }
+
+      if (label === "L") leftCooldown = config.cooldownFrames;
+      else rightCooldown = config.cooldownFrames;
+
+      const hitX = wrist.x * canvasElement.width;
+      const hitY = wrist.y * canvasElement.height;
+      const color = label === "L" ? "#00FFFF" : "#FFA500"; 
+      spawnFloatingText(hitX + (Math.random()*40-20), hitY, "+1", color);
+      statusElement.innerText = label === "L" ? "LEFT HIT!" : "RIGHT HIT!";
+      statusElement.style.color = color;
+    }
+  }
+  else if (currentStage === "retract") {
+    if (ratio < config.resetRatio) {
+      nextStage = "down"; 
+    }
+    else if (ratio > config.triggerRatio && currentCooldown === 0) {
+      nextStage = "punch";
+    }
+  }
+
+  return nextStage;
+}
+
+// --- 初始化 ---
+const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
+pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+pose.onResults(onResults);
+
+// --- 啟動函數 ---
+window.startCamera = function() {
+  // 用戶互動時嘗試播放一次靜音音效，以解鎖瀏覽器的音效限制
+  punchSoundLight.play().then(() => {
+    punchSoundLight.pause();
+    punchSoundLight.currentTime = 0;
+  }).catch(e => console.log("Audio unlock failed", e));
+
+  const camera = new Camera(videoElement, {
+    onFrame: async () => { await pose.send({image: videoElement}); },
+    width: 640, height: 480
+  });
+  camera.start();
+  
+  const btn = document.getElementById('start-btn');
+  if (btn) {
+    btn.style.display = 'none'; 
+  }
+  const rBtn = document.getElementById('reset-btn');
+  if (rBtn) {
+    rBtn.style.display = 'block';
+  }
 }
 </script>
 </body>
