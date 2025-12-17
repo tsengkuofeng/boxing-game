@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>V14 極速連擊版</title>
-  
+  <title>聖誕揍人 (V15 HD深度特效版)</title>
+
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
@@ -14,92 +14,77 @@
       font-family: 'Segoe UI', sans-serif; 
       background: #000; margin: 0; overflow: hidden; user-select: none;
     }
-    .container { position: relative; width: 100vw; height: 100vh; }
-    video, canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    .container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
     
-    .scene-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; background: radial-gradient(circle, #222 0%, #000 90%); }
+    /* 確保畫質清晰的關鍵：Canvas 不用 CSS 硬拉，而是保持比例 */
+    video { display: none; }
+    canvas { 
+        position: absolute; 
+        max-width: 100%; max-height: 100%; 
+        object-fit: contain; 
+        transform: scaleX(-1); /* 鏡像 */
+    }
+    
+    .scene-bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; background: radial-gradient(circle, #1a1a1a 0%, #000 100%); }
 
-    /* --- 計分板核心容器 --- */
+    /* --- 計分板特效 (Tier System) --- */
     .score-board { 
       position: absolute; top: 30px; left: 50%; transform: translateX(-50%); z-index: 10; 
-      padding: 10px 50px; border-radius: 20px; 
+      padding: 15px 60px; border-radius: 20px; 
       text-align: center; transition: all 0.2s ease-out;
-      /* 預設樣式 */
-      background: rgba(0, 0, 0, 0.6); 
-      border: 2px solid #444;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      background: rgba(0, 0, 0, 0.7); 
+      border: 3px solid #555;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
     
-    .count-label { font-size: 14px; color: #888; letter-spacing: 4px; font-weight: bold; text-transform: uppercase; }
-    #count { font-size: 110px; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 5px 10px rgba(0,0,0,0.5); }
+    .count-label { font-size: 14px; color: #aaa; letter-spacing: 4px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+    #count { font-size: 100px; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 5px 10px rgba(0,0,0,0.5); }
 
-    /* --- 特效分級系統 (Tier System) --- */
+    /* 特效分級 */
+    /* LV1: 30+ (藍色氣場) */
+    .score-board.tier-1 { border-color: #00d2ff; box-shadow: 0 0 20px #00d2ff; background: rgba(0, 30, 60, 0.8); }
+    .tier-1 #count { color: #e0f7fa; text-shadow: 0 0 20px #00d2ff; }
 
-    /* LV1: 30-50 (暖身 - 藍色氣場) */
-    .score-board.tier-1 {
-        border-color: #00d2ff;
-        background: rgba(0, 30, 60, 0.7);
-        box-shadow: 0 0 20px #00d2ff, inset 0 0 20px rgba(0, 210, 255, 0.2);
-    }
-    .tier-1 #count { color: #e0f7fa; text-shadow: 0 0 15px #00d2ff; }
+    /* LV2: 50+ (金黃色) */
+    .score-board.tier-2 { border-color: #ffd700; box-shadow: 0 0 30px #ffd700; background: rgba(60, 50, 0, 0.8); animation: breath 0.5s infinite alternate; }
+    .tier-2 #count { color: #fffde7; text-shadow: 0 0 25px #ffd700; }
 
-    /* LV2: 50-70 (進入狀態 - 金黃色 + 輕微呼吸) */
-    .score-board.tier-2 {
-        border-color: #ffd700;
-        background: rgba(60, 50, 0, 0.7);
-        box-shadow: 0 0 30px #ffd700, inset 0 0 30px rgba(255, 215, 0, 0.2);
-        animation: breath 0.5s infinite alternate;
-    }
-    .tier-2 #count { color: #fffde7; text-shadow: 0 0 20px #ffd700; }
+    /* LV3: 70+ (燃燒晃動) */
+    .score-board.tier-3 { border-color: #ff4500; box-shadow: 0 0 40px #ff4500; background: rgba(60, 10, 0, 0.8); animation: shake-mild 0.3s infinite; }
+    .tier-3 #count { color: #ffccbc; text-shadow: 0 0 30px #ff4500; }
 
-    /* LV3: 70-100 (燃燒 - 橘紅色 + 晃動) */
-    .score-board.tier-3 {
-        border-color: #ff4500;
-        background: rgba(60, 10, 0, 0.8);
-        box-shadow: 0 0 40px #ff4500, 0 0 80px rgba(255, 69, 0, 0.4);
-        animation: shake-mild 0.3s infinite;
-    }
-    .tier-3 #count { color: #ffccbc; text-shadow: 0 0 25px #ff4500; }
+    /* LV4: 100+ (紫色電漿) */
+    .score-board.tier-4 { border-color: #d63031; background: rgba(50,0,0,0.9); box-shadow: 0 0 60px #ff0000; animation: shake-hard 0.2s infinite; }
+    .tier-4 #count { color: #ffadad; text-shadow: 0 0 40px #ff0000, 0 0 10px #fff; }
 
-    /* LV4: 100-150 (暴走 - 紫色電漿 + 強烈晃動) */
-    .score-board.tier-4 {
-        border-color: #d63031;
-        background: linear-gradient(135deg, rgba(100,0,0,0.9), rgba(50,0,0,0.9));
-        box-shadow: 0 0 50px #ff0000, 0 0 100px #ff0000;
-        animation: shake-hard 0.2s infinite;
-    }
-    .tier-4 #count { color: #ffadad; text-shadow: 0 0 30px #ff0000, 0 0 10px #fff; }
-
-    /* LV5: 150+ (神之領域 - 幻彩故障風) */
-    .score-board.tier-5 {
-        border: 5px solid #fff;
-        background: #000;
-        box-shadow: 0 0 60px #fff, 0 0 100px #ff00ff, 0 0 150px #00ffff;
-        animation: glitch-anim 0.1s infinite;
-    }
-    .tier-5 #count { color: #fff; text-shadow: 2px 2px 0px #ff00ff, -2px -2px 0px #00ffff; }
+    /* LV5: 150+ (故障神域) */
+    .score-board.tier-5 { border: 5px solid #fff; background: #000; box-shadow: 0 0 80px #fff, 0 0 100px #ff00ff; animation: glitch-anim 0.1s infinite; }
 
     /* --- 動畫 Keyframes --- */
     @keyframes breath { 0% { transform: translateX(-50%) scale(1); } 100% { transform: translateX(-50%) scale(1.05); } }
-    @keyframes shake-mild { 0% { transform: translateX(-52%) rotate(-1deg); } 50% { transform: translateX(-48%) rotate(1deg); } 100% { transform: translateX(-50%) rotate(0deg); } }
-    @keyframes shake-hard { 0% { transform: translate(-53%, 2px) rotate(-2deg); } 25% { transform: translate(-47%, -2px) rotate(2deg); } 50% { transform: translate(-52%, -1px) rotate(-1deg); } 75% { transform: translate(-48%, 1px) rotate(1deg); } 100% { transform: translate(-50%, 0); } }
-    @keyframes glitch-anim { 0% { clip-path: inset(10% 0 80% 0); transform: translateX(-51%); } 20% { clip-path: inset(80% 0 5% 0); transform: translateX(-49%); } 40% { clip-path: inset(30% 0 10% 0); transform: translateX(-52%); } 60% { clip-path: inset(10% 0 40% 0); transform: translateX(-48%); } 80% { clip-path: inset(50% 0 20% 0); transform: translateX(-50%); } 100% { clip-path: inset(0 0 0 0); } }
-    
-    /* 擊中時的瞬間放大效果 (獨立於持續動畫) */
-    .hit-pop { animation: pop-scale 0.08s ease-out; }
-    @keyframes pop-scale { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+    @keyframes shake-mild { 0% { transform: translateX(-51%) rotate(-1deg); } 50% { transform: translateX(-49%) rotate(1deg); } 100% { transform: translateX(-50%) rotate(0deg); } }
+    @keyframes shake-hard { 0% { transform: translate(-52%, 2px); } 25% { transform: translate(-48%, -2px); } 50% { transform: translate(-51%, -1px); } 75% { transform: translate(-49%, 1px); } 100% { transform: translate(-50%, 0); } }
+    @keyframes glitch-anim { 0% { clip-path: inset(10% 0 80% 0); transform: translateX(-51%); } 50% { clip-path: inset(30% 0 10% 0); transform: translateX(-49%); } 100% { clip-path: inset(0 0 0 0); } }
+    .hit-pop { animation: pop-scale 0.1s ease-out; }
+    @keyframes pop-scale { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
 
-    /* 防禦狀態 */
-    .status-bar { display: flex; justify-content: space-between; margin-top: 10px; width: 300px; margin-left: auto; margin-right: auto;}
-    .guard-indicator { 
-        width: 15px; height: 15px; border-radius: 50%; background: #333; border: 2px solid #555;
-        box-shadow: 0 0 5px #000; transition: all 0.1s;
+    /* --- 防禦狀態條 --- */
+    .status-container { 
+        display: flex; justify-content: center; gap: 20px; 
+        margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;
     }
-    .guard-indicator.active { background: #00ff00; border-color: #fff; box-shadow: 0 0 10px #00ff00; }
-    
-    #start-btn, #reset-btn { position: absolute; z-index: 100; cursor: pointer; border: none; font-weight: bold; border-radius: 50px; color: white;}
-    #start-btn { top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px 60px; font-size: 24px; background: #007bff; box-shadow: 0 0 30px rgba(0,123,255,0.5); }
-    #reset-btn { bottom: 30px; right: 30px; padding: 10px 20px; background: #ff4757; display: none; }
+    .guard-box {
+        display: flex; align-items: center; gap: 8px; font-size: 14px; color: #777; font-weight: bold;
+    }
+    .guard-led { width: 12px; height: 12px; border-radius: 50%; background: #333; border: 2px solid #555; box-shadow: 0 0 5px #000; transition: all 0.1s; }
+    .guard-box.active .guard-led { background: #00ff00; border-color: #fff; box-shadow: 0 0 10px #00ff00; }
+    .guard-box.active { color: #00ff00; text-shadow: 0 0 5px rgba(0,255,0,0.5); }
+
+    /* 按鈕 */
+    #start-btn, #reset-btn { position: absolute; z-index: 100; cursor: pointer; border: none; font-weight: bold; border-radius: 50px; color: white; transition: transform 0.1s;}
+    #start-btn:active, #reset-btn:active { transform: scale(0.95); }
+    #start-btn { top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px 60px; font-size: 24px; background: linear-gradient(135deg, #0984e3, #74b9ff); box-shadow: 0 0 30px rgba(9, 132, 227, 0.8); }
+    #reset-btn { bottom: 30px; right: 30px; padding: 12px 25px; background: #d63031; display: none; box-shadow: 0 0 15px rgba(214, 48, 49, 0.5); }
   </style>
 </head>
 
@@ -108,26 +93,26 @@
 
   <div class="container">
     <div class="score-board" id="score-board">
-      <div class="count-label">COMBO</div>
+      <div class="count-label">COMBO HITS</div>
       <div id="count">0</div>
       
-      <div class="status-bar">
-          <div id="led-left" class="guard-indicator"></div>
-          <div id="led-right" class="guard-indicator"></div>
+      <div class="status-container">
+          <div id="guard-left" class="guard-box"><div class="guard-led"></div> LEFT</div>
+          <div id="guard-right" class="guard-box"><div class="guard-led"></div> RIGHT</div>
       </div>
     </div>
 
     <div class="video-container">
-      <video id="input_video" playsinline style="display:none"></video>
+      <video id="input_video" playsinline></video>
       <canvas id="output_canvas"></canvas>
     </div>
 
-    <button id="start-btn" onclick="initGame()">🥊 啟動極速連擊</button>
-    <button id="reset-btn" onclick="resetCount()">RESET</button>
+    <button id="start-btn" onclick="initGame()">🥊 啟動 V15 高畫質版</button>
+    <button id="reset-btn" onclick="resetCount()">重置 (RESET)</button>
   </div>
 
   <script>
-    // --- 音效系統 ---
+    // --- 0. 音效模組 ---
     const PUNCH_SOUND_URL = 'punch.mp3'; 
     let audioContext = null, punchBuffer = null;
     async function loadSound() {
@@ -137,7 +122,7 @@
             const res = await fetch(PUNCH_SOUND_URL);
             const buf = await res.arrayBuffer();
             punchBuffer = await audioContext.decodeAudioData(buf);
-        } catch(e) {}
+        } catch(e) { console.log("音效加載失敗，請確認 punch.mp3 存在"); }
     }
     function playPunchSound() {
         if (!audioContext || !punchBuffer) return;
@@ -145,200 +130,237 @@
         const src = audioContext.createBufferSource();
         src.buffer = punchBuffer;
         src.connect(audioContext.destination);
-        // 加入一點音調變化，讓連擊聽起來更豐富
-        src.playbackRate.value = 0.9 + Math.random() * 0.2;
+        src.playbackRate.value = 0.95 + Math.random() * 0.1; // 輕微音調變化
         src.start(0);
     }
 
-    // --- V14 參數設定 (針對 4拳/秒 優化) ---
+    // --- 1. 核心參數 (V13 Z軸邏輯 + V14 快速判定) ---
     const CONFIG = {
-        // [觸發門檻]
-        // 判定手腕伸出 (Z軸深度差)
-        triggerZ: 0.35, 
+        // [Z軸深度] 數值越大代表手伸得越長 (相對於肩膀)
+        // 為了讓正面直拳容易觸發，設為 0.35 左右
+        punchZThreshold: 0.35, 
+        
+        // [重置深度] 只要手稍微收回 (小於 0.25)，就允許下一次出拳
+        resetZThreshold: 0.25,
 
-        // [重置門檻 - 關鍵優化]
-        // 原本可能要收到 0.1 才重置，現在只要回到 0.28 就重置
-        // 這樣允許「半程連擊」(Rabbit Punch)
-        resetZ: 0.28, 
+        // [打擊目標] 必須在鼻子周圍多大範圍內才算有效 (Body Hit 不算)
+        hitRadiusRatio: 0.85, 
 
-        // [冷卻幀數]
-        // 30FPS下，2幀約為 66ms。人手最快約 200ms 一拳，設置極低以防漏接
-        cooldownFrames: 2, 
-
-        // 防禦判定距離 (維持原樣)
-        guardDistRatio: 0.65 
+        // 防禦距離與緩衝
+        guardDistRatio: 0.65, 
+        cooldownFrames: 3 // 稍短的冷卻，支援快拳
     };
 
-    // 狀態變數
+    // --- 2. 變數初始化 ---
     let count = 0;
-    let leftState = 0; // 0: Ready, 1: Punching, 2: Retracting
-    let rightState = 0;
+    let leftStage = "ready", rightStage = "ready";
     let leftCooldown = 0, rightCooldown = 0;
     let leftGuardGrace = 0, rightGuardGrace = 0;
-    
-    // UI 元素
+    let floatTexts = []; // 存放 "HIT!"
+
+    const videoElement = document.getElementById('input_video');
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d', { alpha: false }); // alpha: false 提升效能
+    const countElement = document.getElementById('count');
     const scoreBoard = document.getElementById('score-board');
-    const countEl = document.getElementById('count');
-    const ledLeft = document.getElementById('led-left');
-    const ledRight = document.getElementById('led-right');
-    const canvas = document.getElementById('output_canvas');
-    const ctx = canvas.getContext('2d', { alpha: false });
-    const video = document.getElementById('input_video');
-    
-    // 浮動文字池
-    let floatTexts = [];
+    const guardLeftUI = document.getElementById('guard-left');
+    const guardRightUI = document.getElementById('guard-right');
 
-    // --- 核心邏輯 ---
-    function updateState(shoulder, wrist, nose, scale, state, cooldown, isOppositeGuarding, label) {
-        // 1. 計算 Z 軸衝程 (正值越大代表手越靠近鏡頭)
-        const zStroke = shoulder.z - wrist.z;
-        let newState = state;
-        let hit = false;
+    // --- 3. 視覺與邏輯函式 ---
 
-        // 狀態機優化
-        if (state === 0) { // Ready
-            // 觸發條件：衝程夠深 + 沒有冷卻 + 對向手有防禦
-            if (zStroke > CONFIG.triggerZ && cooldown <= 0 && isOppositeGuarding) {
-                newState = 1; // Punch
-                hit = true;
-            }
-        } 
-        else if (state === 1) { // Punching
-            // 馬上進入回收監控
-            newState = 2; 
-        } 
-        else if (state === 2) { // Retracting
-            // [關鍵] 只要衝程稍微縮回來小於 resetZ，立刻重置為 Ready
-            if (zStroke < CONFIG.resetZ) {
-                newState = 0;
-            }
-        }
-
-        return { newState, hit };
+    // 浮動文字 ("HIT!")
+    function spawnHitText(x, y, isLeft) {
+        if (floatTexts.length > 15) floatTexts.shift();
+        floatTexts.push({
+            x, y, 
+            text: "HIT!", // 改為顯示 HIT
+            color: isLeft ? '#00d2ff' : '#ff9f43',
+            life: 20, 
+            vy: -4 // 往上飄
+        });
     }
 
-    function updateUIEffect() {
-        // 先移除所有 tier class
-        scoreBoard.classList.remove('tier-1', 'tier-2', 'tier-3', 'tier-4', 'tier-5');
-        
-        // 根據 count 加入對應 class
+    // 更新計分板特效
+    function updateScoreBoardFX() {
+        scoreBoard.className = 'score-board'; // 重置
         if (count >= 150) scoreBoard.classList.add('tier-5');
         else if (count >= 100) scoreBoard.classList.add('tier-4');
         else if (count >= 70) scoreBoard.classList.add('tier-3');
         else if (count >= 50) scoreBoard.classList.add('tier-2');
         else if (count >= 30) scoreBoard.classList.add('tier-1');
+
+        countElement.classList.remove('hit-pop');
+        void countElement.offsetWidth; // Trigger reflow
+        countElement.classList.add('hit-pop');
+    }
+
+    // 核心判定邏輯 (Z軸 + 目標圈)
+    function processHand(shoulder, wrist, nose, scale, stage, cooldown, isOppositeGuarding, label) {
+        let nextStage = stage;
+        let isHit = false;
+
+        // 1. Z軸深度 (肩膀Z - 手腕Z)。正值代表手往鏡頭伸。
+        const zDepth = shoulder.z - wrist.z;
         
-        // 數字跳動 (利用 reflow 重置動畫)
-        countEl.classList.remove('hit-pop');
-        void countEl.offsetWidth; 
-        countEl.classList.add('hit-pop');
+        // 2. 2D 平面距離 (是否打在臉部範圍)
+        const distToNose = Math.hypot(wrist.x - nose.x, wrist.y - nose.y);
+        const hitZone = scale * CONFIG.hitRadiusRatio;
+        const inHitZone = distToNose < hitZone;
+
+        if (stage === "ready") {
+            // 觸發條件：手伸長 + 打在圈內 + 對側手防禦 + 無冷卻
+            if (zDepth > CONFIG.punchZThreshold && inHitZone && cooldown <= 0 && isOppositeGuarding) {
+                nextStage = "punch";
+                isHit = true;
+            }
+        } 
+        else if (stage === "punch") {
+            // 已觸發，準備回收
+            nextStage = "retract";
+        } 
+        else if (stage === "retract") {
+            // 回收條件：手稍微縮回來即可 (不需要縮到底)
+            if (zDepth < CONFIG.resetZThreshold) {
+                nextStage = "ready";
+            }
+        }
+
+        return { nextStage, isHit, zDepth }; // 回傳 zDepth 用於 Debug 或繪圖
     }
 
-    function spawnFloatText(x, y, isLeft) {
-        if (floatTexts.length > 15) floatTexts.shift();
-        floatTexts.push({
-            x, y, 
-            text: count, 
-            color: isLeft ? '#00d2ff' : '#ff9f43',
-            life: 20, 
-            vy: -3 
-        });
-    }
-
-    // --- 幀處理迴圈 ---
+    // --- 4. 主循環 ---
     function onResults(results) {
-        // 1. 繪製畫面
-        const cw = canvas.width; const ch = canvas.height;
-        ctx.save();
-        ctx.clearRect(0, 0, cw, ch);
-        ctx.drawImage(results.image, 0, 0, cw, ch);
+        // [畫質優化] 每一幀都檢查並設定 Canvas 尺寸等於 Video 原始尺寸
+        if (videoElement.videoWidth > 0 && (canvasElement.width !== videoElement.videoWidth)) {
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+        }
+        
+        const cw = canvasElement.width;
+        const ch = canvasElement.height;
 
-        // 2. 處理 MediaPipe 數據
+        // 清空與繪製攝影機畫面
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, cw, ch);
+        canvasCtx.drawImage(results.image, 0, 0, cw, ch);
+
         if (results.poseLandmarks) {
             const lm = results.poseLandmarks;
             const nose = lm[0];
             const leftS = lm[11], rightS = lm[12];
             const leftW = lm[15], rightW = lm[16];
             
+            // 下巴估算點 (嘴角的平均)
+            const chin = { x: (lm[9].x + lm[10].x)/2, y: (lm[9].y + lm[10].y)/2 };
+
             if (nose && leftS && rightS && leftW && rightW) {
-                // 計算比例尺 (肩膀寬度)
-                const shoulderDist = Math.hypot(leftS.x - rightS.x, leftS.y - rightS.y);
-                const scale = shoulderDist * 2.5;
-                const chin = { x: (lm[9].x + lm[10].x)/2, y: (lm[9].y + lm[10].y)/2 };
+                // 身體比例尺
+                const shoulderWidth = Math.hypot(leftS.x - rightS.x, leftS.y - rightS.y);
+                const scale = shoulderWidth * 2.5;
 
                 // --- A. 防禦偵測 ---
-                const guardThresh = scale * CONFIG.guardDistRatio;
+                const guardDist = scale * CONFIG.guardDistRatio;
                 const distL = Math.hypot(leftW.x - chin.x, leftW.y - chin.y);
                 const distR = Math.hypot(rightW.x - chin.x, rightW.y - chin.y);
 
-                // 寬容計時器 (手稍微離開一下下不算防禦失敗，防止震動誤判)
-                if (distL < guardThresh) leftGuardGrace = 5; else if (leftGuardGrace > 0) leftGuardGrace--;
-                if (distR < guardThresh) rightGuardGrace = 5; else if (rightGuardGrace > 0) rightGuardGrace--;
+                // 防禦寬容度 (避免閃爍)
+                if (distL < guardDist) leftGuardGrace = 5; else if (leftGuardGrace > 0) leftGuardGrace--;
+                if (distR < guardDist) rightGuardGrace = 5; else if (rightGuardGrace > 0) rightGuardGrace--;
 
                 const isGuardL = leftGuardGrace > 0;
                 const isGuardR = rightGuardGrace > 0;
 
-                // 更新防禦燈號
-                if (isGuardL) ledLeft.classList.add('active'); else ledLeft.classList.remove('active');
-                if (isGuardR) ledRight.classList.add('active'); else ledRight.classList.remove('active');
+                // 更新防禦 UI
+                if (isGuardL) guardLeftUI.classList.add('active'); else guardLeftUI.classList.remove('active');
+                if (isGuardR) guardRightUI.classList.add('active'); else guardRightUI.classList.remove('active');
 
-                // --- B. 拳擊判定 (核心) ---
-                const resL = updateState(leftS, leftW, nose, scale, leftState, leftCooldown, isGuardR, 'L');
-                const resR = updateState(rightS, rightW, nose, scale, rightState, rightCooldown, isGuardL, 'R');
+                // --- B. 繪製目標圈 (Target) ---
+                // 根據是否有人正在出拳改變顏色
+                const anyPunch = (leftStage === "punch" || rightStage === "punch" || leftStage === "retract" || rightStage === "retract");
+                
+                canvasCtx.beginPath();
+                canvasCtx.lineWidth = 4;
+                if (anyPunch) {
+                    canvasCtx.strokeStyle = "rgba(255, 255, 255, 0.8)"; // 打擊中變白
+                    canvasCtx.shadowBlur = 20; canvasCtx.shadowColor = "white";
+                } else {
+                    canvasCtx.strokeStyle = "rgba(255, 50, 50, 0.4)"; // 平常是淡紅色
+                    canvasCtx.shadowBlur = 0;
+                }
+                canvasCtx.arc(nose.x * cw, nose.y * ch, scale * CONFIG.hitRadiusRatio * cw, 0, 2 * Math.PI);
+                canvasCtx.stroke();
+                canvasCtx.shadowBlur = 0; // Reset
 
-                leftState = resL.newState;
-                rightState = resR.newState;
+                // --- C. 出拳判定 ---
+                const resL = processHand(leftS, leftW, nose, scale, leftStage, leftCooldown, isGuardR, 'L');
+                const resR = processHand(rightS, rightW, nose, scale, rightStage, rightCooldown, isGuardL, 'R');
+
+                leftStage = resL.nextStage;
+                rightStage = resR.nextStage;
 
                 // 處理命中
-                if (resL.hit) {
+                if (resL.isHit) {
                     count++;
                     leftCooldown = CONFIG.cooldownFrames;
-                    updateUIEffect();
                     playPunchSound();
-                    spawnFloatText(leftW.x, leftW.y, true);
-                    countEl.innerText = count;
+                    updateScoreBoardFX();
+                    spawnHitText(leftW.x, leftW.y, true);
                 }
-                if (resR.hit) {
+                if (resR.isHit) {
                     count++;
                     rightCooldown = CONFIG.cooldownFrames;
-                    updateUIEffect();
                     playPunchSound();
-                    spawnFloatText(rightW.x, rightW.y, false);
-                    countEl.innerText = count;
+                    updateScoreBoardFX();
+                    spawnHitText(rightW.x, rightW.y, false);
                 }
 
-                // 減少冷卻
+                countElement.innerText = count;
+
+                // 冷卻遞減
                 if (leftCooldown > 0) leftCooldown--;
                 if (rightCooldown > 0) rightCooldown--;
+
+                // 繪製手腕點 (視覺輔助)
+                function drawHandPoint(wrist, isGuarding) {
+                    canvasCtx.beginPath();
+                    canvasCtx.fillStyle = isGuarding ? "#00ff00" : "#ff3333";
+                    canvasCtx.arc(wrist.x * cw, wrist.y * ch, 8, 0, 2 * Math.PI);
+                    canvasCtx.fill();
+                }
+                drawHandPoint(leftW, isGuardL);
+                drawHandPoint(rightW, isGuardR);
             }
         }
 
-        // 3. 繪製浮動文字
-        ctx.scale(-1, 1); // 鏡像文字修正
-        ctx.font = "900 60px sans-serif";
-        ctx.lineWidth = 3;
+        // --- D. 繪製浮動文字 (HIT!) ---
+        ctx = canvasCtx;
+        ctx.save();
+        ctx.scale(-1, 1); // 文字鏡像修正
+        ctx.font = "italic 900 50px Arial";
+        ctx.lineWidth = 2;
         ctx.strokeStyle = "white";
         
         for (let i = floatTexts.length - 1; i >= 0; i--) {
             let t = floatTexts[i];
-            const renderX = -(cw - (t.x * cw)); // 鏡像 X 座標轉換
-            const renderY = (t.y * ch);
+            const rx = -(cw - (t.x * cw)); // 反轉 X
+            const ry = (t.y * ch);
             
             ctx.fillStyle = t.color;
-            ctx.strokeText(t.text, renderX, renderY);
-            ctx.fillText(t.text, renderX, renderY);
+            ctx.strokeText(t.text, rx, ry);
+            ctx.fillText(t.text, rx, ry);
             
-            t.y += t.vy / ch; // 移動
+            t.y += t.vy / ch; // 往上飄
             t.life--;
             if (t.life <= 0) floatTexts.splice(i, 1);
         }
         ctx.restore();
+        ctx.restore();
     }
 
-    // --- 啟動 ---
+    // --- 5. 初始化 ---
     const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
     pose.setOptions({
-        modelComplexity: 1, // 高速模式建議用 1，MSI Vector 可跑滿 30-60 FPS
+        modelComplexity: 1, // 1 為平衡，0 為極速，2 為高精確(較慢)
         smoothLandmarks: true,
         minDetectionConfidence: 0.6,
         minTrackingConfidence: 0.6
@@ -347,9 +369,10 @@
 
     async function initGame() {
         await loadSound();
-        const camera = new Camera(video, {
-            onFrame: async () => { await pose.send({image: video}); },
-            width: 1280, height: 720
+        const camera = new Camera(videoElement, {
+            onFrame: async () => { await pose.send({image: videoElement}); },
+            width: 1280, // 設定攝像頭請求解析度 (HD)
+            height: 720
         });
         await camera.start();
         document.getElementById('start-btn').style.display = 'none';
@@ -358,8 +381,8 @@
 
     window.resetCount = function() {
         count = 0;
-        countEl.innerText = 0;
-        updateUIEffect(); // 重置特效
+        countElement.innerText = 0;
+        updateScoreBoardFX();
     }
   </script>
 </body>
