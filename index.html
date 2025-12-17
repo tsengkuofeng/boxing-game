@@ -3,227 +3,108 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>聖誕拳擊特訓 - Christmas Boxing</title>
+<title>聖誕拳擊特訓 V2 - Christmas Boxing</title>
 <style>
 /* =========================================
-   【新增】聖誕夜背景場景 CSS
+   【背景與場景】
    ========================================= */
-
-/* 場景容器：放在最底層 */
 .scene-background {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
-  z-index: -1; /* 關鍵！放在攝影機畫面後面 */
-  overflow: hidden;
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  z-index: -1; overflow: hidden;
   background: linear-gradient(to bottom, #020111 10%, #191d3a 50%, #2d3e5e 90%);
 }
-
-/* 1. 月亮 (發光效果) */
 .moon {
-  position: absolute;
-  top: 50px; right: 50px;
-  width: 80px; height: 80px;
-  background: #fefcd7;
-  border-radius: 50%;
+  position: absolute; top: 50px; right: 50px; width: 80px; height: 80px;
+  background: #fefcd7; border-radius: 50%;
   box-shadow: 0 0 20px #fefcd7, 0 0 50px rgba(254, 252, 215, 0.4);
 }
-
-/* 2. 雪地 (白色) */
 .snow-ground {
-  position: absolute;
-  bottom: 0; left: 0;
-  width: 100%; height: 30%;
-  background: #fffafa;
-  border-top: 5px solid #e3e3e3;
+  position: absolute; bottom: 0; left: 0; width: 100%; height: 30%;
+  background: #fffafa; border-top: 5px solid #e3e3e3;
   border-radius: 50% 50% 0 0 / 20px 20px 0 0;
 }
-
-/* 3. 雪花動畫 */
 .snowflake {
-  position: absolute;
-  top: -10px;
-  background: white;
-  border-radius: 50%;
-  opacity: 0.8;
+  position: absolute; top: -10px; background: white; border-radius: 50%; opacity: 0.8;
   animation: fall linear infinite;
 }
-
 @keyframes fall {
   0% { top: -10%; transform: translateX(0); }
   100% { top: 100%; transform: translateX(20px); }
 }
-
-/* 針對不同雪花設定不同大小和速度 */
 .snowflake:nth-child(2) { width: 8px; height: 8px; animation-duration: 7s; opacity: 0.6; }
 .snowflake:nth-child(3) { width: 12px; height: 12px; animation-duration: 5s; opacity: 0.9; }
 .snowflake:nth-child(4) { width: 6px; height: 6px; animation-duration: 8s; opacity: 0.5; }
 .snowflake:nth-child(5) { width: 10px; height: 10px; animation-duration: 6s; opacity: 0.7; }
-.snowflake:nth-child(6) { width: 9px; height: 9px; animation-duration: 9s; opacity: 0.8; }
 
 /* =========================================
-   UI 與 遊戲介面 CSS
+   【UI 介面】
    ========================================= */
 body { 
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-  text-align: center; 
-  background: transparent; /* 讓背景透出 */
-  color: #fff; 
-  margin: 0; 
-  overflow: hidden; 
+  text-align: center; margin: 0; overflow: hidden; color: #fff; background: transparent;
 }
-
-.container { 
-  position: relative; 
-  width: 100vw; 
-  height: 100vh; 
-}
-
-/* 讓 canvas 覆蓋在背景上，但要在 UI 之下 */
+.container { position: relative; width: 100vw; height: 100vh; }
 video, canvas { 
-  position: absolute; 
-  top: 0; left: 0; 
-  width: 100%; height: 100%; 
-  object-fit: cover; 
-  transform: scaleX(-1);
-  z-index: 0; 
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+  object-fit: cover; transform: scaleX(-1); z-index: 0; 
 }
 
-/* --- 計分板 --- */
+/* 計分板 */
 .score-board { 
-  position: absolute; 
-  top: 80px; 
-  left: 50%; 
-  transform: translateX(-50%); 
-  z-index: 10; 
-  background: rgba(0, 0, 0, 0.6); 
-  padding: 10px 40px; 
-  border-radius: 20px; 
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  pointer-events: none; 
-  transition: all 0.3s ease;
+  position: absolute; top: 80px; left: 50%; transform: translateX(-50%); z-index: 10; 
+  background: rgba(0, 0, 0, 0.6); padding: 10px 40px; border-radius: 20px; 
+  border: 1px solid rgba(255, 255, 255, 0.3); pointer-events: none; transition: all 0.3s ease;
 }
 #count { font-size: 70px; font-weight: 800; color: #fff; line-height: 1; }
 .count-title { font-size: 14px; color: #ccc; letter-spacing: 2px; }
 #status { margin-top: 5px; font-size: 18px; font-weight: bold; color: #ddd; }
 
-/* --- 開始按鈕 --- */
+/* 按鈕 */
 #start-btn { 
-  position: absolute; 
-  top: 50%; left: 50%; 
-  transform: translate(-50%, -50%); 
-  z-index: 50; 
-  padding: 25px 50px; 
-  font-size: 30px; 
-  font-weight: 900;
-  background: linear-gradient(135deg, #007bff, #0056b3); 
-  color: white; 
-  border: 4px solid rgba(255, 255, 255, 0.5); 
-  border-radius: 60px; 
-  cursor: pointer; 
-  box-shadow: 0 0 30px rgba(0, 123, 255, 0.6); 
-  white-space: nowrap;
-  animation: pulse 1.5s infinite;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 50; 
+  padding: 25px 50px; font-size: 30px; font-weight: 900; 
+  background: linear-gradient(135deg, #007bff, #0056b3); color: white; border: 4px solid rgba(255, 255, 255, 0.5); 
+  border-radius: 60px; cursor: pointer; box-shadow: 0 0 30px rgba(0, 123, 255, 0.6); animation: pulse 1.5s infinite;
 }
+@keyframes pulse { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.05); } 100% { transform: translate(-50%, -50%) scale(1); } }
 
-@keyframes pulse {
-  0% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, -50%) scale(1.05); }
-  100% { transform: translate(-50%, -50%) scale(1); }
-}
-
-/* --- 歸零按鈕 --- */
 #reset-btn {
-  position: absolute;
-  bottom: 40px; right: 20px;
-  z-index: 100;
-  background: #ff4757;
-  color: white;
-  border: 2px solid white;
-  padding: 15px 30px;
-  font-size: 18px;
-  font-weight: bold;
-  border-radius: 30px;
-  cursor: pointer;
-  display: none; 
+  position: absolute; bottom: 40px; right: 20px; z-index: 100;
+  background: #ff4757; color: white; border: 2px solid white; padding: 15px 30px; 
+  font-size: 18px; font-weight: bold; border-radius: 30px; cursor: pointer; display: none; 
 }
 #reset-btn:active { transform: scale(0.9); }
 
+/* 特效與RWD */
 .pop-effect { animation: pop 0.1s ease-out; color: #00ff00 !important; }
 @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
 
-/* =========================================
-   手機橫向模式 (Landscape) 優化
-   ========================================= */
 @media (max-height: 500px) and (orientation: landscape) {
-  .score-board {
-    top: 10px; left: 20px; transform: none; padding: 5px 20px; 
-  }
+  .score-board { top: 10px; left: 20px; transform: none; padding: 5px 20px; }
   #count { font-size: 40px; }
-  .count-title { font-size: 10px; }
-  #status { font-size: 14px; margin-top: 0; }
-  #start-btn { padding: 15px 30px; font-size: 20px; border-width: 2px; }
-  #reset-btn { bottom: auto; top: 10px; right: 20px; padding: 8px 15px; font-size: 14px; }
+  #start-btn { padding: 15px 30px; font-size: 20px; }
+  #reset-btn { bottom: auto; top: 10px; right: 20px; padding: 8px 15px; }
 }
-
-/* =========================================
-   大螢幕 (Desktop) 優化
-   ========================================= */
 @media (min-width: 1024px) {
-  .score-board {
-    top: 60px; padding: 20px 80px; border-width: 3px; background: rgba(0, 0, 0, 0.7); 
-    left: 50%; transform: translateX(-50%);
-  }
+  .score-board { top: 60px; padding: 20px 80px; }
   #count { font-size: 140px; text-shadow: 0 0 30px currentColor; }
-  .count-title { font-size: 20px; letter-spacing: 5px; margin-bottom: 10px; }
-  #status { font-size: 24px; }
 }
 
-/* =========================================
-   火焰燃燒特效 (依照分數變色)
-   ========================================= */
-.fire-lv1 {
-  border-color: #ffd700 !important; color: #ffd700 !important;
-  box-shadow: 0 0 15px rgba(255, 215, 0, 0.6), inset 0 0 10px rgba(255, 215, 0, 0.4);
-  animation: burn-pulse 1s infinite alternate;
-}
-.fire-lv2 {
-  border-color: #ff4500 !important; color: #ff4500 !important;
-  box-shadow: 0 0 30px rgba(255, 69, 0, 0.8), inset 0 0 20px rgba(255, 69, 0, 0.5);
-  animation: burn-pulse 0.4s infinite alternate;
-}
-.fire-lv3 {
-  border-color: #00ffff !important; color: #00ffff !important;
-  background: rgba(0, 255, 255, 0.1) !important;
-  box-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff, 0 0 60px #fff;
-  animation: burn-max 0.1s infinite;
-}
-
-@keyframes burn-pulse {
-  0% { box-shadow: 0 0 15px currentColor, inset 0 0 5px currentColor; }
-  100% { box-shadow: 0 0 35px currentColor, inset 0 0 15px currentColor; transform: translateX(-50%) scale(1.05); }
-}
-@keyframes burn-max {
-  0% { transform: translateX(-50%) translate(1px, 1px) scale(1.1); }
-  25% { transform: translateX(-50%) translate(-1px, -2px) scale(1.1); }
-  50% { transform: translateX(-50%) translate(-2px, 1px) scale(1.1); }
-  75% { transform: translateX(-50%) translate(2px, 1px) scale(1.1); }
-  100% { transform: translateX(-50%) translate(-1px, -1px) scale(1.1); }
-}
+/* 火焰等級 */
+.fire-lv1 { border-color: #ffd700 !important; color: #ffd700 !important; box-shadow: 0 0 15px gold; }
+.fire-lv2 { border-color: #ff4500 !important; color: #ff4500 !important; box-shadow: 0 0 30px orangered; }
+.fire-lv3 { border-color: #00ffff !important; color: #00ffff !important; box-shadow: 0 0 40px cyan; }
 </style>
 </head>
 <body>
 
 <div class="scene-background">
-  <div class="night-sky">
-    <div class="moon"></div>
-  </div>
+  <div class="night-sky"><div class="moon"></div></div>
   <div class="snowflake" style="left: 10%; animation-delay: 0s;"></div>
   <div class="snowflake" style="left: 30%; animation-delay: 2s;"></div>
   <div class="snowflake" style="left: 50%; animation-delay: 4s;"></div>
   <div class="snowflake" style="left: 70%; animation-delay: 1s;"></div>
   <div class="snowflake" style="left: 90%; animation-delay: 3s;"></div>
-  
   <div class="snow-ground"></div>
 </div>
 
@@ -248,26 +129,30 @@ video, canvas {
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
 
 <script>
-// --- 0. 音效設定 (Sound Effect) ---
-// 使用短促的音效網址，支援重複播放
-const punchSoundLight = new Audio('https://assets.mixkit.co/active_storage/sfx/2151/2151-preview.mp3'); // 較輕的聲音 (Jab)
-const punchSoundHeavy = new Audio('https://assets.mixkit.co/active_storage/sfx/2152/2152-preview.mp3'); // 較重的聲音 (Cross)
+// --- 0. 音效設定 (單一檔案 punch.mp3) ---
+// 警告：請確保 punch.mp3 與此 HTML 在同一目錄下
+const punchAudioBase = new Audio('punch.mp3');
 
 // 預先載入
-punchSoundLight.load();
-punchSoundHeavy.load();
+punchAudioBase.load();
 
-// 播放音效函式 (解決快速連打時聲音被切斷的問題)
 function playHitSound(type) {
-    let soundToPlay = type === 'heavy' ? punchSoundHeavy : punchSoundLight;
-    // 複製節點，允許重疊播放
-    let clone = soundToPlay.cloneNode();
-    clone.volume = 0.8; // 音量微調
+    // 複製音訊節點以允許重疊播放
+    let clone = punchAudioBase.cloneNode();
+    clone.volume = 0.8;
+    
+    if (type === 'heavy') {
+        // 重拳：稍微放慢速度，聲音會變低沉
+        clone.playbackRate = 0.9; 
+    } else {
+        // 輕拳：稍微加快速度，聲音會變清脆
+        clone.playbackRate = 1.2; 
+    }
+    
     clone.play().catch(e => console.log("Audio play failed:", e));
 }
 
-
-// --- 1. 取得網頁元素 ---
+// --- 1. 變數與設定 ---
 const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
@@ -277,47 +162,32 @@ const statusElement = document.getElementById('status');
 const startBtn = document.getElementById('start-btn'); 
 const resetBtn = document.getElementById('reset-btn'); 
 
-// --- 2. 參數設定 (側面判定邏輯) ---
-// 左手 (Jab)
-const LEFT_CONFIG = {
-  triggerRatio: 0.65, 
-  resetRatio: 0.50,    
-  angle: 100,           
-  visibility: 0.4,      
-  cooldownFrames: 5,    
-  noseBlock: 0.30       
+// 【正面判定參數調整】
+// 正面打拳時，手伸直的視覺比例會因為透視變短，所以 triggerRatio 要調小
+const FRONT_PUNCH_CONFIG = {
+  // 觸發判定：手腕離肩膀的距離 / 肩寬
+  // 0.55 代表手伸出一半以上就算，正面透視下這已經很長了
+  triggerRatio: 0.55, 
+  
+  // 縮回判定：手回到身體附近
+  resetRatio: 0.40,
+  
+  // 冷卻時間 (Frames)
+  cooldownFrames: 4,
+  
+  // 防誤判：手必須高於腰部 (手腕.y < 手肘.y + tolerance)
+  // 正面時 y 軸判斷比角度判斷更準
+  elevationTolerance: 0.2 
 };
-
-// 右手 (Cross)
-const RIGHT_CONFIG = {
-  triggerRatio: 0.60,  
-  resetRatio: 0.45,    
-  angle: 90, 
-  visibility: 0.3,
-  cooldownFrames: 5,    
-  noseBlock: 0.30       
-};
-
-const DOMINANCE_BUFFER = -0.05; 
-const MAX_PUNCH_DURATION = 30; 
-const ELEVATION_TOLERANCE = 0.3;
 
 let count = 0;
 let leftStage = "down"; 
 let rightStage = "down";
 let leftCooldown = 0;
 let rightCooldown = 0;
-let leftPunchTimer = 0;
-let rightPunchTimer = 0;
 let floatingTexts = []; 
 
-// --- 3. 工具函數 ---
-function calculateAngle(a, b, c) {
-  let radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
-  let angle = Math.abs(radians * 180.0 / Math.PI);
-  if (angle > 180.0) angle = 360 - angle;
-  return angle;
-}
+// --- 2. 工具函數 ---
 function calculateDistance(a, b) {
   return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 }
@@ -327,35 +197,25 @@ function drawVisualText(ctx, text, visualX, visualY, color, fontSize = "24px") {
   const internalX = ctx.canvas.width - visualX;
   ctx.translate(internalX, visualY);
   ctx.scale(-1, 1); 
-  ctx.font = `bold ${fontSize} Arial`;
+  ctx.font = `900 ${fontSize} Arial`;
   ctx.fillStyle = color;
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 2;
+  ctx.strokeText(text, 0, 0);
   ctx.fillText(text, 0, 0); 
   ctx.restore();
 }
 
 function spawnFloatingText(x, y, text, color) {
-  floatingTexts.push({ x, y, text, color, life: 15, offsetY: 0 });
+  floatingTexts.push({ x, y, text, color, life: 20, offsetY: 0 });
 }
 
-// 火焰特效更新
 function updateFireEffect(currentCount) {
   if (!scoreBoard) return;
   scoreBoard.classList.remove('fire-lv1', 'fire-lv2', 'fire-lv3');
-
-  if (currentCount >= 100) {
-    scoreBoard.classList.add('fire-lv3'); // MAX
-  } else if (currentCount >= 80) {
-    scoreBoard.classList.add('fire-lv2'); // Heavy
-  } else if (currentCount >= 50) {
-    scoreBoard.classList.add('fire-lv1'); // Light
-  }
-}
-
-function triggerScoreBoardEffect() {
-  countElement.classList.remove('pop-effect'); 
-  void countElement.offsetWidth; 
-  countElement.classList.add('pop-effect'); 
-  updateFireEffect(count);
+  if (currentCount >= 100) scoreBoard.classList.add('fire-lv3');
+  else if (currentCount >= 50) scoreBoard.classList.add('fire-lv2');
+  else if (currentCount >= 20) scoreBoard.classList.add('fire-lv1');
 }
 
 window.resetCount = function() {
@@ -364,17 +224,12 @@ window.resetCount = function() {
   floatingTexts = []; 
   leftCooldown = 0; rightCooldown = 0;
   leftStage = "down"; rightStage = "down";
-  leftPunchTimer = 0; rightPunchTimer = 0;
-  
-  if (scoreBoard) {
-    scoreBoard.classList.remove('fire-lv1', 'fire-lv2', 'fire-lv3');
-  }
-  
+  if (scoreBoard) scoreBoard.classList.remove('fire-lv1', 'fire-lv2', 'fire-lv3');
   statusElement.innerText = "RESET OK"; 
   statusElement.style.color = "white";
 }
 
-// --- 4. 核心邏輯 (包含音效觸發) ---
+// --- 3. 核心偵測邏輯 ---
 function onResults(results) {
   canvasElement.width = videoElement.videoWidth;
   canvasElement.height = videoElement.videoHeight;
@@ -382,133 +237,122 @@ function onResults(results) {
   const ch = canvasElement.height;
 
   canvasCtx.save();
-  // 清除畫布，讓背景透出來
   canvasCtx.clearRect(0, 0, cw, ch);
-  
-  // 繪製半透明的攝影機畫面，讓背景和人影稍微融合 (可選)
-  // 若要很清楚的人像，globalAlpha 設為 1.0，或直接 drawImage
+  // 繪製半透明影像
+  canvasCtx.globalAlpha = 0.8;
   canvasCtx.drawImage(results.image, 0, 0, cw, ch);
+  canvasCtx.globalAlpha = 1.0;
 
+  // 浮動文字更新
   for (let i = floatingTexts.length - 1; i >= 0; i--) {
     let ft = floatingTexts[i];
-    ft.life--; ft.offsetY -= 5;
-    
+    ft.life--; ft.offsetY -= 3;
     const visualX = cw - ft.x; 
-    drawVisualText(canvasCtx, ft.text, visualX, ft.y + ft.offsetY, ft.color, "60px");
-    
+    drawVisualText(canvasCtx, ft.text, visualX, ft.y + ft.offsetY, ft.color, "50px");
     if (ft.life <= 0) floatingTexts.splice(i, 1);
   }
 
   if (leftCooldown > 0) leftCooldown--;
   if (rightCooldown > 0) rightCooldown--;
 
-  // 超時重置
-  if (leftStage === "punch" && ++leftPunchTimer > MAX_PUNCH_DURATION) { leftStage = "down"; leftPunchTimer = 0; }
-  else if (leftStage !== "punch") leftPunchTimer = 0;
-
-  if (rightStage === "punch" && ++rightPunchTimer > MAX_PUNCH_DURATION) { rightStage = "down"; rightPunchTimer = 0; }
-  else if (rightStage !== "punch") rightPunchTimer = 0;
-
   if (results.poseLandmarks) {
-    drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: 'rgba(255, 255, 255, 0.4)', lineWidth: 1});
+    // 簡單畫骨架
+    drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: 'rgba(255, 255, 255, 0.3)', lineWidth: 2});
     
-    const nose = results.poseLandmarks[0];
-    const leftShoulder = results.poseLandmarks[11];
-    const rightShoulder = results.poseLandmarks[12];
-    const leftElbow = results.poseLandmarks[13];
-    const rightElbow = results.poseLandmarks[14];
-    const leftWrist = results.poseLandmarks[15];
-    const rightWrist = results.poseLandmarks[16];
+    const lm = results.poseLandmarks;
+    const nose = lm[0];
+    const leftShoulder = lm[11];
+    const rightShoulder = lm[12];
+    const leftElbow = lm[13];
+    const rightElbow = lm[14];
+    const leftWrist = lm[15];
+    const rightWrist = lm[16];
 
-    if (nose && leftShoulder && rightShoulder) {
+    if (leftShoulder && rightShoulder) {
+      // 基準尺：肩寬 (這是相對穩定的長度)
       const shoulderWidth = calculateDistance(leftShoulder, rightShoulder);
-      const noseToShoulder = calculateDistance(nose, leftShoulder);
-      const stableScale = Math.max(shoulderWidth, noseToShoulder * 1.8);
-
-      const targetX = (nose.x - (stableScale * 1.2)) * cw;
-      const targetY = nose.y * ch;
-
-      canvasCtx.beginPath();
-      canvasCtx.strokeStyle = "#00FF00"; 
-      canvasCtx.lineWidth = 4;
-      canvasCtx.arc(targetX, targetY, 20, 0, 2 * Math.PI); 
-      canvasCtx.stroke();
-      const visualTargetX = cw - targetX;
-      drawVisualText(canvasCtx, "TARGET", visualTargetX - 40, targetY - 30, "rgba(0,255,0,0.8)", "16px");
-
-      let leftRatio = 0, rightRatio = 0;
-      if (leftElbow && leftWrist) leftRatio = calculateDistance(leftShoulder, leftWrist) / stableScale;
-      if (rightElbow && rightWrist) rightRatio = calculateDistance(rightShoulder, rightWrist) / stableScale;
-
-      const isLeftDominant = leftRatio > (rightRatio + DOMINANCE_BUFFER);
-      const isRightDominant = rightRatio > (leftRatio + DOMINANCE_BUFFER);
+      
+      // 我們不畫圓圈了，因為正面打擊是任意方向
+      // 只需要簡單的提示文字
+      // drawVisualText(canvasCtx, "BOXING MODE", cw/2, 50, "#FFF", "20px");
 
       // 左手處理
-      if ((isLeftDominant || leftStage === "punch" || leftStage === "retract") && leftElbow && leftWrist && leftWrist.visibility > LEFT_CONFIG.visibility) {
-        leftStage = processHand(leftShoulder, leftElbow, leftWrist, stableScale, leftStage, "L", nose, leftCooldown, LEFT_CONFIG);
+      if (leftWrist && leftElbow && leftWrist.visibility > 0.5) {
+        leftStage = processFrontHand(leftShoulder, leftWrist, leftElbow, shoulderWidth, leftStage, "L", leftCooldown);
       }
-
+      
       // 右手處理
-      if ((isRightDominant || rightStage === "punch" || rightStage === "retract") && rightElbow && rightWrist && rightWrist.visibility > RIGHT_CONFIG.visibility) {
-        rightStage = processHand(rightShoulder, rightElbow, rightWrist, stableScale, rightStage, "R", nose, rightCooldown, RIGHT_CONFIG);
+      if (rightWrist && rightElbow && rightWrist.visibility > 0.5) {
+        rightStage = processFrontHand(rightShoulder, rightWrist, rightElbow, shoulderWidth, rightStage, "R", rightCooldown);
       }
     }
   }
   canvasCtx.restore();
 }
 
-function processHand(shoulder, elbow, wrist, scale, currentStage, label, nose, currentCooldown, config) {
-  const angle = calculateAngle(shoulder, elbow, wrist);
-  const wristDist = calculateDistance(shoulder, wrist);
-  const ratio = wristDist / scale;
-  const wristToNoseDist = calculateDistance(wrist, nose);
-  const noseRatio = wristToNoseDist / scale;
+// 正面打擊判定邏輯
+function processFrontHand(shoulder, wrist, elbow, scale, currentStage, label, cooldown) {
+  // 1. 計算手腕到肩膀的距離 (Normalized by Shoulder Width)
+  const dist = calculateDistance(shoulder, wrist);
+  const ratio = dist / scale;
+  
+  // 2. 高度檢查：手腕不能掉到太下面 (防止放下手時誤判)
+  // MediaPipe Y軸向下是正，所以 wrist.y < elbow.y 代表手舉起來
+  // 我們放寬一點，加上 tolerance
+  const isHighEnough = wrist.y < (elbow.y + FRONT_PUNCH_CONFIG.elevationTolerance);
 
   let nextStage = currentStage;
-  const isHighEnough = wrist.y < (shoulder.y + ELEVATION_TOLERANCE);
 
-  // --- 狀態機邏輯 ---
+  // 狀態機
   if (currentStage === "down") {
-    if (currentCooldown === 0) {
-      if (ratio > config.triggerRatio && noseRatio > config.noseBlock && isHighEnough) {
-        nextStage = "punch";
-      }
+    // 準備狀態 -> 出拳
+    // 條件：手伸長 + 手有舉高 + 冷卻結束
+    if (ratio > FRONT_PUNCH_CONFIG.triggerRatio && isHighEnough && cooldown === 0) {
+      nextStage = "punch";
     }
   }
   else if (currentStage === "punch") {
-    if (ratio < config.triggerRatio) {
-      nextStage = "retract";
-      
-      // === 擊中判定成功 ===
-      count++;
-      countElement.innerText = count;
-      triggerScoreBoardEffect(); 
+    // 出拳狀態 -> 收拳 (或判定擊中)
+    // 這裡我們簡化：只要一達到 punch 狀態就算擊中，然後強制進入 retract 避免連發
+    
+    // === 擊中判定 ===
+    count++;
+    countElement.innerText = count;
+    
+    // UI特效
+    countElement.classList.remove('pop-effect'); 
+    void countElement.offsetWidth; 
+    countElement.classList.add('pop-effect'); 
+    updateFireEffect(count);
 
-      // 【音效觸發區】
-      // 左手輕拳，右手重拳
-      if (label === "L") {
-          playHitSound('light'); // 播放 Jab 音效
-      } else {
-          playHitSound('heavy'); // 播放 Cross 音效
-      }
-
-      if (label === "L") leftCooldown = config.cooldownFrames;
-      else rightCooldown = config.cooldownFrames;
-
-      const hitX = wrist.x * canvasElement.width;
-      const hitY = wrist.y * canvasElement.height;
-      const color = label === "L" ? "#00FFFF" : "#FFA500"; 
-      spawnFloatingText(hitX + (Math.random()*40-20), hitY, "+1", color);
-      statusElement.innerText = label === "L" ? "LEFT HIT!" : "RIGHT HIT!";
-      statusElement.style.color = color;
+    // 音效 (Punch.mp3)
+    // 左手當刺拳(輕)，右手當重拳(重)
+    if (label === "L") {
+       playHitSound('light'); 
+    } else {
+       playHitSound('heavy'); 
     }
+
+    // 設定冷卻
+    if (label === "L") leftCooldown = FRONT_PUNCH_CONFIG.cooldownFrames;
+    else rightCooldown = FRONT_PUNCH_CONFIG.cooldownFrames;
+
+    // 浮動文字
+    const hitX = wrist.x * canvasElement.width;
+    const hitY = wrist.y * canvasElement.height;
+    const color = label === "L" ? "#00FFFF" : "#FFA500"; 
+    spawnFloatingText(hitX, hitY, "+1", color);
+    
+    statusElement.innerText = label === "L" ? "LEFT HIT!" : "RIGHT HIT!";
+    statusElement.style.color = color;
+
+    nextStage = "retract";
   }
   else if (currentStage === "retract") {
-    if (ratio < config.resetRatio) {
+    // 收拳狀態 -> 回到準備
+    // 條件：手縮回到身體附近
+    if (ratio < FRONT_PUNCH_CONFIG.resetRatio) {
       nextStage = "down"; 
-    }
-    else if (ratio > config.triggerRatio && currentCooldown === 0) {
-      nextStage = "punch";
     }
   }
 
@@ -520,12 +364,12 @@ const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@medi
 pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 pose.onResults(onResults);
 
-// --- 啟動函數 ---
+// --- 啟動 ---
 window.startCamera = function() {
-  // 用戶互動時嘗試播放一次靜音音效，以解鎖瀏覽器的音效限制
-  punchSoundLight.play().then(() => {
-    punchSoundLight.pause();
-    punchSoundLight.currentTime = 0;
+  // 解鎖音效 (播放瞬間靜音)
+  punchAudioBase.play().then(() => {
+    punchAudioBase.pause();
+    punchAudioBase.currentTime = 0;
   }).catch(e => console.log("Audio unlock failed", e));
 
   const camera = new Camera(videoElement, {
@@ -534,14 +378,8 @@ window.startCamera = function() {
   });
   camera.start();
   
-  const btn = document.getElementById('start-btn');
-  if (btn) {
-    btn.style.display = 'none'; 
-  }
-  const rBtn = document.getElementById('reset-btn');
-  if (rBtn) {
-    rBtn.style.display = 'block';
-  }
+  document.getElementById('start-btn').style.display = 'none'; 
+  document.getElementById('reset-btn').style.display = 'block';
 }
 </script>
 </body>
