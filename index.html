@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>V17 精準打擊版 (速度過濾)</title>
+  <title>V18 角度鎖定+骨架版</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
   <style>
-    /* 全螢幕設定 */
+    /* 基礎全螢幕設定 */
     body { font-family: 'Segoe UI', sans-serif; background: #000; margin: 0; overflow: hidden; }
     canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; transform: scaleX(-1); z-index: 0; }
     video { display: none; }
@@ -19,22 +19,20 @@
 
     /* 計分板 */
     .score-board { margin-top: 30px; padding: 15px 60px; border-radius: 20px; text-align: center; background: rgba(0, 0, 0, 0.6); border: 3px solid #555; transition: all 0.2s; }
-    .count-label { font-size: 14px; color: #aaa; letter-spacing: 4px; font-weight: bold; margin-bottom: 5px; }
     #count { font-size: 100px; font-weight: 900; line-height: 1; color: #fff; }
+    .count-label { font-size: 14px; color: #aaa; letter-spacing: 4px; font-weight: bold; margin-bottom: 5px; }
 
-    /* 特效分級 */
+    /* 特效 */
     .score-board.tier-1 { border-color: #00d2ff; box-shadow: 0 0 20px #00d2ff; }
     .score-board.tier-2 { border-color: #ffd700; box-shadow: 0 0 30px #ffd700; animation: breath 0.5s infinite alternate; }
     .score-board.tier-3 { border-color: #ff4500; box-shadow: 0 0 40px #ff4500; animation: shake 0.3s infinite; }
-    .score-board.tier-4 { border-color: #ff0000; box-shadow: 0 0 60px #ff0000; animation: shake-hard 0.2s infinite; }
     .hit-pop { animation: pop 0.1s ease-out; }
 
     @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
     @keyframes breath { 0% { transform: scale(1); } 100% { transform: scale(1.05); } }
     @keyframes shake { 0% { transform: rotate(-1deg); } 50% { transform: rotate(1deg); } 100% { transform: rotate(0deg); } }
-    @keyframes shake-hard { 0% { transform: translate(-2px, 2px); } 50% { transform: translate(2px, -2px); } 100% { transform: translate(0, 0); } }
 
-    /* 防禦與數據顯示 */
+    /* 防禦UI */
     .info-bar { display: flex; gap: 20px; margin-top: 10px; justify-content: center; }
     .guard-box { display: flex; align-items: center; gap: 5px; color: #777; font-weight: bold; font-size: 14px; }
     .guard-led { width: 10px; height: 10px; border-radius: 50%; background: #444; border: 1px solid #777; }
@@ -45,6 +43,9 @@
     #start-btn, #reset-btn { position: absolute; pointer-events: auto; cursor: pointer; border: none; font-weight: bold; border-radius: 50px; color: white; }
     #start-btn { top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px 60px; font-size: 24px; background: #0984e3; box-shadow: 0 0 30px rgba(9, 132, 227, 0.8); z-index: 100; }
     #reset-btn { bottom: 30px; right: 30px; padding: 12px 25px; background: #d63031; display: none; z-index: 100; }
+    
+    /* 數據顯示 (Debug) */
+    .debug-info { position: absolute; bottom: 30px; left: 30px; color: #00ff00; font-family: monospace; font-size: 16px; text-align: left; text-shadow: 1px 1px 0 #000; }
   </style>
 </head>
 <body>
@@ -63,9 +64,10 @@
       <div id="guard-right" class="guard-box"><div class="guard-led"></div> R-GUARD</div>
     </div>
   </div>
+  <div class="debug-info" id="debug-text">Angle Data</div>
 </div>
 
-<button id="start-btn" onclick="initGame()">🥊 啟動 V17 精準修正版</button>
+<button id="start-btn" onclick="initGame()">🥊 啟動 V18 骨架角度版</button>
 <button id="reset-btn" onclick="resetCount()">RESET</button>
 
 <script>
@@ -91,21 +93,16 @@ function playSound() {
     src.start(0);
 }
 
-// --- V17 關鍵參數 ---
+// --- V18 核心參數 ---
 const CONFIG = {
-    // 1. 深度門檻 (降低難度)：手要伸多長才算？
-    // 原本 0.35，改為 0.28，讓你稍微出拳就能觸發，解決「偵測不到」的問題
     triggerZ: 0.28,
-
-    // 2. [新增] 速度門檻：防止慢慢舉手被誤判
-    // 每一幀 Z 軸的變化量必須大於此值，才算是有「攻擊意圖」
-    minSpeed: 0.04, 
-
-    // 3. 重置門檻
+    minSpeed: 0.04,
     resetZ: 0.20,
-
-    // 4. 打擊圈大小 (鼻子周圍)
     hitRadiusRatio: 0.7, 
+    
+    // [新增] 手臂伸直角度門檻 (度)
+    // 180度是全直。設 140度 可以容許快速出拳沒完全打直，但能過濾掉 90度的轉身
+    minArmAngle: 140, 
 
     guardDistRatio: 0.65,
     cooldownFrames: 4
@@ -113,11 +110,12 @@ const CONFIG = {
 
 // 狀態變數
 let count = 0;
-let leftState = 0, rightState = 0; // 0: Ready, 1: Punch, 2: Retract
+let leftState = 0, rightState = 0;
 let leftCooldown = 0, rightCooldown = 0;
 let leftGuardGrace = 0, rightGuardGrace = 0;
-let lastLeftZ = 0, lastRightZ = 0; // 用於計算速度
+let lastLeftZ = 0, lastRightZ = 0;
 let floatTexts = [];
+let debugLeftAngle = 0, debugRightAngle = 0;
 
 // DOM
 const video = document.getElementById('input_video');
@@ -127,53 +125,74 @@ const countEl = document.getElementById('count');
 const board = document.getElementById('score-board');
 const gl = document.getElementById('guard-left');
 const gr = document.getElementById('guard-right');
+const debugEl = document.getElementById('debug-text');
 
-// 浮動文字 HIT
 function spawnHit(x, y, isLeft) {
     if (floatTexts.length > 10) floatTexts.shift();
     floatTexts.push({ x, y, text: "HIT!", color: isLeft ? '#00d2ff' : '#ff9f43', life: 20, vy: -5 });
 }
 
-// 核心邏輯
-function processHand(shoulder, wrist, nose, scale, state, cooldown, isOppGuarding, lastZ, label) {
+// --- 新增：計算 3D 角度函式 ---
+function calculate3DAngle(a, b, c) {
+    // b 是頂點 (手肘)
+    // 向量 BA (肘到肩)
+    const v1 = { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+    // 向量 BC (肘到腕)
+    const v2 = { x: c.x - b.x, y: c.y - b.y, z: c.z - b.z };
+
+    // 內積 (Dot Product)
+    const dot = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+    
+    // 向量長度 (Magnitude)
+    const mag1 = Math.sqrt(v1.x*v1.x + v1.y*v1.y + v1.z*v1.z);
+    const mag2 = Math.sqrt(v2.x*v2.x + v2.y*v2.y + v2.z*v2.z);
+
+    // 餘弦定理求角度
+    const angleRad = Math.acos(dot / (mag1 * mag2));
+    const angleDeg = angleRad * (180.0 / Math.PI);
+    
+    return angleDeg;
+}
+
+function processHand(shoulder, elbow, wrist, nose, scale, state, cooldown, isOppGuarding, lastZ) {
     let newState = state;
     let hit = false;
     
-    // 計算目前的 Z 伸展量 (Stroke)
+    // 1. Z 軸距離
     const currentZ = shoulder.z - wrist.z;
-    
-    // 計算速度 (這一幀的深度 - 上一幀的深度)
-    // 如果是正數，代表正在往鏡頭衝
+    // 2. 速度
     const velocity = currentZ - lastZ;
-    
+    // 3. [新增] 3D 角度
+    const armAngle = calculate3DAngle(shoulder, elbow, wrist);
+
     // 距離判定
     const distToNose = Math.hypot(wrist.x - nose.x, wrist.y - nose.y);
     const inHitZone = distToNose < (scale * CONFIG.hitRadiusRatio);
 
     if (state === 0) { // Ready
-        // 判定條件：
-        // 1. 深度夠 (currentZ > threshold)
-        // 2. 速度夠快 (velocity > minSpeed) -> 這是解決「舉手誤判」的關鍵
-        // 3. 在目標圈內
-        // 4. 對側手有防禦 (除非你想要單手玩，可移除 isOppGuarding)
-        
-        if (currentZ > CONFIG.triggerZ && velocity > CONFIG.minSpeed && inHitZone && cooldown <= 0 && isOppGuarding) {
-            newState = 1; // Punch!
+        // 判定：深度 + 速度 + 在圈內 + [新增] 手臂打直
+        if (currentZ > CONFIG.triggerZ && 
+            velocity > CONFIG.minSpeed && 
+            inHitZone && 
+            cooldown <= 0 && 
+            isOppGuarding &&
+            armAngle > CONFIG.minArmAngle // <--- 轉體過濾關鍵
+           ) {
+            newState = 1;
             hit = true;
         }
     } 
     else if (state === 1) { 
-        newState = 2; // 馬上進入回收檢查
+        newState = 2; 
     } 
-    else if (state === 2) { // Retract
+    else if (state === 2) { 
         if (currentZ < CONFIG.resetZ) newState = 0;
     }
 
-    return { newState, hit, currentZ }; // 回傳 currentZ 更新 lastZ
+    return { newState, hit, currentZ, armAngle };
 }
 
 function onResults(results) {
-    // 鎖定解析度
     if (video.videoWidth > 0 && canvas.width !== video.videoWidth) {
         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
     }
@@ -186,63 +205,72 @@ function onResults(results) {
     if (results.poseLandmarks) {
         const lm = results.poseLandmarks;
         const nose = lm[0];
-        const lS = lm[11], rS = lm[12];
-        const lW = lm[15], rW = lm[16];
+        // 獲取肩膀、手肘、手腕
+        const lS = lm[11], lE = lm[13], lW = lm[15];
+        const rS = lm[12], rE = lm[14], rW = lm[16];
         const chin = { x: (lm[9].x + lm[10].x)/2, y: (lm[9].y + lm[10].y)/2 };
 
         if (nose && lS && rS && lW && rW) {
             const scale = Math.hypot(lS.x - rS.x, lS.y - rS.y) * 2.5;
 
-            // --- 1. 繪製「有效擊打區域」 (Debug 圈圈) ---
-            // 這是你要的：顯示系統判定的紅點範圍
+            // --- 0. [新增] 繪製綠色骨架 ---
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = "#00ff00"; // 亮綠色
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.beginPath();
+            // 左手
+            ctx.moveTo(lS.x * cw, lS.y * ch);
+            ctx.lineTo(lE.x * cw, lE.y * ch);
+            ctx.lineTo(lW.x * cw, lW.y * ch);
+            // 右手
+            ctx.moveTo(rS.x * cw, rS.y * ch);
+            ctx.lineTo(rE.x * cw, rE.y * ch);
+            ctx.lineTo(rW.x * cw, rW.y * ch);
+            // 肩膀連線
+            ctx.moveTo(lS.x * cw, lS.y * ch);
+            ctx.lineTo(rS.x * cw, rS.y * ch);
+            ctx.stroke();
+
+            // --- 1. 擊打圈 ---
             const hitR = scale * CONFIG.hitRadiusRatio;
             ctx.beginPath();
-            ctx.lineWidth = 3;
-            // 如果有人出拳，圈圈變亮白，否則為半透明紅
             const isPunching = (leftState === 1 || rightState === 1);
             ctx.strokeStyle = isPunching ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 0, 0, 0.3)";
             ctx.fillStyle = isPunching ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 0, 0, 0.05)";
             ctx.arc(nose.x * cw, nose.y * ch, hitR * cw, 0, 2 * Math.PI);
-            ctx.stroke();
-            ctx.fill();
-            
-            // 畫中心點 (鼻子)
-            ctx.beginPath(); ctx.fillStyle = "red"; ctx.arc(nose.x*cw, nose.y*ch, 5, 0, 2*Math.PI); ctx.fill();
+            ctx.stroke(); ctx.fill();
 
-            // --- 2. 防禦判定 ---
+            // --- 2. 防禦 ---
             const gDist = scale * CONFIG.guardDistRatio;
             if (Math.hypot(lW.x - chin.x, lW.y - chin.y) < gDist) leftGuardGrace = 5; else if (leftGuardGrace > 0) leftGuardGrace--;
             if (Math.hypot(rW.x - chin.x, rW.y - chin.y) < gDist) rightGuardGrace = 5; else if (rightGuardGrace > 0) rightGuardGrace--;
-            
-            const gL = leftGuardGrace > 0;
-            const gR = rightGuardGrace > 0;
-            
+            const gL = leftGuardGrace > 0, gR = rightGuardGrace > 0;
             if (gL) gl.classList.add('active'); else gl.classList.remove('active');
             if (gR) gr.classList.add('active'); else gr.classList.remove('active');
 
-            // --- 3. 處理出拳 (含速度判定) ---
-            // 注意：第一次執行 lastLeftZ 為 0，可能會誤觸，但之後會正常
+            // --- 3. 出拳與角度計算 ---
             if (lastLeftZ === 0) { lastLeftZ = lS.z - lW.z; lastRightZ = rS.z - rW.z; }
 
-            const resL = processHand(lS, lW, nose, scale, leftState, leftCooldown, gR, lastLeftZ, 'L');
-            const resR = processHand(rS, rW, nose, scale, rightState, rightCooldown, gL, lastRightZ, 'R');
+            const resL = processHand(lS, lE, lW, nose, scale, leftState, leftCooldown, gR, lastLeftZ);
+            const resR = processHand(rS, rE, rW, nose, scale, rightState, rightCooldown, gL, lastRightZ);
 
-            // 更新狀態與數值
-            leftState = resL.newState; lastLeftZ = resL.currentZ;
-            rightState = resR.newState; lastRightZ = resR.currentZ;
+            leftState = resL.newState; lastLeftZ = resL.currentZ; debugLeftAngle = resL.armAngle;
+            rightState = resR.newState; lastRightZ = resR.currentZ; debugRightAngle = resR.armAngle;
 
-            if (resL.hit) { hitLogic(true, lW.x, lW.y); }
-            if (resR.hit) { hitLogic(false, rW.x, rW.y); }
+            if (resL.hit) hitLogic(true, lW.x, lW.y);
+            if (resR.hit) hitLogic(false, rW.x, rW.y);
 
             if (leftCooldown > 0) leftCooldown--;
             if (rightCooldown > 0) rightCooldown--;
             
-            // 手腕光點
             drawDot(lW, gL); drawDot(rW, gR);
         }
     }
+    
+    // 顯示即時角度 (Debug)
+    debugEl.innerText = `L-Angle: ${Math.round(debugLeftAngle)}° | R-Angle: ${Math.round(debugRightAngle)}°`;
 
-    // 文字特效
     drawFloatingTexts(cw, ch);
     ctx.restore();
 }
@@ -251,15 +279,11 @@ function hitLogic(isLeft, x, y) {
     count++;
     countEl.innerText = count;
     countEl.classList.remove('hit-pop'); void countEl.offsetWidth; countEl.classList.add('hit-pop');
-    
     if(isLeft) leftCooldown = CONFIG.cooldownFrames; else rightCooldown = CONFIG.cooldownFrames;
     playSound();
     spawnHit(x, y, isLeft);
-    
-    // UI Tier
     board.className = 'score-board';
-    if(count >= 100) board.classList.add('tier-4');
-    else if(count >= 70) board.classList.add('tier-3');
+    if(count >= 100) board.classList.add('tier-3');
     else if(count >= 40) board.classList.add('tier-2');
     else if(count >= 20) board.classList.add('tier-1');
 }
@@ -284,7 +308,6 @@ function drawFloatingTexts(cw, ch) {
     }
 }
 
-// 啟動
 const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
 pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
 pose.onResults(onResults);
