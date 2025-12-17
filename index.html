@@ -3,56 +3,103 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>V21 精準防禦鎖定版</title>
+  <title>V22 聖誕校正版</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
   <style>
-    /* 基礎全螢幕 */
-    body { font-family: 'Segoe UI', monospace; background: #000; margin: 0; overflow: hidden; }
-    canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; transform: scaleX(-1); z-index: 0; }
+    /* 全局設定 */
+    body { font-family: 'Segoe UI', monospace; margin: 0; overflow: hidden; background: #000; color: white; }
+    canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; transform: scaleX(-1); z-index: 1; opacity: 0; transition: opacity 1s; }
     video { display: none; }
 
-    /* UI 層 */
-    .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+    /* ==================== */
+    /* Phase 1: 聖誕夜空   */
+    /* ==================== */
+    #scene-intro {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100;
+        background: linear-gradient(to bottom, #000011, #0a0a2a);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        transition: opacity 1s;
+    }
 
-    /* Debug 儀表板 (左側) */
+    /* 月亮 */
+    .moon {
+        position: absolute; top: 10%; right: 15%;
+        width: 100px; height: 100px; background: #fff; border-radius: 50%;
+        box-shadow: 0 0 40px #fff, 0 0 80px #ffffcc;
+        animation: glow 3s infinite alternate;
+    }
+    @keyframes glow { from { box-shadow: 0 0 40px #fff; } to { box-shadow: 0 0 60px #fff, 0 0 100px #ffffcc; } }
+
+    /* 雪花 */
+    .snowflake {
+        position: absolute; top: -10px; color: #fff; font-size: 1em; opacity: 0.8;
+        animation: fall linear infinite;
+    }
+    @keyframes fall { to { transform: translateY(110vh); } }
+
+    /* 標題與按鈕 */
+    .intro-box { z-index: 10; text-align: center; }
+    h1 { font-size: 60px; text-shadow: 0 0 20px #00d2ff; margin-bottom: 20px; }
+    p { font-size: 18px; color: #ccc; margin-bottom: 40px; }
+    
+    .btn-main {
+        padding: 15px 50px; font-size: 24px; border: none; border-radius: 50px;
+        background: #e17055; color: white; cursor: pointer; font-weight: bold;
+        box-shadow: 0 0 20px rgba(225, 112, 85, 0.6); transition: transform 0.2s;
+    }
+    .btn-main:hover { transform: scale(1.1); background: #fab1a0; }
+
+    /* ==================== */
+    /* Phase 2: 校正畫面   */
+    /* ==================== */
+    #scene-calibration {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 90;
+        background: rgba(0,0,0,0.85); display: none;
+        flex-direction: column; align-items: center; justify-content: center;
+        text-align: center;
+    }
+    .calib-step { font-size: 36px; margin-bottom: 20px; color: #00d2ff; font-weight: bold; }
+    .calib-instr { font-size: 20px; color: #ddd; margin-bottom: 40px; max-width: 600px; line-height: 1.5; }
+    .calib-data { font-family: monospace; font-size: 24px; color: #fab1a0; margin-bottom: 30px; border: 1px solid #555; padding: 10px 30px; border-radius: 10px; }
+    
+    /* ==================== */
+    /* Phase 3: 遊戲介面   */
+    /* ==================== */
+    #scene-game { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; display: none; }
+
+    /* Debug 儀表板 */
     .debug-panel {
         position: absolute; top: 20px; left: 20px;
-        background: rgba(0, 0, 0, 0.8); border: 1px solid #555;
+        background: rgba(0, 0, 0, 0.7); border: 1px solid #555;
         padding: 15px; border-radius: 10px; text-align: left;
-        color: #fff; font-size: 13px; line-height: 1.7; width: 200px;
+        color: #fff; font-size: 13px; width: 220px; pointer-events: auto;
     }
-    .debug-header { border-bottom: 1px solid #555; margin-bottom: 5px; color: #aaa; font-size: 11px; letter-spacing: 1px; }
-    .debug-row { display: flex; justify-content: space-between; }
+    .debug-header { border-bottom: 1px solid #555; margin-bottom: 5px; color: #aaa; font-size: 11px; }
+    .debug-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
     .val { font-weight: bold; font-family: monospace; }
-    
-    /* 狀態顏色 */
-    .pass { color: #00ff00; }    /* 通過 */
-    .fail { color: #777; }       /* 未通過 (變暗以便專注看綠色) */
-    .locked { color: #ff3333; }  /* 卡住/冷卻 */
+    .pass { color: #00ff00; } .fail { color: #777; } .locked { color: #ff3333; }
 
-    /* 計分板 (中央) */
+    /* 計分板 */
     .score-container { 
         position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
         display: flex; flex-direction: column; align-items: center;
     }
     .score-board { 
         padding: 10px 50px; border-radius: 20px; text-align: center; 
-        background: rgba(0, 0, 0, 0.6); border: 3px solid #555; transition: all 0.1s; 
+        background: rgba(0, 0, 0, 0.6); border: 3px solid #555; 
     }
     #count { font-size: 110px; font-weight: 900; line-height: 1; color: #fff; }
     .count-label { font-size: 14px; color: #aaa; letter-spacing: 4px; font-weight: bold; }
 
-    /* 防禦狀態顯示 */
+    /* 防禦燈 */
     .guard-status { margin-top: 10px; display: flex; gap: 15px; }
-    .guard-item { display: flex; align-items: center; gap: 5px; color: #555; font-weight: bold; font-size: 12px; transition: color 0.2s; }
-    .g-dot { width: 10px; height: 10px; border-radius: 50%; background: #333; border: 1px solid #555; }
-    
-    /* 激活狀態 */
+    .guard-item { display: flex; align-items: center; gap: 5px; color: #555; font-weight: bold; font-size: 12px; }
     .guard-item.active { color: #00ff00; }
-    .guard-item.active .g-dot { background: #00ff00; box-shadow: 0 0 8px #00ff00; border-color: #fff; }
+    .g-dot { width: 10px; height: 10px; border-radius: 50%; background: #333; border: 1px solid #555; }
+    .guard-item.active .g-dot { background: #00ff00; box-shadow: 0 0 8px #00ff00; }
 
     /* 打擊特效 */
     .hit-pop { animation: pop 0.1s ease-out; }
@@ -60,49 +107,126 @@
     .score-board.tier-1 { border-color: #00d2ff; box-shadow: 0 0 20px #00d2ff; }
     .score-board.tier-2 { border-color: #ffd700; box-shadow: 0 0 30px #ffd700; }
 
-    /* 按鈕 */
-    #start-btn, #reset-btn { position: absolute; pointer-events: auto; cursor: pointer; border: none; font-weight: bold; border-radius: 50px; color: white; }
-    #start-btn { top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px 60px; font-size: 24px; background: #0984e3; box-shadow: 0 0 30px rgba(9, 132, 227, 0.8); z-index: 100; }
-    #reset-btn { bottom: 30px; right: 30px; padding: 12px 25px; background: #d63031; display: none; z-index: 100; }
+    /* 浮動文字 */
+    .float-text { position: absolute; font-weight: 900; font-size: 40px; color: white; pointer-events: none; }
   </style>
 </head>
 <body>
 
-<div class="video-container">
-  <video id="input_video" playsinline></video>
-  <canvas id="output_canvas"></canvas>
+<video id="input_video" playsinline></video>
+<canvas id="output_canvas"></canvas>
+
+<div id="scene-intro">
+    <div class="moon"></div>
+    <div id="snow-container"></div>
+    <div class="intro-box">
+        <h1>XMAS BOXING</h1>
+        <p>V22 動態校正版 - 讓 AI 適應你的直拳</p>
+        <button class="btn-main" onclick="startCalibrationFlow()">我準備好了!</button>
+    </div>
 </div>
 
-<div class="ui-layer">
-  <div class="debug-panel" id="debug-panel">
-      <div class="debug-header">LEFT ARM DIAGNOSTIC</div>
-      <div class="debug-row"><span>Depth (>0.22):</span> <span id="val-lz" class="val">0.00</span></div>
-      <div class="debug-row"><span>Angle (>125°):</span> <span id="val-la" class="val">0°</span></div>
-      <div class="debug-row"><span>Speed (>0.03):</span> <span id="val-ls" class="val">0.00</span></div>
-      <div class="debug-row"><span>Opp.Guard:</span> <span id="val-lg" class="val">NO</span></div> <div class="debug-header" style="margin-top:15px;">RIGHT ARM DIAGNOSTIC</div>
-      <div class="debug-row"><span>Depth (>0.22):</span> <span id="val-rz" class="val">0.00</span></div>
-      <div class="debug-row"><span>Angle (>125°):</span> <span id="val-ra" class="val">0°</span></div>
-      <div class="debug-row"><span>Speed (>0.03):</span> <span id="val-rs" class="val">0.00</span></div>
-      <div class="debug-row"><span>Opp.Guard:</span> <span id="val-rg" class="val">NO</span></div>
-  </div>
-
-  <div class="score-container">
-    <div class="score-board" id="score-board">
-      <div class="count-label">COMBO</div>
-      <div id="count">0</div>
+<div id="scene-calibration">
+    <div id="calib-step-text" class="calib-step">步驟 1/2</div>
+    <div id="calib-instr-text" class="calib-instr">
+        請對著鏡頭打出最標準的<b>左直拳</b>並定住不動。<br>
+        系統將會偵測你的極限角度。
     </div>
-    <div class="guard-status">
-        <div id="g-left" class="guard-item"><div class="g-dot"></div> LEFT GUARD</div>
-        <div id="g-right" class="guard-item"><div class="g-dot"></div> RIGHT GUARD</div>
+    <div class="calib-data">
+        目前角度: <span id="calib-live-angle">0</span>°
     </div>
-  </div>
+    <button id="calib-btn" class="btn-main" onclick="runCalibrationStep()">開始偵測 (3秒)</button>
 </div>
 
-<button id="start-btn" onclick="initGame()">🥊 啟動 V21 精準版</button>
-<button id="reset-btn" onclick="resetCount()">RESET</button>
+<div id="scene-game" class="ui-layer">
+    <div class="debug-panel">
+        <div class="debug-header">LEFT ARM (Target: ><span id="limit-la">0</span>°)</div>
+        <div class="debug-row"><span>Depth:</span> <span id="val-lz" class="val">0.00</span></div>
+        <div class="debug-row"><span>Angle:</span> <span id="val-la" class="val">0°</span></div>
+        <div class="debug-row"><span>Speed:</span> <span id="val-ls" class="val">0.00</span></div>
+        <div class="debug-row"><span>Opp.Guard:</span> <span id="val-lg" class="val">NO</span></div> 
+        
+        <div class="debug-header" style="margin-top:10px;">RIGHT ARM (Target: ><span id="limit-ra">0</span>°)</div>
+        <div class="debug-row"><span>Depth:</span> <span id="val-rz" class="val">0.00</span></div>
+        <div class="debug-row"><span>Angle:</span> <span id="val-ra" class="val">0°</span></div>
+        <div class="debug-row"><span>Speed:</span> <span id="val-rs" class="val">0.00</span></div>
+        <div class="debug-row"><span>Opp.Guard:</span> <span id="val-rg" class="val">NO</span></div>
+
+        <div style="margin-top:10px; border-top:1px solid #555; padding-top:5px; font-size:10px; color:#aaa;">
+            Calibrated Data used.
+        </div>
+    </div>
+
+    <div class="score-container">
+        <div class="score-board" id="score-board">
+            <div class="count-label">COMBO</div>
+            <div id="count">0</div>
+        </div>
+        <div class="guard-status">
+            <div id="g-left" class="guard-item"><div class="g-dot"></div> L-GUARD</div>
+            <div id="g-right" class="guard-item"><div class="g-dot"></div> R-GUARD</div>
+        </div>
+    </div>
+</div>
 
 <script>
-// --- 音效 ---
+// --- 0. 聖誕雪花生成 ---
+function createSnow() {
+    const container = document.getElementById('snow-container');
+    for (let i = 0; i < 50; i++) {
+        const d = document.createElement('div');
+        d.className = 'snowflake';
+        d.innerHTML = '❄';
+        d.style.left = Math.random() * 100 + 'vw';
+        d.style.animationDuration = (Math.random() * 3 + 2) + 's';
+        d.style.fontSize = (Math.random() * 10 + 10) + 'px';
+        container.appendChild(d);
+    }
+}
+createSnow();
+
+// --- 1. 全局變數 ---
+let mode = 'INTRO'; // INTRO, CALIBRATING, GAME
+let count = 0;
+let leftState = 0, rightState = 0;
+let leftCooldown = 0, rightCooldown = 0;
+let floatTexts = [];
+let lastLeftZ = 0, lastRightZ = 0;
+
+// 校正數據
+let calibration = {
+    step: 0, // 0:Left, 1:Right, 2:Done
+    maxLeftAngle: 0,
+    maxRightAngle: 0,
+    isMeasuring: false
+};
+
+// 最終使用的遊戲參數 (會被校正覆蓋)
+let GAME_CONFIG = {
+    triggerZ: 0.20,     // 基礎深度
+    minSpeed: 0.03,
+    
+    // 這些會動態改變
+    leftTriggerAngle: 125,
+    rightTriggerAngle: 125,
+
+    resetZ: 0.25,
+    resetAngle: 100,
+    hitRadiusRatio: 0.75,
+    guardDistRatio: 0.70,
+    cooldownFrames: 2
+};
+
+// DOM
+const canvas = document.getElementById('output_canvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+const video = document.getElementById('input_video');
+const countEl = document.getElementById('count');
+const board = document.getElementById('score-board');
+const gl = document.getElementById('g-left');
+const gr = document.getElementById('g-right');
+
+// 音效
 const PUNCH_SOUND_URL = 'punch.mp3'; 
 let audioContext, punchBuffer;
 async function loadSound() {
@@ -124,51 +248,83 @@ function playSound() {
     src.start(0);
 }
 
-// --- V21 參數：精準調校 ---
-const CONFIG = {
-    // 1. 觸發門檻 (介於 V18 與 V20 之間)
-    triggerZ: 0.22,      // 0.22: 過濾身體晃動，但不會太難觸發
-    minSpeed: 0.03,      // 0.03: 輕拳可過，慢慢推手不過
-    minArmAngle: 125,    // 125度: 轉身(90度)不會觸發，出拳(>130)會觸發
+// --- 2. 流程控制 ---
 
-    // 2. 重置門檻 (寬鬆，保持流暢)
-    resetZ: 0.25,        
-    resetAngle: 100,     // 手肘彎回 100 度就重置
-
-    // 3. 遊戲性
-    hitRadiusRatio: 0.75, 
-    guardDistRatio: 0.70, // 防禦判定圈稍微加大，比較不會因為出拳身體扭動而掉防禦
-    cooldownFrames: 2     // 極短冷卻
-};
-
-// 狀態
-let count = 0;
-let leftState = 0, rightState = 0;
-let leftCooldown = 0, rightCooldown = 0;
-let lastLeftZ = 0, lastRightZ = 0;
-let floatTexts = [];
-
-// DOM
-const video = document.getElementById('input_video');
-const canvas = document.getElementById('output_canvas');
-const ctx = canvas.getContext('2d', { alpha: false });
-const countEl = document.getElementById('count');
-const board = document.getElementById('score-board');
-const gl = document.getElementById('g-left');
-const gr = document.getElementById('g-right');
-
-// Debug Elements
-const dbg = {
-    lz: document.getElementById('val-lz'), la: document.getElementById('val-la'),
-    ls: document.getElementById('val-ls'), lg: document.getElementById('val-lg'),
-    rz: document.getElementById('val-rz'), ra: document.getElementById('val-ra'),
-    rs: document.getElementById('val-rs'), rg: document.getElementById('val-rg')
-};
-
-function spawnHit(x, y, isLeft) {
-    if (floatTexts.length > 10) floatTexts.shift();
-    floatTexts.push({ x, y, text: "HIT!", color: isLeft ? '#00d2ff' : '#ff9f43', life: 20, vy: -5 });
+async function startCalibrationFlow() {
+    await loadSound();
+    // 切換 UI
+    document.getElementById('scene-intro').style.opacity = 0;
+    setTimeout(() => { document.getElementById('scene-intro').style.display = 'none'; }, 1000);
+    document.getElementById('scene-calibration').style.display = 'flex';
+    
+    // 啟動相機
+    const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
+    pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
+    pose.onResults(onResults);
+    
+    const camera = new Camera(video, { onFrame: async () => { await pose.send({image: video}); }, width: 1280, height: 720 });
+    await camera.start();
+    
+    mode = 'CALIBRATING';
+    // 顯示 Canvas
+    canvas.style.opacity = 0.3; // 校正時背景暗一點
 }
+
+function runCalibrationStep() {
+    const btn = document.getElementById('calib-btn');
+    const stepText = document.getElementById('calib-step-text');
+    const instrText = document.getElementById('calib-instr-text');
+    
+    calibration.isMeasuring = true;
+    let timeLeft = 3;
+    
+    btn.disabled = true;
+    
+    const timer = setInterval(() => {
+        btn.innerText = `偵測中... ${timeLeft}`;
+        timeLeft--;
+        if (timeLeft < 0) {
+            clearInterval(timer);
+            calibration.isMeasuring = false;
+            
+            if (calibration.step === 0) {
+                // 完成左手，準備右手
+                playSound();
+                calibration.step = 1;
+                stepText.innerText = "步驟 2/2";
+                instrText.innerHTML = "數據已記錄！<br>現在請打出最標準的<b>右直拳</b>並定住。";
+                btn.innerText = "開始偵測 (3秒)";
+                btn.disabled = false;
+            } else {
+                // 完成右手，進入遊戲
+                playSound();
+                finishCalibration();
+            }
+        }
+    }, 1000);
+}
+
+function finishCalibration() {
+    // 計算遊戲參數：取最大角度 - 15度 作為門檻
+    // 如果偵測失敗(數據異常)，則使用預設 120
+    GAME_CONFIG.leftTriggerAngle = Math.max(100, calibration.maxLeftAngle - 15);
+    GAME_CONFIG.rightTriggerAngle = Math.max(100, calibration.maxRightAngle - 15);
+    
+    console.log("Calibration Result:", GAME_CONFIG.leftTriggerAngle, GAME_CONFIG.rightTriggerAngle);
+
+    // 更新 UI
+    document.getElementById('scene-calibration').style.display = 'none';
+    document.getElementById('scene-game').style.display = 'block';
+    canvas.style.opacity = 1;
+    
+    // 更新 Debug 面板上的目標值
+    document.getElementById('limit-la').innerText = Math.round(GAME_CONFIG.leftTriggerAngle);
+    document.getElementById('limit-ra').innerText = Math.round(GAME_CONFIG.rightTriggerAngle);
+    
+    mode = 'GAME';
+}
+
+// --- 3. 視覺與運算 ---
 
 function calculate3DAngle(a, b, c) {
     const v1 = { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
@@ -179,25 +335,7 @@ function calculate3DAngle(a, b, c) {
     return Math.acos(dot / (mag1 * mag2)) * (180.0 / Math.PI);
 }
 
-function updateDebugPanel(isLeft, z, angle, speed, oppGuard, cooldown) {
-    const p = isLeft ? 'l' : 'r';
-    const elZ = dbg[p+'z'], elA = dbg[p+'a'], elS = dbg[p+'s'], elG = dbg[p+'g'];
-    
-    elZ.innerText = z.toFixed(2);
-    elA.innerText = Math.round(angle) + "°";
-    elS.innerText = speed.toFixed(3);
-    elG.innerText = oppGuard ? "YES" : "NO";
-
-    if (cooldown > 0) {
-        elZ.className = elA.className = elS.className = elG.className = "val locked";
-    } else {
-        elZ.className = (z > CONFIG.triggerZ) ? "val pass" : "val fail";
-        elA.className = (angle > CONFIG.minArmAngle) ? "val pass" : "val fail";
-        elS.className = (speed > CONFIG.minSpeed) ? "val pass" : "val fail";
-        elG.className = oppGuard ? "val pass" : "val fail"; // 沒防禦就變暗
-    }
-}
-
+// 遊戲邏輯 (包含 V21 的防禦鎖)
 function processHand(shoulder, elbow, wrist, nose, scale, state, cooldown, lastZ, isOppGuarding, label) {
     let newState = state;
     let hit = false;
@@ -206,22 +344,39 @@ function processHand(shoulder, elbow, wrist, nose, scale, state, cooldown, lastZ
     const velocity = currentZ - lastZ;
     const armAngle = calculate3DAngle(shoulder, elbow, wrist);
     const distToNose = Math.hypot(wrist.x - nose.x, wrist.y - nose.y);
-    const inHitZone = distToNose < (scale * CONFIG.hitRadiusRatio);
+    const inHitZone = distToNose < (scale * GAME_CONFIG.hitRadiusRatio);
     const isLeft = (label === 'L');
+    
+    // 依據校正結果決定門檻
+    const angleThreshold = isLeft ? GAME_CONFIG.leftTriggerAngle : GAME_CONFIG.rightTriggerAngle;
 
-    // 更新 Debug 面板
-    updateDebugPanel(isLeft, currentZ, armAngle, velocity, isOppGuarding, cooldown);
+    // Debug Update
+    const prefix = isLeft ? 'l' : 'r';
+    const elZ = document.getElementById(`val-${prefix}z`);
+    const elA = document.getElementById(`val-${prefix}a`);
+    const elS = document.getElementById(`val-${prefix}s`);
+    const elG = document.getElementById(`val-${prefix}g`);
+    
+    if (elZ) {
+        elZ.innerText = currentZ.toFixed(2);
+        elA.innerText = Math.round(armAngle) + "°";
+        elS.innerText = velocity.toFixed(3);
+        elG.innerText = isOppGuarding ? "YES" : "NO";
+
+        if (cooldown > 0) {
+            elZ.className = elA.className = elS.className = elG.className = "val locked";
+        } else {
+            elZ.className = (currentZ > GAME_CONFIG.triggerZ) ? "val pass" : "val fail";
+            elA.className = (armAngle > angleThreshold) ? "val pass" : "val fail";
+            elS.className = (velocity > GAME_CONFIG.minSpeed) ? "val pass" : "val fail";
+            elG.className = isOppGuarding ? "val pass" : "val fail";
+        }
+    }
 
     if (state === 0) { // Ready
-        // 嚴格判定條件：
-        // 1. 深度夠 (Z)
-        // 2. 速度夠 (Speed)
-        // 3. 角度夠 (Angle) - 防止轉身
-        // 4. 對向手有防禦 (OppGuard) - 防止亂揮/雙手誤判
-        // 5. 在打擊圈內
-        if (currentZ > CONFIG.triggerZ && 
-            velocity > CONFIG.minSpeed && 
-            armAngle > CONFIG.minArmAngle &&
+        if (currentZ > GAME_CONFIG.triggerZ && 
+            velocity > GAME_CONFIG.minSpeed && 
+            armAngle > angleThreshold && // 使用校正後的門檻
             isOppGuarding && 
             inHitZone && 
             cooldown <= 0
@@ -229,21 +384,18 @@ function processHand(shoulder, elbow, wrist, nose, scale, state, cooldown, lastZ
             newState = 1;
             hit = true;
         }
-    } 
-    else if (state === 1) { 
+    } else if (state === 1) { 
         newState = 2; 
-    } 
-    else if (state === 2) { 
-        // 寬鬆重置
-        if (currentZ < CONFIG.resetZ || armAngle < CONFIG.resetAngle) {
+    } else if (state === 2) { 
+        if (currentZ < GAME_CONFIG.resetZ || armAngle < GAME_CONFIG.resetAngle) {
             newState = 0; 
         }
     }
-
     return { newState, hit, currentZ };
 }
 
 function onResults(results) {
+    // 調整畫布尺寸
     if (video.videoWidth > 0 && canvas.width !== video.videoWidth) {
         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
     }
@@ -251,85 +403,120 @@ function onResults(results) {
 
     ctx.save();
     ctx.clearRect(0, 0, cw, ch);
-    ctx.drawImage(results.image, 0, 0, cw, ch);
-
-    if (results.poseLandmarks) {
-        const lm = results.poseLandmarks;
-        const nose = lm[0];
-        const lS = lm[11], lE = lm[13], lW = lm[15];
-        const rS = lm[12], rE = lm[14], rW = lm[16];
-        const chin = { x: (lm[9].x + lm[10].x)/2, y: (lm[9].y + lm[10].y)/2 };
-
-        if (nose && lS && rS && lW && rW) {
-            const scale = Math.hypot(lS.x - rS.x, lS.y - rS.y) * 2.5;
-
-            // 繪製骨架
-            ctx.lineWidth = 3; ctx.strokeStyle = "#00ff00"; ctx.lineCap = "round";
-            ctx.beginPath();
-            ctx.moveTo(lS.x * cw, lS.y * ch); ctx.lineTo(lE.x * cw, lE.y * ch); ctx.lineTo(lW.x * cw, lW.y * ch);
-            ctx.moveTo(rS.x * cw, rS.y * ch); ctx.lineTo(rE.x * cw, rE.y * ch); ctx.lineTo(rW.x * cw, rW.y * ch);
-            ctx.stroke();
-
-            // 擊打圈
-            const hitR = scale * CONFIG.hitRadiusRatio;
-            const isPunching = (leftState === 1 || rightState === 1);
-            ctx.beginPath();
-            ctx.strokeStyle = isPunching ? "rgba(255, 255, 255, 0.8)" : "rgba(255, 0, 0, 0.3)";
-            ctx.fillStyle = isPunching ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 0, 0, 0.05)";
-            ctx.arc(nose.x * cw, nose.y * ch, hitR * cw, 0, 2 * Math.PI);
-            ctx.stroke(); ctx.fill();
-
-            // 防禦偵測 (先計算)
-            const gDist = scale * CONFIG.guardDistRatio;
-            const l_isGuarding = Math.hypot(lW.x - chin.x, lW.y - chin.y) < gDist;
-            const r_isGuarding = Math.hypot(rW.x - chin.x, rW.y - chin.y) < gDist;
-
-            // 更新 UI
-            if (l_isGuarding) gl.classList.add('active'); else gl.classList.remove('active');
-            if (r_isGuarding) gr.classList.add('active'); else gr.classList.remove('active');
-
-            if (lastLeftZ === 0) { lastLeftZ = lS.z - lW.z; lastRightZ = rS.z - rW.z; }
-
-            // 核心處理：將「對向手的防禦狀態」傳入
-            // 左手判定時，傳入 r_isGuarding
-            const resL = processHand(lS, lE, lW, nose, scale, leftState, leftCooldown, lastLeftZ, r_isGuarding, 'L');
-            // 右手判定時，傳入 l_isGuarding
-            const resR = processHand(rS, rE, rW, nose, scale, rightState, rightCooldown, lastRightZ, l_isGuarding, 'R');
-
-            leftState = resL.newState; lastLeftZ = resL.currentZ;
-            rightState = resR.newState; lastRightZ = resR.currentZ;
-
-            if (resL.hit) hitLogic(true, lW.x, lW.y);
-            if (resR.hit) hitLogic(false, rW.x, rW.y);
-
-            if (leftCooldown > 0) leftCooldown--;
-            if (rightCooldown > 0) rightCooldown--;
-            
-            drawDot(lW, l_isGuarding); drawDot(rW, r_isGuarding);
-        }
-    }
     
-    drawFloatingTexts(cw, ch);
+    // 繪製影像 (在 Calibration 時稍微暗一點)
+    ctx.globalAlpha = (mode === 'CALIBRATING') ? 0.5 : 1.0;
+    ctx.drawImage(results.image, 0, 0, cw, ch);
+    ctx.globalAlpha = 1.0;
+
+    if (!results.poseLandmarks) { ctx.restore(); return; }
+    
+    const lm = results.poseLandmarks;
+    const nose = lm[0];
+    const lS = lm[11], lE = lm[13], lW = lm[15];
+    const rS = lm[12], rE = lm[14], rW = lm[16];
+    const chin = { x: (lm[9].x + lm[10].x)/2, y: (lm[9].y + lm[10].y)/2 };
+
+    if (!nose || !lS || !rS) { ctx.restore(); return; }
+    const scale = Math.hypot(lS.x - rS.x, lS.y - rS.y) * 2.5;
+
+    // 計算當前角度
+    const lAng = calculate3DAngle(lS, lE, lW);
+    const rAng = calculate3DAngle(rS, rE, rW);
+
+    // ============ 模式分岐 ============
+    
+    if (mode === 'CALIBRATING') {
+        // 顯示骨架
+        drawSkeleton(lm, cw, ch);
+        
+        // 顯示當前偵測數值
+        const displayAngle = (calibration.step === 0) ? lAng : rAng;
+        document.getElementById('calib-live-angle').innerText = Math.round(displayAngle);
+
+        if (calibration.isMeasuring) {
+            if (calibration.step === 0) {
+                if (lAng > calibration.maxLeftAngle) calibration.maxLeftAngle = lAng;
+            } else {
+                if (rAng > calibration.maxRightAngle) calibration.maxRightAngle = rAng;
+            }
+        }
+    } 
+    else if (mode === 'GAME') {
+        // 繪製骨架
+        drawSkeleton(lm, cw, ch);
+        
+        // 打擊圈
+        const hitR = scale * GAME_CONFIG.hitRadiusRatio;
+        const isPunching = (leftState === 1 || rightState === 1);
+        ctx.beginPath();
+        ctx.strokeStyle = isPunching ? "rgba(255, 255, 255, 0.8)" : "rgba(255, 0, 0, 0.3)";
+        ctx.fillStyle = isPunching ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 0, 0, 0.05)";
+        ctx.arc(nose.x * cw, nose.y * ch, hitR * cw, 0, 2 * Math.PI);
+        ctx.stroke(); ctx.fill();
+
+        // 防禦判定
+        const gDist = scale * GAME_CONFIG.guardDistRatio;
+        const l_isGuarding = Math.hypot(lW.x - chin.x, lW.y - chin.y) < gDist;
+        const r_isGuarding = Math.hypot(rW.x - chin.x, rW.y - chin.y) < gDist;
+
+        if (l_isGuarding) gl.classList.add('active'); else gl.classList.remove('active');
+        if (r_isGuarding) gr.classList.add('active'); else gr.classList.remove('active');
+
+        if (lastLeftZ === 0) { lastLeftZ = lS.z - lW.z; lastRightZ = rS.z - rW.z; }
+
+        // 核心邏輯
+        const resL = processHand(lS, lE, lW, nose, scale, leftState, leftCooldown, lastLeftZ, r_isGuarding, 'L');
+        const resR = processHand(rS, rE, rW, nose, scale, rightState, rightCooldown, lastRightZ, l_isGuarding, 'R');
+
+        leftState = resL.newState; lastLeftZ = resL.currentZ;
+        rightState = resR.newState; lastRightZ = resR.currentZ;
+
+        if (resL.hit) hitLogic(true, lW.x, lW.y);
+        if (resR.hit) hitLogic(false, rW.x, rW.y);
+
+        if (leftCooldown > 0) leftCooldown--;
+        if (rightCooldown > 0) rightCooldown--;
+        
+        drawDot(lW, l_isGuarding, cw, ch); 
+        drawDot(rW, r_isGuarding, cw, ch);
+        drawFloatingTexts(cw, ch);
+    }
+
     ctx.restore();
+}
+
+function drawSkeleton(lm, cw, ch) {
+    ctx.lineWidth = 3; ctx.strokeStyle = "#00ff00"; ctx.lineCap = "round";
+    const pts = [11,13,15, 12,14,16, 11,12]; // 簡化骨架
+    ctx.beginPath();
+    ctx.moveTo(lm[11].x*cw, lm[11].y*ch); ctx.lineTo(lm[13].x*cw, lm[13].y*ch); ctx.lineTo(lm[15].x*cw, lm[15].y*ch);
+    ctx.moveTo(lm[12].x*cw, lm[12].y*ch); ctx.lineTo(lm[14].x*cw, lm[14].y*ch); ctx.lineTo(lm[16].x*cw, lm[16].y*ch);
+    ctx.moveTo(lm[11].x*cw, lm[11].y*ch); ctx.lineTo(lm[12].x*cw, lm[12].y*ch);
+    ctx.stroke();
+}
+
+function drawDot(w, active, cw, ch) {
+    ctx.beginPath();
+    ctx.fillStyle = active ? "#00ff00" : "#d63031";
+    ctx.arc(w.x * cw, w.y * ch, 10, 0, 2*Math.PI);
+    ctx.fill();
 }
 
 function hitLogic(isLeft, x, y) {
     count++;
     countEl.innerText = count;
     countEl.classList.remove('hit-pop'); void countEl.offsetWidth; countEl.classList.add('hit-pop');
-    if(isLeft) leftCooldown = CONFIG.cooldownFrames; else rightCooldown = CONFIG.cooldownFrames;
+    if(isLeft) leftCooldown = GAME_CONFIG.cooldownFrames; else rightCooldown = GAME_CONFIG.cooldownFrames;
     playSound();
-    spawnHit(x, y, isLeft);
+    
+    // 浮動文字
+    if (floatTexts.length > 10) floatTexts.shift();
+    floatTexts.push({ x, y, text: "HIT!", color: isLeft ? '#00d2ff' : '#ff9f43', life: 20, vy: -5 });
+
     board.className = 'score-board';
     if(count >= 50) board.classList.add('tier-2');
     if(count >= 100) board.classList.add('tier-3');
-}
-
-function drawDot(w, active) {
-    ctx.beginPath();
-    ctx.fillStyle = active ? "#00ff00" : "#d63031";
-    ctx.arc(w.x * canvas.width, w.y * canvas.height, 10, 0, 2*Math.PI);
-    ctx.fill();
 }
 
 function drawFloatingTexts(cw, ch) {
@@ -344,19 +531,6 @@ function drawFloatingTexts(cw, ch) {
         if(t.life<=0) floatTexts.splice(i, 1);
     }
 }
-
-const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
-pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
-pose.onResults(onResults);
-
-async function initGame() {
-    await loadSound();
-    const camera = new Camera(video, { onFrame: async () => { await pose.send({image: video}); }, width: 1280, height: 720 });
-    await camera.start();
-    document.getElementById('start-btn').style.display = 'none';
-    document.getElementById('reset-btn').style.display = 'block';
-}
-function resetCount() { count = 0; countEl.innerText = 0; board.className = 'score-board'; }
 </script>
 </body>
 </html>
