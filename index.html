@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>V20 門檻解放+儀表板版</title>
+  <title>V21 精準防禦鎖定版</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
@@ -17,7 +17,23 @@
     /* UI 層 */
     .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
 
-    /* 計分板 */
+    /* Debug 儀表板 (左側) */
+    .debug-panel {
+        position: absolute; top: 20px; left: 20px;
+        background: rgba(0, 0, 0, 0.8); border: 1px solid #555;
+        padding: 15px; border-radius: 10px; text-align: left;
+        color: #fff; font-size: 13px; line-height: 1.7; width: 200px;
+    }
+    .debug-header { border-bottom: 1px solid #555; margin-bottom: 5px; color: #aaa; font-size: 11px; letter-spacing: 1px; }
+    .debug-row { display: flex; justify-content: space-between; }
+    .val { font-weight: bold; font-family: monospace; }
+    
+    /* 狀態顏色 */
+    .pass { color: #00ff00; }    /* 通過 */
+    .fail { color: #777; }       /* 未通過 (變暗以便專注看綠色) */
+    .locked { color: #ff3333; }  /* 卡住/冷卻 */
+
+    /* 計分板 (中央) */
     .score-container { 
         position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
         display: flex; flex-direction: column; align-items: center;
@@ -29,32 +45,20 @@
     #count { font-size: 110px; font-weight: 900; line-height: 1; color: #fff; }
     .count-label { font-size: 14px; color: #aaa; letter-spacing: 4px; font-weight: bold; }
 
-    /* 左側儀表板 (Debug Panel) */
-    .debug-panel {
-        position: absolute; top: 20px; left: 20px;
-        background: rgba(0, 0, 0, 0.7); border: 1px solid #444;
-        padding: 15px; border-radius: 10px; text-align: left;
-        color: #fff; font-size: 14px; line-height: 1.6;
-    }
-    .debug-row { display: flex; justify-content: space-between; width: 180px; }
-    .val { font-weight: bold; }
-    .pass { color: #00ff00; } /* 達標綠色 */
-    .fail { color: #fff; opacity: 0.5; } /* 未達標白色 */
-    .locked { color: #ff0000; } /* 冷卻中紅色 */
-
-    /* 防禦狀態 */
+    /* 防禦狀態顯示 */
     .guard-status { margin-top: 10px; display: flex; gap: 15px; }
-    .g-dot { width: 12px; height: 12px; border-radius: 50%; background: #444; border: 1px solid #777; }
-    .active .g-dot { background: #00ff00; box-shadow: 0 0 10px #00ff00; border-color: #fff; }
-    .guard-item { display: flex; align-items: center; gap: 5px; color: #777; font-weight: bold; font-size: 12px; }
+    .guard-item { display: flex; align-items: center; gap: 5px; color: #555; font-weight: bold; font-size: 12px; transition: color 0.2s; }
+    .g-dot { width: 10px; height: 10px; border-radius: 50%; background: #333; border: 1px solid #555; }
+    
+    /* 激活狀態 */
     .guard-item.active { color: #00ff00; }
+    .guard-item.active .g-dot { background: #00ff00; box-shadow: 0 0 8px #00ff00; border-color: #fff; }
 
-    /* 特效與動畫 */
-    .score-board.tier-1 { border-color: #00d2ff; box-shadow: 0 0 20px #00d2ff; }
-    .score-board.tier-2 { border-color: #ffd700; box-shadow: 0 0 30px #ffd700; }
-    .score-board.tier-3 { border-color: #ff4500; box-shadow: 0 0 40px #ff4500; }
+    /* 打擊特效 */
     .hit-pop { animation: pop 0.1s ease-out; }
     @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+    .score-board.tier-1 { border-color: #00d2ff; box-shadow: 0 0 20px #00d2ff; }
+    .score-board.tier-2 { border-color: #ffd700; box-shadow: 0 0 30px #ffd700; }
 
     /* 按鈕 */
     #start-btn, #reset-btn { position: absolute; pointer-events: auto; cursor: pointer; border: none; font-weight: bold; border-radius: 50px; color: white; }
@@ -71,17 +75,15 @@
 
 <div class="ui-layer">
   <div class="debug-panel" id="debug-panel">
-      <div style="border-bottom:1px solid #555; margin-bottom:5px;">LEFT ARM</div>
-      <div class="debug-row"><span>Z-Depth:</span> <span id="val-lz" class="val">0.00</span></div>
-      <div class="debug-row"><span>Angle:</span> <span id="val-la" class="val">0°</span></div>
-      <div class="debug-row"><span>Speed:</span> <span id="val-ls" class="val">0.00</span></div>
-      <div class="debug-row"><span>Target:</span> <span id="val-lt" class="val">NO</span></div>
-      
-      <div style="border-bottom:1px solid #555; margin-bottom:5px; margin-top:10px;">RIGHT ARM</div>
-      <div class="debug-row"><span>Z-Depth:</span> <span id="val-rz" class="val">0.00</span></div>
-      <div class="debug-row"><span>Angle:</span> <span id="val-ra" class="val">0°</span></div>
-      <div class="debug-row"><span>Speed:</span> <span id="val-rs" class="val">0.00</span></div>
-      <div class="debug-row"><span>Target:</span> <span id="val-rt" class="val">NO</span></div>
+      <div class="debug-header">LEFT ARM DIAGNOSTIC</div>
+      <div class="debug-row"><span>Depth (>0.22):</span> <span id="val-lz" class="val">0.00</span></div>
+      <div class="debug-row"><span>Angle (>125°):</span> <span id="val-la" class="val">0°</span></div>
+      <div class="debug-row"><span>Speed (>0.03):</span> <span id="val-ls" class="val">0.00</span></div>
+      <div class="debug-row"><span>Opp.Guard:</span> <span id="val-lg" class="val">NO</span></div> <div class="debug-header" style="margin-top:15px;">RIGHT ARM DIAGNOSTIC</div>
+      <div class="debug-row"><span>Depth (>0.22):</span> <span id="val-rz" class="val">0.00</span></div>
+      <div class="debug-row"><span>Angle (>125°):</span> <span id="val-ra" class="val">0°</span></div>
+      <div class="debug-row"><span>Speed (>0.03):</span> <span id="val-rs" class="val">0.00</span></div>
+      <div class="debug-row"><span>Opp.Guard:</span> <span id="val-rg" class="val">NO</span></div>
   </div>
 
   <div class="score-container">
@@ -90,13 +92,13 @@
       <div id="count">0</div>
     </div>
     <div class="guard-status">
-        <div id="g-left" class="guard-item"><div class="g-dot"></div> L-GUARD</div>
-        <div id="g-right" class="guard-item"><div class="g-dot"></div> R-GUARD</div>
+        <div id="g-left" class="guard-item"><div class="g-dot"></div> LEFT GUARD</div>
+        <div id="g-right" class="guard-item"><div class="g-dot"></div> RIGHT GUARD</div>
     </div>
   </div>
 </div>
 
-<button id="start-btn" onclick="initGame()">🥊 啟動 V20 診斷版</button>
+<button id="start-btn" onclick="initGame()">🥊 啟動 V21 精準版</button>
 <button id="reset-btn" onclick="resetCount()">RESET</button>
 
 <script>
@@ -122,31 +124,31 @@ function playSound() {
     src.start(0);
 }
 
-// --- V20 參數：門檻大解放 ---
+// --- V21 參數：精準調校 ---
 const CONFIG = {
-    // 門檻值 (Thresholds)
-    triggerZ: 0.15,      // [大降] 只要 > 0.15 就過關 (原本 0.28)
-    minSpeed: 0.02,      // [大降] 只要 > 0.02 就過關 (原本 0.04)
-    minArmAngle: 105,    // [大降] 只要 > 105度 就過關 (原本 140)
-    
-    // 重置參數
-    resetZ: 0.25,        // 小於此值重置
-    resetAngle: 95,      // 小於此角度重置
+    // 1. 觸發門檻 (介於 V18 與 V20 之間)
+    triggerZ: 0.22,      // 0.22: 過濾身體晃動，但不會太難觸發
+    minSpeed: 0.03,      // 0.03: 輕拳可過，慢慢推手不過
+    minArmAngle: 125,    // 125度: 轉身(90度)不會觸發，出拳(>130)會觸發
 
-    hitRadiusRatio: 0.8, // 目標圈大小 (0.8 = 寬鬆)
-    guardDistRatio: 0.65,
-    cooldownFrames: 2
+    // 2. 重置門檻 (寬鬆，保持流暢)
+    resetZ: 0.25,        
+    resetAngle: 100,     // 手肘彎回 100 度就重置
+
+    // 3. 遊戲性
+    hitRadiusRatio: 0.75, 
+    guardDistRatio: 0.70, // 防禦判定圈稍微加大，比較不會因為出拳身體扭動而掉防禦
+    cooldownFrames: 2     // 極短冷卻
 };
 
 // 狀態
 let count = 0;
 let leftState = 0, rightState = 0;
 let leftCooldown = 0, rightCooldown = 0;
-let leftGuardGrace = 0, rightGuardGrace = 0;
 let lastLeftZ = 0, lastRightZ = 0;
 let floatTexts = [];
 
-// DOM 元素
+// DOM
 const video = document.getElementById('input_video');
 const canvas = document.getElementById('output_canvas');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -155,12 +157,12 @@ const board = document.getElementById('score-board');
 const gl = document.getElementById('g-left');
 const gr = document.getElementById('g-right');
 
-// Debug DOM
+// Debug Elements
 const dbg = {
     lz: document.getElementById('val-lz'), la: document.getElementById('val-la'),
-    ls: document.getElementById('val-ls'), lt: document.getElementById('val-lt'),
+    ls: document.getElementById('val-ls'), lg: document.getElementById('val-lg'),
     rz: document.getElementById('val-rz'), ra: document.getElementById('val-ra'),
-    rs: document.getElementById('val-rs'), rt: document.getElementById('val-rt')
+    rs: document.getElementById('val-rs'), rg: document.getElementById('val-rg')
 };
 
 function spawnHit(x, y, isLeft) {
@@ -177,30 +179,26 @@ function calculate3DAngle(a, b, c) {
     return Math.acos(dot / (mag1 * mag2)) * (180.0 / Math.PI);
 }
 
-// 更新儀表板
-function updateDebugPanel(isLeft, z, angle, speed, inZone, cooldown) {
+function updateDebugPanel(isLeft, z, angle, speed, oppGuard, cooldown) {
     const p = isLeft ? 'l' : 'r';
-    const elZ = dbg[p+'z'], elA = dbg[p+'a'], elS = dbg[p+'s'], elT = dbg[p+'t'];
+    const elZ = dbg[p+'z'], elA = dbg[p+'a'], elS = dbg[p+'s'], elG = dbg[p+'g'];
     
-    // 數值顯示
     elZ.innerText = z.toFixed(2);
     elA.innerText = Math.round(angle) + "°";
     elS.innerText = speed.toFixed(3);
-    elT.innerText = inZone ? "YES" : "NO";
+    elG.innerText = oppGuard ? "YES" : "NO";
 
-    // 顏色判定
     if (cooldown > 0) {
-        // 冷卻中全部紅字
-        elZ.className = elA.className = elS.className = elT.className = "val locked";
+        elZ.className = elA.className = elS.className = elG.className = "val locked";
     } else {
         elZ.className = (z > CONFIG.triggerZ) ? "val pass" : "val fail";
         elA.className = (angle > CONFIG.minArmAngle) ? "val pass" : "val fail";
         elS.className = (speed > CONFIG.minSpeed) ? "val pass" : "val fail";
-        elT.className = inZone ? "val pass" : "val fail";
+        elG.className = oppGuard ? "val pass" : "val fail"; // 沒防禦就變暗
     }
 }
 
-function processHand(shoulder, elbow, wrist, nose, scale, state, cooldown, lastZ, label) {
+function processHand(shoulder, elbow, wrist, nose, scale, state, cooldown, lastZ, isOppGuarding, label) {
     let newState = state;
     let hit = false;
     
@@ -211,14 +209,20 @@ function processHand(shoulder, elbow, wrist, nose, scale, state, cooldown, lastZ
     const inHitZone = distToNose < (scale * CONFIG.hitRadiusRatio);
     const isLeft = (label === 'L');
 
-    // 更新儀表板
-    updateDebugPanel(isLeft, currentZ, armAngle, velocity, inHitZone, cooldown);
+    // 更新 Debug 面板
+    updateDebugPanel(isLeft, currentZ, armAngle, velocity, isOppGuarding, cooldown);
 
     if (state === 0) { // Ready
-        // 判定：深度 + 速度 + 角度 + 在圈內 (不檢查另一隻手防禦了)
+        // 嚴格判定條件：
+        // 1. 深度夠 (Z)
+        // 2. 速度夠 (Speed)
+        // 3. 角度夠 (Angle) - 防止轉身
+        // 4. 對向手有防禦 (OppGuard) - 防止亂揮/雙手誤判
+        // 5. 在打擊圈內
         if (currentZ > CONFIG.triggerZ && 
             velocity > CONFIG.minSpeed && 
             armAngle > CONFIG.minArmAngle &&
+            isOppGuarding && 
             inHitZone && 
             cooldown <= 0
            ) {
@@ -230,7 +234,7 @@ function processHand(shoulder, elbow, wrist, nose, scale, state, cooldown, lastZ
         newState = 2; 
     } 
     else if (state === 2) { 
-        // 重置
+        // 寬鬆重置
         if (currentZ < CONFIG.resetZ || armAngle < CONFIG.resetAngle) {
             newState = 0; 
         }
@@ -259,36 +263,38 @@ function onResults(results) {
         if (nose && lS && rS && lW && rW) {
             const scale = Math.hypot(lS.x - rS.x, lS.y - rS.y) * 2.5;
 
-            // 骨架
+            // 繪製骨架
             ctx.lineWidth = 3; ctx.strokeStyle = "#00ff00"; ctx.lineCap = "round";
             ctx.beginPath();
             ctx.moveTo(lS.x * cw, lS.y * ch); ctx.lineTo(lE.x * cw, lE.y * ch); ctx.lineTo(lW.x * cw, lW.y * ch);
             ctx.moveTo(rS.x * cw, rS.y * ch); ctx.lineTo(rE.x * cw, rE.y * ch); ctx.lineTo(rW.x * cw, rW.y * ch);
-            ctx.moveTo(lS.x * cw, lS.y * ch); ctx.lineTo(rS.x * cw, rS.y * ch);
             ctx.stroke();
 
-            // 擊打圈 (Hit Zone)
+            // 擊打圈
             const hitR = scale * CONFIG.hitRadiusRatio;
             const isPunching = (leftState === 1 || rightState === 1);
             ctx.beginPath();
-            ctx.strokeStyle = isPunching ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 0, 0, 0.3)";
+            ctx.strokeStyle = isPunching ? "rgba(255, 255, 255, 0.8)" : "rgba(255, 0, 0, 0.3)";
             ctx.fillStyle = isPunching ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 0, 0, 0.05)";
             ctx.arc(nose.x * cw, nose.y * ch, hitR * cw, 0, 2 * Math.PI);
             ctx.stroke(); ctx.fill();
 
-            // 防禦狀態 (僅顯示，不影響觸發)
+            // 防禦偵測 (先計算)
             const gDist = scale * CONFIG.guardDistRatio;
-            if (Math.hypot(lW.x - chin.x, lW.y - chin.y) < gDist) leftGuardGrace = 5; else if (leftGuardGrace > 0) leftGuardGrace--;
-            if (Math.hypot(rW.x - chin.x, rW.y - chin.y) < gDist) rightGuardGrace = 5; else if (rightGuardGrace > 0) rightGuardGrace--;
-            const gL = leftGuardGrace > 0, gR = rightGuardGrace > 0;
-            
-            if (gL) gl.classList.add('active'); else gl.classList.remove('active');
-            if (gR) gr.classList.add('active'); else gr.classList.remove('active');
+            const l_isGuarding = Math.hypot(lW.x - chin.x, lW.y - chin.y) < gDist;
+            const r_isGuarding = Math.hypot(rW.x - chin.x, rW.y - chin.y) < gDist;
+
+            // 更新 UI
+            if (l_isGuarding) gl.classList.add('active'); else gl.classList.remove('active');
+            if (r_isGuarding) gr.classList.add('active'); else gr.classList.remove('active');
 
             if (lastLeftZ === 0) { lastLeftZ = lS.z - lW.z; lastRightZ = rS.z - rW.z; }
 
-            const resL = processHand(lS, lE, lW, nose, scale, leftState, leftCooldown, lastLeftZ, 'L');
-            const resR = processHand(rS, rE, rW, nose, scale, rightState, rightCooldown, lastRightZ, 'R');
+            // 核心處理：將「對向手的防禦狀態」傳入
+            // 左手判定時，傳入 r_isGuarding
+            const resL = processHand(lS, lE, lW, nose, scale, leftState, leftCooldown, lastLeftZ, r_isGuarding, 'L');
+            // 右手判定時，傳入 l_isGuarding
+            const resR = processHand(rS, rE, rW, nose, scale, rightState, rightCooldown, lastRightZ, l_isGuarding, 'R');
 
             leftState = resL.newState; lastLeftZ = resL.currentZ;
             rightState = resR.newState; lastRightZ = resR.currentZ;
@@ -299,7 +305,7 @@ function onResults(results) {
             if (leftCooldown > 0) leftCooldown--;
             if (rightCooldown > 0) rightCooldown--;
             
-            drawDot(lW, gL); drawDot(rW, gR);
+            drawDot(lW, l_isGuarding); drawDot(rW, r_isGuarding);
         }
     }
     
@@ -315,9 +321,8 @@ function hitLogic(isLeft, x, y) {
     playSound();
     spawnHit(x, y, isLeft);
     board.className = 'score-board';
+    if(count >= 50) board.classList.add('tier-2');
     if(count >= 100) board.classList.add('tier-3');
-    else if(count >= 40) board.classList.add('tier-2');
-    else if(count >= 20) board.classList.add('tier-1');
 }
 
 function drawDot(w, active) {
@@ -351,7 +356,7 @@ async function initGame() {
     document.getElementById('start-btn').style.display = 'none';
     document.getElementById('reset-btn').style.display = 'block';
 }
-function resetCount() { count = 0; countElement.innerText = 0; board.className = 'score-board'; }
+function resetCount() { count = 0; countEl.innerText = 0; board.className = 'score-board'; }
 </script>
 </body>
 </html>
