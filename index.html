@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>聖誕揍人</title>
+  <title>聖誕揍人 (架勢特訓版)</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
@@ -24,23 +24,42 @@
     .moon { position: absolute; top: 50px; right: 50px; width: 80px; height: 80px; background: #fefcd7; border-radius: 50%; box-shadow: 0 0 20px #fefcd7, 0 0 50px rgba(254, 252, 215, 0.4); }
     .snow-ground { position: absolute; bottom: 0; left: 0; width: 100%; height: 30%; background: #fffafa; border-top: 5px solid #e3e3e3; border-radius: 50% 50% 0 0 / 20px 20px 0 0; }
     
-    /* UI 介面 */
+    /* UI 介面 - 加大版 */
     .score-board { 
-      position: absolute; top: 80px; left: 50%; transform: translateX(-50%); z-index: 10; 
-      background: rgba(0, 0, 0, 0.6); padding: 10px 40px; border-radius: 20px; 
-      border: 3px solid rgba(255, 255, 255, 0.3); pointer-events: none; 
+      position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 10; 
+      background: rgba(0, 0, 0, 0.7); 
+      /* [修改] 加寬加大，容納提示文字 */
+      padding: 15px 60px; width: 400px;
+      border-radius: 25px; 
+      border: 4px solid rgba(255, 255, 255, 0.3); pointer-events: none; 
       transition: all 0.1s ease;
+      display: flex; flex-direction: column; align-items: center;
     }
-    #count { font-size: 100px; font-weight: 800; color: #fff; line-height: 1; text-shadow: 0 0 20px rgba(0,0,0,0.5); }
-    .count-title { font-size: 16px; color: #ccc; letter-spacing: 2px; }
-    #status { margin-top: 5px; font-size: 20px; font-weight: bold; color: #ddd; text-shadow: 0 0 5px #000; }
+    #count { font-size: 110px; font-weight: 800; color: #fff; line-height: 1; text-shadow: 0 0 20px rgba(0,0,0,0.5); margin: 10px 0; }
+    .count-title { font-size: 18px; color: #ccc; letter-spacing: 3px; text-transform: uppercase; }
+    #status { font-size: 24px; font-weight: bold; color: #ddd; text-shadow: 0 0 5px #000; min-height: 30px; }
+
+    /* 架勢警告區域 */
+    .guard-warnings {
+        margin-top: 10px;
+        width: 100%;
+        display: flex;
+        justify-content: space-around;
+        font-size: 18px;
+        font-weight: bold;
+    }
+    .warning-box {
+        padding: 5px 10px;
+        border-radius: 5px;
+        background: rgba(255, 0, 0, 0.2);
+        color: #ff4757;
+        opacity: 0; /* 預設隱藏 */
+        transition: opacity 0.2s;
+        border: 1px solid #ff4757;
+    }
+    .warning-box.active { opacity: 1; background: rgba(255, 0, 0, 0.8); color: white; animation: flash 1s infinite; }
     
-    /* 提示訊息 (如：請架好防禦) */
-    #guard-hint {
-        position: absolute; top: 200px; left: 50%; transform: translateX(-50%);
-        font-size: 24px; color: #ff4757; font-weight: bold; 
-        text-shadow: 2px 2px 0 #000; display: none; z-index: 20;
-    }
+    @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
     #start-btn { 
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 50; 
@@ -75,12 +94,15 @@
 
   <div class="container">
     <div class="score-board">
-      <div class="count-title">TOTAL HITS</div>
+      <div class="count-title">HITS</div>
       <div id="count">0</div>
       <div id="status">READY</div>
+      
+      <div class="guard-warnings">
+          <div id="warn-left" class="warning-box">⚠️ 左手抬高</div>
+          <div id="warn-right" class="warning-box">⚠️ 右手抬高</div>
+      </div>
     </div>
-    
-    <div id="guard-hint">⚠️ 架好防禦！手要在下巴旁</div>
 
     <div class="video-container">
       <video id="input_video" playsinline style="display:none"></video>
@@ -122,21 +144,21 @@
     const countElement = document.getElementById('count');
     const scoreBoard = document.querySelector('.score-board'); 
     const statusElement = document.getElementById('status');
-    const guardHint = document.getElementById('guard-hint');
+    const warnLeft = document.getElementById('warn-left');
+    const warnRight = document.getElementById('warn-right');
     const startBtn = document.getElementById('start-btn'); 
     const resetBtn = document.getElementById('reset-btn'); 
 
-    // [V6 關鍵參數]
+    // [V7 參數微調]
     const CONFIG = {
-        triggerRatio: 0.80, // 出拳距離 (稍微調降一點，讓有架勢的人好打)
-        resetRatio: 0.50,   // 重置距離
-        minSpeed: 0.020,    // 速度門檻 (防止靜止誤判)
-        minAngle: 125,      // 手肘伸直角度
+        triggerRatio: 0.80, 
+        resetRatio: 0.50,   
+        minSpeed: 0.020,    
+        minAngle: 125,      
         
-        // [新增] 防禦判定距離
-        // 手腕離鼻子的距離比例。數字越小越嚴格 (必須貼越近)
-        // 0.45 大約是肩膀寬度的一半不到，也就是臉頰附近
-        guardDistRatio: 0.55, 
+        // [修正] 防禦判定距離 (針對下巴)
+        // 0.60 比較寬鬆一點，因為下巴比鼻子低，手可能會稍微低一點
+        guardDistRatio: 0.60, 
         
         cooldownFrames: 2 
     };
@@ -183,48 +205,24 @@
        statusElement.style.color = color;
     }
 
-    // --- 3. 核心邏輯 (加入架勢判定) ---
-    function processHand(shoulder, wrist, scale, currentStage, label, currentCooldown, config, speed, angle, nose, otherWrist) {
+    // --- 3. 核心邏輯 (分離防禦檢查與出拳邏輯) ---
+    
+    function processHand(shoulder, wrist, scale, currentStage, label, currentCooldown, config, speed, angle, otherHandIsGuarding) {
       const wristDist = calculateDistance(shoulder, wrist);
       const ratio = wristDist / scale;
       let nextStage = currentStage;
       const isLeft = label === "L";
 
-      // ============================================
-      // V6 新增：架勢判定 (Guard Check)
-      // ============================================
-      
-      // 計算「另一隻手」離鼻子的距離
-      const otherHandToNose = calculateDistance(otherWrist, nose);
-      const guardRatio = otherHandToNose / scale;
-      
-      // 判斷是否架好防禦 (另一隻手要在臉附近)
-      const isGuarding = guardRatio < config.guardDistRatio;
-
       if (currentStage === "down") {
-        // [修正] 取消舊的互斥鎖，改用 Guard Check
-        
-        // 觸發條件：
-        // 1. 冷卻結束
-        // 2. 距離夠遠
-        // 3. 速度夠快
-        // 4. 手臂伸直
-        // 5. [關鍵] 另一隻手有架好防禦 (isGuarding)
-        
+        // [關鍵] 只有當「另一隻手」有架好 (otherHandIsGuarding 為 true)，才允許出拳
         if (currentCooldown === 0 && ratio > config.triggerRatio && speed > config.minSpeed && angle > config.minAngle) {
-            if (isGuarding) {
+            if (otherHandIsGuarding) {
                 nextStage = "punch";
-                guardHint.style.display = 'none'; // 隱藏警告
-            } else {
-                // 如果動作對了，但沒架防禦，顯示提示，但不計分
-                // 這樣使用者就知道為什麼沒反應
-                guardHint.style.display = 'block';
-                guardHint.innerText = isLeft ? "右手護好下巴！" : "左手護好下巴！";
             }
+            // 如果沒架好，雖然不會進這裡，但外部的 UI 已經會亮紅燈提示了
         }
       }
       else if (currentStage === "punch") {
-        // 擊中判定
         if (ratio < config.triggerRatio) {
            count++;
            updateUI(count, wrist.x, wrist.y, isLeft);
@@ -241,7 +239,6 @@
             nextStage = "down"; 
         }
       }
-
       return nextStage;
     }
 
@@ -257,6 +254,7 @@
       canvasCtx.clearRect(0, 0, cw, ch);
       canvasCtx.drawImage(results.image, 0, 0, cw, ch);
 
+      // 浮動文字渲染
       for (let i = floatingTexts.length - 1; i >= 0; i--) {
         let ft = floatingTexts[i];
         ft.life--; ft.offsetY -= 5;
@@ -275,41 +273,69 @@
         
         const lm = results.poseLandmarks;
         const nose = lm[0];
+        // [V7] 使用嘴巴左右點 (9, 10) 來計算下巴中心
+        const mouthLeft = lm[9];
+        const mouthRight = lm[10];
+        
         const leftShoulder = lm[11], rightShoulder = lm[12];
         const leftElbow = lm[13], rightElbow = lm[14];
         const leftWrist = lm[15], rightWrist = lm[16];
 
-        if (nose && leftShoulder && rightShoulder && leftWrist && rightWrist) {
+        if (nose && mouthLeft && mouthRight && leftShoulder && rightShoulder && leftWrist && rightWrist) {
           const shoulderWidth = calculateDistance(leftShoulder, rightShoulder);
           const stableScale = shoulderWidth * 2.5; 
 
-          // 目標圈圈
+          // 計算下巴位置 (嘴巴中點)
+          const chin = {
+             x: (mouthLeft.x + mouthRight.x) / 2,
+             y: (mouthLeft.y + mouthRight.y) / 2
+          };
+
+          // 1. 繪製攻擊目標 (原本的綠圈)
           const targetX = (nose.x - (stableScale * 0.8)) * cw; 
           const targetY = nose.y * ch;
           canvasCtx.beginPath();
           canvasCtx.strokeStyle = "#00FF00"; canvasCtx.lineWidth = 3;
           canvasCtx.arc(targetX, targetY, 15, 0, 2 * Math.PI); canvasCtx.stroke();
 
-          // 架勢檢查輔助線 (非必要，但有助於理解)
-          // 畫出鼻子的「防禦圈」，手要在這裡面
-          // canvasCtx.beginPath();
-          // canvasCtx.strokeStyle = "rgba(255, 255, 0, 0.3)";
-          // canvasCtx.arc(nose.x * cw, nose.y * ch, stableScale * CONFIG.guardDistRatio * cw, 0, 2 * Math.PI);
-          // canvasCtx.stroke();
+          // 2. [V7] 繪製防禦圈 (黃色半透明) - 讓使用者知道手要放哪
+          // 位置在下巴，半徑為 stableScale * guardDistRatio
+          const guardRadius = stableScale * CONFIG.guardDistRatio * cw; // 轉為像素
+          canvasCtx.beginPath();
+          canvasCtx.fillStyle = "rgba(255, 255, 0, 0.15)";
+          canvasCtx.arc(chin.x * cw, chin.y * ch, guardRadius, 0, 2 * Math.PI);
+          canvasCtx.fill();
+          canvasCtx.strokeStyle = "rgba(255, 255, 0, 0.5)";
+          canvasCtx.stroke();
 
+          // 3. 獨立檢查雙手是否在防禦圈內
+          const leftDistToChin = calculateDistance(leftWrist, chin);
+          const rightDistToChin = calculateDistance(rightWrist, chin);
+          
+          const isLeftGuarding = (leftDistToChin / stableScale) < CONFIG.guardDistRatio;
+          const isRightGuarding = (rightDistToChin / stableScale) < CONFIG.guardDistRatio;
+
+          // 4. 更新 UI 警告標示 (與出拳無關，純粹提示)
+          // 如果左手沒防禦，顯示「左手抬高」
+          if (!isLeftGuarding) warnLeft.classList.add('active');
+          else warnLeft.classList.remove('active');
+
+          // 如果右手沒防禦，顯示「右手抬高」
+          if (!isRightGuarding) warnRight.classList.add('active');
+          else warnRight.classList.remove('active');
+
+          // 5. 執行出拳邏輯
           let leftSpeed = calculateDistance(leftWrist, prevLeftWrist);
           let leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
           
           let rightSpeed = calculateDistance(rightWrist, prevRightWrist);
           let rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
 
-          // [V6 關鍵] 傳入 Nose 和 OtherWrist 進行架勢檢查
+          // 左手出拳時，檢查右手是否防禦 (isRightGuarding)
+          const newLeftStage = processHand(leftShoulder, leftWrist, stableScale, leftStage, "L", leftCooldown, CONFIG, leftSpeed, leftAngle, isRightGuarding);
           
-          // 計算左手 (檢查右手是否有架好)
-          const newLeftStage = processHand(leftShoulder, leftWrist, stableScale, leftStage, "L", leftCooldown, CONFIG, leftSpeed, leftAngle, nose, rightWrist);
-          
-          // 計算右手 (檢查左手是否有架好)
-          const newRightStage = processHand(rightShoulder, rightWrist, stableScale, rightStage, "R", rightCooldown, CONFIG, rightSpeed, rightAngle, nose, leftWrist);
+          // 右手出拳時，檢查左手是否防禦 (isLeftGuarding)
+          const newRightStage = processHand(rightShoulder, rightWrist, stableScale, rightStage, "R", rightCooldown, CONFIG, rightSpeed, rightAngle, isLeftGuarding);
 
           leftStage = newLeftStage;
           rightStage = newRightStage;
