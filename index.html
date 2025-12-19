@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V14 - TARGET LOCK</title>
+<title>XMAS BOXING V15 - LASER LOCK</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -198,24 +198,36 @@ video, canvas {
 /* Slip 特效：紅圈 */
 #slip-indicator {
     position: absolute;
-    width: 120px; height: 120px; /* 稍微加大範圍 */
+    width: 120px; height: 120px;
     background: rgba(255, 0, 0, 0.2);
     border: 5px solid rgba(255, 0, 0, 0.8);
     border-radius: 50%;
     transform: translate(-50%, -50%); 
     display: none;
     box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
-    /* 移除動畫，讓它看起來像是一個固定的鎖定點，更有壓迫感 */
 }
 
-/* Duck 特效：紅色橫梁 */
+/* Duck 特效：雷射光束 (新版) */
 #duck-indicator {
     position: absolute;
-    left: 0; width: 100%; height: 10px;
-    background: linear-gradient(to bottom, rgba(255,0,0,0.8), rgba(255,50,50,0.8), rgba(255,0,0,0.8));
-    box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+    left: 0; width: 100%; height: 15px; /* 稍微加粗 */
+    /* 製作雷射質感：中間亮白，上下紅色 */
+    background: linear-gradient(to bottom, 
+        rgba(255, 0, 0, 0.6) 0%, 
+        rgba(255, 255, 255, 0.9) 40%, 
+        rgba(255, 255, 255, 0.9) 60%, 
+        rgba(255, 0, 0, 0.6) 100%);
+    box-shadow: 0 0 20px #ff0000, 0 0 10px #ff3333;
     display: none;
     transform: translateY(-50%);
+    
+    /* 閃爍動畫 */
+    animation: laser-pulse 0.08s infinite alternate;
+}
+
+@keyframes laser-pulse {
+    0% { opacity: 0.7; box-shadow: 0 0 15px #ff0000; height: 12px; }
+    100% { opacity: 1; box-shadow: 0 0 35px #ff0000, 0 0 60px #ff0000; height: 18px; }
 }
 
 
@@ -285,7 +297,7 @@ video, canvas {
 <div class="container">
   
   <div id="landing-layer">
-    <div class="landing-title">XMAS BOXING<br>V14</div>
+    <div class="landing-title">XMAS BOXING<br>V15</div>
     
     <div class="mode-container">
       <div class="mode-box" onclick="selectMode('speed', this)">
@@ -533,8 +545,9 @@ let activeAttackType = null;
 let latestLandmarks = null;
 let dodgeCombo = 0;
 
-// Target Locking for Slip
-let lockedTarget = null; // 記錄攻擊開始時的鼻子位置 {x, y}
+// Target Locking for Slip & Duck
+let lockedTarget = null; // {x, y} for Slip
+let lockedDuckY = null;  // y (scalar) for Duck
 
 // DOM
 const videoElement = document.getElementById('input_video');
@@ -725,15 +738,8 @@ function launchAttack() {
         attackText.innerText = "STRAIGHT! SLIP!";
         attackText.className = "attack-msg attack-straight";
         
-        // 【核心修改】鎖定目前位置
         if (latestLandmarks && latestLandmarks[0]) {
             lockedTarget = { x: latestLandmarks[0].x, y: latestLandmarks[0].y };
-            
-            // 將紅圈定位在「鎖定時」的座標，之後不隨身體移動
-            // MediaPipe x 座標是 0~1，0在左邊。CSS left 0% 也是左邊。
-            // 但因為我們 canvas `transform: scaleX(-1)` 做鏡像，
-            // 視覺上看到的「左」其實是 CSS 的 right，或者需要翻轉計算。
-            // 為了讓 CSS div 和鏡像後的影像對齊： CSS left = (1 - x) * 100%
             slipIndicator.style.left = (1 - lockedTarget.x) * 100 + '%';
             slipIndicator.style.top = lockedTarget.y * 100 + '%';
             slipIndicator.style.display = 'block';
@@ -741,7 +747,16 @@ function launchAttack() {
     } else {
         attackText.innerText = "HOOK! DUCK!";
         attackText.className = "attack-msg attack-hook";
-        duckIndicator.style.display = 'block';
+        
+        // 【核心修改：Duck 鎖定】
+        if (latestLandmarks && latestLandmarks[11] && latestLandmarks[12]) {
+            let currentShoulderY = (latestLandmarks[11].y + latestLandmarks[12].y) / 2;
+            lockedDuckY = currentShoulderY - 0.05; // 鎖定這個高度
+            
+            // 直接設定 CSS top，之後不再更新
+            duckIndicator.style.top = lockedDuckY * 100 + '%';
+            duckIndicator.style.display = 'block';
+        }
     }
 
     let reactionTime = 600; // HARD (Default)
@@ -756,7 +771,11 @@ function launchAttack() {
             // 隱藏特效
             slipIndicator.style.display = 'none';
             duckIndicator.style.display = 'none';
-            lockedTarget = null; // 清除鎖定
+            
+            // 重置鎖定變數
+            lockedTarget = null;
+            lockedDuckY = null;
+            
             enemyState = 'IDLE';
             scheduleNextAttack(); 
         }, 500);
@@ -775,27 +794,23 @@ function checkDefense() {
     if (!latestLandmarks) return; 
     const lm = latestLandmarks;
     let nose = lm[0];
-    let shoulderY = (lm[11].y + lm[12].y) / 2;
     
     let isHit = false;
 
     if (activeAttackType === 'STRAIGHT') {
-        // 【核心修改】判定邏輯：是否還在鎖定範圍內？
         if (lockedTarget && nose) {
-            // 計算目前鼻子位置與鎖定點的距離
-            // 由於 x, y 都是 0~1 的正規化座標，我們可以用歐幾里得距離
-            // 假設紅圈半徑約為 0.1 (螢幕寬度的 10%)
             let dist = Math.sqrt(Math.pow(nose.x - lockedTarget.x, 2) + Math.pow(nose.y - lockedTarget.y, 2));
-            
-            // 如果距離小於閥值，代表沒有移開 -> 被打中
             if (dist < 0.1) {
                 isHit = true;
             }
         }
     } 
     else if (activeAttackType === 'HOOK') {
-        // Duck 判定維持原樣 (高度判定)
-        if (nose.y < (shoulderY - 0.05)) isHit = true; 
+        // 【核心修改：使用鎖定高度判定】
+        if (lockedDuckY !== null && nose) {
+            // 如果現在的鼻子 Y 座標 < 鎖定線 Y 座標 (代表頭部在線上/沒蹲下)
+            if (nose.y < lockedDuckY) isHit = true; 
+        }
     }
 
     if (isHit) {
@@ -916,16 +931,8 @@ function onResults(results) {
 
     // --- 更新視覺特效位置 ---
     
-    // 1. Slip Indicator: 現在只在啟動時設定一次位置 (在 launchAttack 裡)，這裡不再更新 left/top，
-    //    確保它是一個「固定」的目標點，不會追著臉跑。
-
-    // 2. Duck Indicator: 繼續追蹤肩膀高度，保持高度判定的準確性
-    if (lm[11] && lm[12] && duckIndicator.style.display === 'block') {
-        let shoulderY = (lm[11].y + lm[12].y) / 2;
-        let duckLineY = shoulderY - 0.05;
-        duckIndicator.style.top = duckLineY * 100 + '%';
-    }
-    // -----------------------
+    // 1. Slip Indicator: 已改為鎖定，此處不更新
+    // 2. Duck Indicator: 已改為鎖定，此處不更新 (移除舊的跟隨邏輯)
 
     const skeletonColor = '#00ff00';
     const pairs = [[11,13], [13,15], [12,14], [14,16], [11,12]];
