@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING CHALLENGE V7</title>
+<title>XMAS BOXING CHALLENGE V5.5 (Visual Guard)</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -13,6 +13,7 @@ body {
   font-family: 'Montserrat', sans-serif; 
   text-align: center; margin: 0; overflow: hidden; 
   color: #fff; background: #000;
+  /* 禁止手機下拉刷新與選取 */
   overscroll-behavior: none;
   user-select: none;
   -webkit-user-select: none;
@@ -47,7 +48,7 @@ body {
 }
 
 /* =========================================
-   【UI 佈局】
+   【UI 佈局系統】
    ========================================= */
 .container { position: relative; width: 100vw; height: 100vh; }
 video, canvas { 
@@ -55,7 +56,7 @@ video, canvas {
   object-fit: cover; transform: scaleX(-1); z-index: 0; 
 }
 
-/* --- 1. 登入頁面 --- */
+/* --- 1. 登入頁面 (Landing Page) --- */
 #landing-layer {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 100;
@@ -73,14 +74,14 @@ video, canvas {
   line-height: 1.2;
 }
 
-/* --- 2. 遊戲 HUD --- */
+/* --- 2. 遊戲 HUD (Game UI) --- */
 #game-hud {
   position: absolute; top: 30px; left: 50%; transform: translateX(-50%); 
   z-index: 50;
   display: none; 
   opacity: 0;
   transition: opacity 0.5s ease;
-  pointer-events: none; 
+  pointer-events: none; /* 讓點擊穿透，不擋手勢 */
 }
 
 .score-board { 
@@ -110,11 +111,12 @@ video, canvas {
   border: none; border-radius: 60px; cursor: pointer; 
   box-shadow: 0 0 40px rgba(239, 68, 68, 0.6);
   transition: transform 0.2s;
+  /* 解決手機點擊延遲 */
   touch-action: manipulation;
 }
 #start-btn:active { transform: scale(0.95); }
 
-/* 重置按鈕 (右上角) */
+/* V5 修正：重置按鈕改到右上角，避免手機底部遮擋 */
 #reset-btn {
   position: absolute; top: 20px; right: 20px; z-index: 999;
   background: rgba(255, 255, 255, 0.2); color: #fff; 
@@ -122,21 +124,23 @@ video, canvas {
   width: 50px; height: 50px; border-radius: 50%;
   font-size: 24px; font-weight: 700; 
   cursor: pointer; display: none; backdrop-filter: blur(5px);
-  display: none; 
+  display: none; /* 初始隱藏 */
   align-items: center; justify-content: center;
   box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
 #reset-btn:hover { background: rgba(255, 255, 255, 0.35); }
 #reset-btn:active { transform: scale(0.9); }
 
-/* --- RWD --- */
+/* --- 響應式調整 (RWD) --- */
 @media (max-width: 768px) {
   .landing-title { font-size: 32px; }
   #start-btn { padding: 20px 40px; font-size: 20px; width: 80%; }
   .score-board { padding: 8px 30px; }
   #count { font-size: 70px; }
+  /* 手機版按鈕稍微大一點好按 */
   #reset-btn { width: 55px; height: 55px; top: 15px; right: 15px; font-size: 28px; }
 }
+
 @media (min-width: 1024px) {
   .landing-title { font-size: 70px; margin-bottom: 60px; }
   #game-hud { 
@@ -167,7 +171,7 @@ video, canvas {
   
   <div id="landing-layer">
     <div class="landing-title">XMAS BOXING<br>CHALLENGE</div>
-    <button id="start-btn" onclick="initGame()">我的拳頭準備好了！</button>
+    <button id="start-btn" onclick="startCamera()">我的拳頭準備好了！</button>
   </div>
 
   <div id="game-hud">
@@ -190,54 +194,18 @@ video, canvas {
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <script>
-// =========================================
-//   1. 專業級 Web Audio API 音效引擎
-// =========================================
-let audioCtx;
-let punchBuffer = null;
-
-// 預先載入音效到記憶體
-async function loadAudio() {
-    try {
-        // 建立 AudioContext (解決傳統 Audio 標籤的延遲與併發限制)
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioCtx = new AudioContext();
-        
-        // 請確保 punch.mp3 檔案存在
-        const response = await fetch('punch.mp3');
-        const arrayBuffer = await response.arrayBuffer();
-        
-        // 解碼並儲存 Buffer
-        punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        console.log("Audio Engine Ready");
-    } catch (e) {
-        console.error("Audio Load Error:", e);
-        statusElement.innerText = "AUDIO ERROR";
-    }
-}
-
-// 播放音效 (Fire and Forget 模式)
+// --- 0. 音效 ---
+const punchAudioBase = new Audio('punch.mp3');
+punchAudioBase.load();
 function playHitSound(type) {
-    if (!punchBuffer || !audioCtx) return;
-
-    // 每次播放都建立一個新的 Source，實現無限疊音
-    const source = audioCtx.createBufferSource();
-    source.buffer = punchBuffer;
-    
-    // 簡單的音調變化，區分輕重拳
-    if (type === 'heavy') {
-        source.playbackRate.value = 0.9; // 低沈
-    } else {
-        source.playbackRate.value = 1.1; // 清脆
-    }
-    
-    source.connect(audioCtx.destination);
-    source.start(0); // 立即播放
+    let clone = punchAudioBase.cloneNode();
+    clone.volume = 0.9;
+    if (type === 'heavy') clone.playbackRate = 0.9; 
+    else clone.playbackRate = 1.2; 
+    clone.play().catch(e => {});
 }
 
-// =========================================
-//   2. 參數設定 (V7)
-// =========================================
+// --- 1. 核心參數 (V5 左右拳獨立調校) ---
 const LEFT_HAND_CONFIG = {
     triggerRatio: 0.38,
     resetRatio: 0.42, 
@@ -251,6 +219,8 @@ const RIGHT_HAND_CONFIG = {
     minPunchAngle: 110,
     cooldownFrames: 2
 };
+
+const ELEVATION_TOLERANCE = 0.5;
 
 let count = 0;
 let leftStage = "down"; 
@@ -268,9 +238,7 @@ const landingLayer = document.getElementById('landing-layer');
 const gameHud = document.getElementById('game-hud');
 const resetBtn = document.getElementById('reset-btn');
 
-// =========================================
-//   3. 幾何計算
-// =========================================
+// --- 2. 幾何計算 ---
 function calculateDistance(a, b) {
   return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 }
@@ -282,9 +250,7 @@ function calculateAngle(a, b, c) {
     return angle;
 }
 
-// =========================================
-//   4. 視覺繪製
-// =========================================
+// --- 3. 視覺繪製 ---
 function drawVisualText(ctx, text, visualX, visualY, color) {
   ctx.save();
   const internalX = ctx.canvas.width - visualX;
@@ -336,9 +302,7 @@ window.resetCount = function() {
   statusElement.innerText = "RESET OK"; 
 }
 
-// =========================================
-//   5. 核心偵測邏輯 (V7 - Hitbox Remaster)
-// =========================================
+// --- 4. 核心偵測邏輯 ---
 function onResults(results) {
   canvasElement.width = videoElement.videoWidth;
   canvasElement.height = videoElement.videoHeight;
@@ -349,6 +313,7 @@ function onResults(results) {
   canvasCtx.clearRect(0, 0, cw, ch);
   canvasCtx.drawImage(results.image, 0, 0, cw, ch);
 
+  // 浮動文字
   for (let i = floatingTexts.length - 1; i >= 0; i--) {
     let ft = floatingTexts[i];
     ft.life--; ft.offsetY -= 5; ft.opacity -= 0.04;
@@ -363,77 +328,75 @@ function onResults(results) {
 
   if (results.poseLandmarks) {
     const lm = results.poseLandmarks;
+
     // 骨架繪製
     const skeletonColor = '#00ff00';
-    const pairs = [[11,13], [13,15], [12,14], [14,16], [11,12]];
-    pairs.forEach(p => {
-        if(lm[p[0]] && lm[p[1]]) drawLine(canvasCtx, lm[p[0]], lm[p[1]], skeletonColor);
-    });
+    if(lm[11] && lm[13]) drawLine(canvasCtx, lm[11], lm[13], skeletonColor);
+    if(lm[13] && lm[15]) drawLine(canvasCtx, lm[13], lm[15], skeletonColor);
+    if(lm[12] && lm[14]) drawLine(canvasCtx, lm[12], lm[14], skeletonColor);
+    if(lm[14] && lm[16]) drawLine(canvasCtx, lm[14], lm[16], skeletonColor);
+    if(lm[11] && lm[12]) drawLine(canvasCtx, lm[11], lm[12], skeletonColor);
 
     if (lm[11] && lm[12]) {
       const shoulderWidth = calculateDistance(lm[11], lm[12]);
-      
-      // 腰部線估算 (過濾垂手)
-      let waistY = 1.0; 
-      if (lm[23] && lm[24]) {
-          waistY = (lm[23].y + lm[24].y) / 2;
-      } else {
-          // 如果沒照到腰，預設腰在肩膀下方 1.5 倍肩寬處
-          waistY = (lm[11].y + lm[12].y) / 2 + (shoulderWidth * 1.5);
-      }
-      
-      // 視覺燈號 (Nose Check)
-      const nose = lm[0];
-      const guardRadius = shoulderWidth * 0.8;
 
+      // === 新增：防禦架勢視覺檢測 ===
+      // 使用鼻子(lm[0])作為頭部中心，計算手腕與鼻子的距離
+      const nose = lm[0];
+      const guardRadius = shoulderWidth * 0.8; // 防禦圈判定 (約0.8倍肩寬)
+
+      // 左手圓點邏輯
       if (lm[15]) {
-         let dotColor = '#ff0000';
-         if (nose && calculateDistance(lm[15], nose) < guardRadius) dotColor = '#00ff00';
+         let dotColor = '#ff0000'; // 預設紅色 (未防禦/遠離下巴)
+         if (nose) {
+             const distToFace = calculateDistance(lm[15], nose);
+             // 如果距離小於防禦圈，變綠色
+             if (distToFace < guardRadius) {
+                 dotColor = '#00ff00';
+             }
+         }
          drawDot(canvasCtx, lm[15], dotColor, 8);
       }
+
+      // 右手圓點邏輯
       if (lm[16]) {
-         let dotColor = '#ff0000';
-         if (nose && calculateDistance(lm[16], nose) < guardRadius) dotColor = '#00ff00';
+         let dotColor = '#ff0000'; // 預設紅色
+         if (nose) {
+             const distToFace = calculateDistance(lm[16], nose);
+             if (distToFace < guardRadius) {
+                 dotColor = '#00ff00';
+             }
+         }
          drawDot(canvasCtx, lm[16], dotColor, 8);
       }
 
-      // 出拳處理
+      // 出拳判定
       if (lm[15] && lm[13] && lm[15].visibility > 0.5) {
-        leftStage = processHandV7(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, waistY);
+        leftStage = processHandV5(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG);
       }
       if (lm[16] && lm[14] && lm[16].visibility > 0.5) {
-        rightStage = processHandV7(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG, waistY);
+        rightStage = processHandV5(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG);
       }
     }
   }
   canvasCtx.restore();
 }
 
-function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, waistY) {
-  
-  // 1. 腰部過濾：手垂太低 (Y座標大) 不算
-  if (wrist.y > waistY) return currentStage;
-
+// V5 通用處理函數
+function processHandV5(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config) {
   const dist = calculateDistance(shoulder, wrist);
   let ratio = dist / scale;
+  
   if (label === "R") ratio *= 1.1; 
 
-  // 2. 角度：手臂伸直
   const armAngle = calculateAngle(shoulder, elbow, wrist);
   const isArmStraight = armAngle > config.minPunchAngle;
-
-  // 3. 高度修正 (V7 關鍵更新)
-  // 舊版依賴 elbow，導致需要打得比手肘高很多
-  // V7 改為：只要高於「肩膀下方一點點 (胸線)」就算合格
-  // 注意：MediaPipe Y座標越小越高。 Shoulder.y 是肩膀高度。
-  // 我們允許 wrist.y < (Shoulder.y + 0.2)。 這樣胸口、下巴、額頭都在範圍內。
-  const hitZoneThreshold = shoulder.y + 0.2; 
-  const isHighEnough = wrist.y < hitZoneThreshold;
+  const isHighEnough = wrist.y < (elbow.y + ELEVATION_TOLERANCE);
 
   let nextStage = currentStage;
 
   if (currentStage === "down") {
-    // 觸發條件
+    // 判定觸發
     if (ratio > config.triggerRatio && isArmStraight && isHighEnough && cooldown === 0) {
       nextStage = "punch";
     }
@@ -443,21 +406,18 @@ function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, coold
     count++;
     countElement.innerText = count;
     
-    // UI Pop
+    // UI 動畫
     const sb = document.querySelector('.score-board');
     sb.classList.remove('pop-effect');
     void sb.offsetWidth;
     sb.classList.add('pop-effect');
 
-    // V7 音效觸發
     if (label === "L") playHitSound('light'); 
     else playHitSound('heavy'); 
 
-    // 冷卻
     if (label === "L") leftCooldown = config.cooldownFrames;
     else rightCooldown = config.cooldownFrames;
 
-    // 浮動文字
     const hitX = wrist.x * canvasElement.width;
     const hitY = wrist.y * canvasElement.height;
     const color = label === "L" ? "#00d2ff" : "#ff9900"; 
@@ -476,9 +436,7 @@ function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, coold
   return nextStage;
 }
 
-// =========================================
-//   6. 初始化與啟動
-// =========================================
+// --- 初始化 ---
 const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
 pose.setOptions({ 
     modelComplexity: 1, 
@@ -488,17 +446,12 @@ pose.setOptions({
 });
 pose.onResults(onResults);
 
-// 初始化按鈕事件
-window.initGame = async function() {
-  document.getElementById('start-btn').innerText = "啟動中...";
-  
-  // 1. 啟動音效引擎
-  await loadAudio();
-  if (audioCtx && audioCtx.state === 'suspended') {
-      await audioCtx.resume();
-  }
+window.startCamera = function() {
+  punchAudioBase.play().then(() => {
+    punchAudioBase.pause();
+    punchAudioBase.currentTime = 0;
+  }).catch(e => console.log("Audio unlock failed"));
 
-  // 2. UI 動畫
   landingLayer.style.opacity = 0;
   setTimeout(() => { 
       landingLayer.style.display = 'none'; 
@@ -507,7 +460,6 @@ window.initGame = async function() {
       setTimeout(() => gameHud.style.opacity = 1, 50);
   }, 500);
 
-  // 3. 啟動相機
   const camera = new Camera(videoElement, {
     onFrame: async () => { await pose.send({image: videoElement}); },
     width: 640, height: 480
