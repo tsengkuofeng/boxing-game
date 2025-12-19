@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V10 - COMBO UPDATE</title>
+<title>XMAS BOXING V11 - MOBILE UI</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -53,55 +53,82 @@ video, canvas {
   object-fit: cover; transform: scaleX(-1); z-index: 0; 
 }
 
-/* --- 1. 初始選單 --- */
+/* --- 1. 初始選單與導覽精靈 (Wizard) --- */
 #landing-layer {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 100;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
-  background: rgba(0,0,0,0.6); 
-  backdrop-filter: blur(5px);
+  background: rgba(0,0,0,0.7); 
+  backdrop-filter: blur(8px);
   transition: opacity 0.5s ease;
 }
 .landing-title {
-  font-size: 48px; font-weight: 900; color: #00d2ff;
+  font-size: 36px; font-weight: 900; color: #00d2ff;
   text-shadow: 0 0 20px rgba(0, 210, 255, 0.8);
-  margin-bottom: 40px; letter-spacing: 4px;
+  margin-bottom: 20px; letter-spacing: 2px;
   text-transform: uppercase; line-height: 1.2;
 }
-.mode-container { display: flex; gap: 30px; margin-bottom: 40px; }
+
+/* 模式選擇 */
+.mode-container { display: flex; gap: 20px; margin-bottom: 20px; }
 .mode-box {
   background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3);
-  padding: 30px; border-radius: 20px; cursor: pointer; width: 200px;
+  padding: 20px; border-radius: 15px; cursor: pointer; width: 140px;
   transition: all 0.3s;
 }
 .mode-box:hover, .mode-box.selected {
   background: rgba(0, 210, 255, 0.2); border-color: #00d2ff;
-  transform: translateY(-10px); box-shadow: 0 0 30px rgba(0,210,255,0.4);
+  transform: translateY(-5px); box-shadow: 0 0 20px rgba(0,210,255,0.4);
 }
-.mode-box h3 { margin: 0 0 10px 0; font-size: 24px; color: #fff; }
-.mode-box p { margin: 0; font-size: 14px; color: #ccc; }
+.mode-box h3 { margin: 0 0 5px 0; font-size: 18px; color: #fff; }
+.mode-box p { margin: 0; font-size: 12px; color: #ccc; }
 
-#sparring-settings {
-  display: none; background: rgba(0,0,0,0.5); padding: 20px; border-radius: 15px;
-  margin-bottom: 30px; border: 1px solid #555;
+/* Wizard 容器 (分步驟) */
+#wizard-container {
+  display: none; background: rgba(0,0,0,0.6); padding: 20px; border-radius: 15px;
+  border: 1px solid #555; width: 85%; max-width: 320px;
+  margin-bottom: 20px;
 }
-.setting-row { margin: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.setting-row label { font-weight: bold; font-size: 18px; }
+.wizard-step { display: none; flex-direction: column; gap: 15px; }
+.wizard-step.active { display: flex; animation: fadeIn 0.3s; }
+.step-title { font-size: 18px; font-weight: 700; color: #fbbf24; margin-bottom: 5px; }
+
+.setting-row { display: flex; align-items: center; justify-content: space-between; }
+.setting-row label { font-size: 16px; font-weight: bold; }
 .setting-row input { 
   background: transparent; border: 1px solid #fff; color: #fff; 
-  padding: 5px 10px; font-size: 18px; width: 80px; text-align: center; border-radius: 5px;
+  padding: 8px; font-size: 16px; width: 60px; text-align: center; border-radius: 5px;
 }
+
+/* 難度按鈕 */
+.diff-btn {
+  padding: 10px; border: 1px solid #fff; background: transparent; color: #fff;
+  border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Montserrat';
+  transition: 0.2s;
+}
+.diff-btn.selected { background: #fbbf24; color: #000; border-color: #fbbf24; }
+
+/* 導覽按鈕 */
+.nav-btn {
+  padding: 10px 0; background: #334155; color: #fff; border: none; 
+  border-radius: 8px; margin-top: 10px; font-weight: bold; cursor: pointer;
+}
+.nav-btn:active { transform: scale(0.98); }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* 紅色開始按鈕 */
 #start-btn { 
-  padding: 20px 50px; font-size: 24px; font-weight: 800; font-family: 'Montserrat', sans-serif;
+  display: none; /* 預設隱藏，設定完才出現 */
+  padding: 20px 40px; font-size: 22px; font-weight: 800; font-family: 'Montserrat', sans-serif;
   color: #fff; background: linear-gradient(135deg, #ef4444, #b91c1c);
-  border: none; border-radius: 60px; cursor: pointer; 
-  box-shadow: 0 0 40px rgba(239, 68, 68, 0.6);
-  opacity: 0.5; pointer-events: none; transition: all 0.3s;
+  border: none; border-radius: 50px; cursor: pointer; 
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+  transition: all 0.3s; margin-top: 10px;
 }
-#start-btn.ready { opacity: 1; pointer-events: auto; }
 #start-btn:active { transform: scale(0.95); }
 
-/* --- 2. 遊戲 HUD (右側分數) --- */
+/* --- 2. 遊戲 HUD --- */
 #game-hud {
   position: absolute; top: 85px; right: 20px; z-index: 50;
   display: none; text-align: right; pointer-events: none; 
@@ -129,7 +156,7 @@ video, canvas {
 #timer { font-size: 32px; color: #fbbf24; font-family: monospace; }
 #round-display { font-size: 14px; color: #aaa; letter-spacing: 2px; }
 
-/* --- 3. Combo 系統 (左側) --- */
+/* --- 3. Combo 系統 --- */
 #combo-panel {
   position: absolute; top: 150px; left: 20px; z-index: 50;
   display: none; text-align: left; pointer-events: none;
@@ -143,20 +170,11 @@ video, canvas {
   color: #fff; line-height: 1;
   transition: transform 0.1s;
 }
-/* Combo 特效等級 */
 .combo-normal { color: #fff; }
-.combo-burn {
-  color: #ff9900 !important;
-  text-shadow: 0 0 10px #ff4500, 0 0 20px #ff4500;
-  animation: burnPulse 1s infinite alternate;
-}
-.combo-max {
-  color: #ff0000 !important;
-  text-shadow: 0 0 15px #ff0000, 0 0 30px #8b0000;
-  animation: shake 0.2s infinite;
-}
+.combo-burn { color: #ff9900 !important; text-shadow: 0 0 10px #ff4500; animation: burnPulse 1s infinite alternate; }
+.combo-max { color: #ff0000 !important; text-shadow: 0 0 15px #ff0000; animation: shake 0.2s infinite; }
 @keyframes burnPulse { from { opacity: 0.8; transform: scale(1); } to { opacity: 1; transform: scale(1.1); } }
-@keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+@keyframes shake { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, -1px); } }
 
 /* --- 4. 敵方攻擊提示 --- */
 #enemy-attack-layer {
@@ -200,11 +218,19 @@ video, canvas {
 }
 #reset-btn:hover { background: rgba(255, 255, 255, 0.35); }
 
+/* 休息畫面 Overlay */
+#rest-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 90; background: rgba(0, 100, 255, 0.5); backdrop-filter: blur(5px);
+  display: none; flex-direction: column; justify-content: center; align-items: center;
+}
+.rest-title { font-size: 60px; font-weight: 900; color: #fff; text-transform: uppercase; }
+
 /* RWD */
 @media (max-width: 768px) {
-  .mode-container { flex-direction: column; gap: 15px; }
-  .mode-box { width: 80vw; padding: 20px; }
-  #start-btn { width: 90%; }
+  .landing-title { font-size: 28px; margin-bottom: 20px; }
+  .mode-box { width: 120px; padding: 15px; }
+  #wizard-container { width: 90%; padding: 15px; }
   #game-hud { top: 80px; right: 15px; }
   .score-board { padding: 8px 20px; }
   #count { font-size: 50px; }
@@ -228,31 +254,56 @@ video, canvas {
 <div class="container">
   
   <div id="landing-layer">
-    <div class="landing-title">XMAS BOXING<br>CHALLENGE</div>
+    <div class="landing-title">XMAS BOXING<br>V11</div>
     
     <div class="mode-container">
       <div class="mode-box" onclick="selectMode('speed', this)">
         <h3>快拳練習</h3>
-        <p>自由連擊・無限時間</p>
+        <p>自由連擊</p>
       </div>
       <div class="mode-box" onclick="selectMode('sparring', this)">
         <h3>真實對戰</h3>
-        <p>閃躲反擊・受傷扣分</p>
+        <p>閃躲反擊</p>
       </div>
     </div>
 
-    <div id="sparring-settings">
-      <div class="setting-row">
-        <label>回合數</label>
-        <input type="number" id="input-rounds" value="1" min="1" max="10">
+    <div id="wizard-container">
+      
+      <div id="step-1" class="wizard-step active">
+        <div class="step-title">STEP 1/3: 回合設定</div>
+        <div class="setting-row">
+          <label>回合數</label>
+          <input type="number" id="input-rounds" value="3" min="1" max="99">
+        </div>
+        <div class="setting-row">
+          <label>每回合(分)</label>
+          <input type="number" id="input-minutes" value="1" min="1" max="3">
+        </div>
+        <button class="nav-btn" onclick="nextStep(2)">下一步</button>
       </div>
-      <div class="setting-row">
-        <label>每回合(分)</label>
-        <input type="number" id="input-minutes" value="1" min="1" max="3">
+
+      <div id="step-2" class="wizard-step">
+        <div class="step-title">STEP 2/3: 休息設定</div>
+        <div class="setting-row">
+          <label>休息時間(分)</label>
+          <input type="number" id="input-rest" value="1" min="0" max="3">
+        </div>
+        <button class="nav-btn" onclick="nextStep(3)">下一步</button>
       </div>
+
+      <div id="step-3" class="wizard-step">
+        <div class="step-title">STEP 3/3: 難易度</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <button class="diff-btn" onclick="setDifficulty('EASY', this)">簡單 (慢速)</button>
+          <button class="diff-btn" onclick="setDifficulty('NORMAL', this)">普通 (標準)</button>
+          <button class="diff-btn selected" onclick="setDifficulty('HARD', this)">困難 (極速)</button>
+        </div>
+        <button class="nav-btn" style="background:#059669;" onclick="finishSetup()">完成設定</button>
+      </div>
+
     </div>
 
-    <button id="start-btn" onclick="initGame()">我的拳頭準備好了！</button>
+    <button id="start-btn" onclick="initGame()">FIGHT!</button>
   </div>
 
   <div id="game-hud">
@@ -275,7 +326,13 @@ video, canvas {
     <div id="attack-text" class="attack-msg"></div>
   </div>
 
+  <div id="rest-overlay">
+    <div class="rest-title">REST</div>
+    <div id="rest-timer" style="font-size:40px; color:#fff;">00:00</div>
+  </div>
+
   <div id="damage-overlay"></div>
+  
   <div id="result-layer">
     <h1>GAME OVER</h1>
     <div class="result-score" id="final-score">0</div>
@@ -295,15 +352,13 @@ video, canvas {
 
 <script>
 // =========================================
-//   Audio Engine (Hybrid)
+//   Audio Engine
 // =========================================
 let audioCtx = null;
 let punchBuffer = null; 
-let bgmOscillators = [];
-let nextNoteTime = 0.0;
 let isPlayingBGM = false;
 let tempo = 130; 
-let lookahead = 25.0; 
+let nextNoteTime = 0.0;
 let scheduleAheadTime = 0.1;
 let current16thNote = 0;
 
@@ -315,9 +370,7 @@ async function initAudio() {
         if (!response.ok) throw new Error("punch.mp3 not found");
         const arrayBuffer = await response.arrayBuffer();
         punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    } catch (e) { 
-        console.warn("Audio Load Error:", e);
-    }
+    } catch (e) { console.warn("Audio Load Error:", e); }
 }
 
 function playPunchSound(type) {
@@ -337,8 +390,6 @@ function synthWarning() {
     osc.type = 'square';
     osc.frequency.setValueAtTime(800, t);
     osc.frequency.linearRampToValueAtTime(600, t + 0.1);
-    osc.frequency.setValueAtTime(800, t + 0.15);
-    osc.frequency.linearRampToValueAtTime(600, t + 0.25);
     gain.gain.setValueAtTime(0.1, t);
     gain.gain.linearRampToValueAtTime(0, t + 0.3);
     osc.connect(gain); gain.connect(audioCtx.destination);
@@ -361,6 +412,7 @@ function synthDamage() {
 
 function scheduleNote(beatNumber, time) {
     if (!audioCtx) return;
+    // Kick
     if (beatNumber % 4 === 0) {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -371,6 +423,7 @@ function scheduleNote(beatNumber, time) {
         osc.connect(gain); gain.connect(audioCtx.destination);
         osc.start(time); osc.stop(time + 0.5);
     }
+    // Snare
     if (beatNumber % 8 === 4) {
         const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
         const output = noiseBuffer.getChannelData(0);
@@ -386,6 +439,7 @@ function scheduleNote(beatNumber, time) {
         noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(audioCtx.destination);
         noise.start(time);
     }
+    // Hi-hat
     if (beatNumber % 2 === 0) {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -432,14 +486,15 @@ let floatingTexts = [];
 
 // Sparring Logic
 let sparringConfig = {
-    totalRounds: 1, secondsPerRound: 60, currentRound: 1, timeLeft: 0
+    totalRounds: 1, secondsPerRound: 60, restTime: 60,
+    currentRound: 1, timeLeft: 0, 
+    difficulty: 'HARD', // Default
+    state: 'READY' // READY, FIGHT, REST, END
 };
 let gameTimerInterval = null;
 let enemyState = 'IDLE'; 
 let activeAttackType = null;
 let latestLandmarks = null;
-
-// Combo Logic
 let dodgeCombo = 0;
 
 // DOM
@@ -449,9 +504,9 @@ const canvasCtx = canvasElement.getContext('2d');
 const countElement = document.getElementById('count');
 const startBtn = document.getElementById('start-btn');
 const landingLayer = document.getElementById('landing-layer');
+const wizardContainer = document.getElementById('wizard-container');
 const gameHud = document.getElementById('game-hud');
 const resetBtn = document.getElementById('reset-btn');
-const sparringSettings = document.getElementById('sparring-settings');
 const sparringInfo = document.getElementById('sparring-info');
 const timerDisplay = document.getElementById('timer');
 const roundDisplay = document.getElementById('round-display');
@@ -462,13 +517,44 @@ const resultLayer = document.getElementById('result-layer');
 const finalScoreEl = document.getElementById('final-score');
 const comboPanel = document.getElementById('combo-panel');
 const comboCountEl = document.getElementById('combo-count');
+const restOverlay = document.getElementById('rest-overlay');
+const restTimerEl = document.getElementById('rest-timer');
 
+// --- Wizard / UI Logic ---
 function selectMode(mode, element) {
     selectedMode = mode;
     document.querySelectorAll('.mode-box').forEach(el => el.classList.remove('selected'));
     element.classList.add('selected');
-    startBtn.classList.add('ready');
-    sparringSettings.style.display = (mode === 'sparring') ? 'block' : 'none';
+    
+    // Reset Buttons
+    startBtn.style.display = 'none';
+    wizardContainer.style.display = 'none';
+
+    if (mode === 'sparring') {
+        wizardContainer.style.display = 'block';
+        showStep(1);
+    } else {
+        startBtn.innerText = "快拳練習 START";
+        startBtn.style.display = 'block';
+    }
+}
+
+function showStep(stepNum) {
+    document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
+    document.getElementById(`step-${stepNum}`).classList.add('active');
+}
+function nextStep(targetStep) { showStep(targetStep); }
+
+function setDifficulty(diff, btn) {
+    sparringConfig.difficulty = diff;
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+}
+
+function finishSetup() {
+    wizardContainer.style.display = 'none';
+    startBtn.innerText = "準備開戰 (START)";
+    startBtn.style.display = 'block';
 }
 
 async function initGame() {
@@ -478,16 +564,20 @@ async function initGame() {
     if (selectedMode === 'sparring') {
         let rounds = parseInt(document.getElementById('input-rounds').value) || 1;
         let mins = parseInt(document.getElementById('input-minutes').value) || 1;
-        if (mins > 3) mins = 3; 
+        let restMins = parseInt(document.getElementById('input-rest').value) || 1;
+        
         sparringConfig.totalRounds = rounds;
         sparringConfig.secondsPerRound = mins * 60;
+        sparringConfig.restTime = restMins * 60;
         sparringConfig.currentRound = 1;
         sparringConfig.timeLeft = sparringConfig.secondsPerRound;
+        sparringConfig.state = 'FIGHT';
         
         sparringInfo.style.display = 'flex';
-        comboPanel.style.display = 'block'; // 顯示 Combo
+        comboPanel.style.display = 'block';
         updateTimerDisplay();
         startBGM(); 
+        startSparringLoop();
     } else {
         sparringInfo.style.display = 'none';
         comboPanel.style.display = 'none';
@@ -501,8 +591,6 @@ async function initGame() {
         setTimeout(() => gameHud.style.opacity = 1, 50);
         
         isGameRunning = true;
-        if (selectedMode === 'sparring') startSparringLoop();
-        
         const camera = new Camera(videoElement, {
             onFrame: async () => { await pose.send({image: videoElement}); },
             width: 640, height: 480
@@ -527,25 +615,56 @@ function updateTimerDisplay() {
 function startSparringLoop() {
     gameTimerInterval = setInterval(() => {
         if (!isGameRunning) return;
-        sparringConfig.timeLeft--;
-        updateTimerDisplay();
-
-        if (sparringConfig.timeLeft <= 0) {
-            if (sparringConfig.currentRound < sparringConfig.totalRounds) {
-                sparringConfig.currentRound++;
-                sparringConfig.timeLeft = sparringConfig.secondsPerRound;
-            } else {
-                endGame();
+        
+        if (sparringConfig.state === 'FIGHT') {
+            sparringConfig.timeLeft--;
+            updateTimerDisplay();
+            if (sparringConfig.timeLeft <= 0) {
+                if (sparringConfig.currentRound < sparringConfig.totalRounds) {
+                    startRest();
+                } else {
+                    endGame();
+                }
             }
+        } else if (sparringConfig.state === 'REST') {
+             sparringConfig.timeLeft--;
+             let m = Math.floor(sparringConfig.timeLeft / 60);
+             let s = sparringConfig.timeLeft % 60;
+             restTimerEl.innerText = `${m}:${s < 10 ? '0'+s : s}`;
+             if (sparringConfig.timeLeft <= 0) {
+                 endRest();
+             }
         }
     }, 1000);
     scheduleNextAttack();
 }
 
+function startRest() {
+    sparringConfig.state = 'REST';
+    sparringConfig.timeLeft = sparringConfig.restTime;
+    restOverlay.style.display = 'flex';
+    stopBGM(); // 休息時停止音樂
+}
+
+function endRest() {
+    restOverlay.style.display = 'none';
+    sparringConfig.state = 'FIGHT';
+    sparringConfig.currentRound++;
+    let mins = parseInt(document.getElementById('input-minutes').value) || 1;
+    sparringConfig.timeLeft = mins * 60;
+    updateTimerDisplay();
+    startBGM();
+    scheduleNextAttack(); // Resume attacks
+}
+
 function scheduleNextAttack() {
-    if (!isGameRunning) return;
+    if (!isGameRunning || sparringConfig.state !== 'FIGHT') return;
+    
+    // 根據難度調整攻擊頻率 (Optional, 但這裡主要調整反應時間)
     let delay = Math.random() * 3000 + 2000;
-    setTimeout(() => { if (isGameRunning) launchAttack(); }, delay);
+    setTimeout(() => { 
+        if (isGameRunning && sparringConfig.state === 'FIGHT') launchAttack(); 
+    }, delay);
 }
 
 function launchAttack() {
@@ -562,28 +681,28 @@ function launchAttack() {
         attackText.className = "attack-msg attack-hook";
     }
 
+    // 【難度設定實裝】
+    let reactionTime = 600; // HARD (Default)
+    if (sparringConfig.difficulty === 'EASY') reactionTime = 1500;
+    if (sparringConfig.difficulty === 'NORMAL') reactionTime = 1000;
+
     setTimeout(() => {
-        if (!isGameRunning) return;
+        if (!isGameRunning || sparringConfig.state !== 'FIGHT') return;
         checkDefense();
         setTimeout(() => {
             enemyLayer.style.display = 'none';
             enemyState = 'IDLE';
             scheduleNextAttack();
         }, 500);
-    }, 800);
+    }, reactionTime);
 }
 
 function updateComboUI() {
     comboCountEl.innerText = dodgeCombo;
-    comboCountEl.className = ""; // Reset class
-    
-    if (dodgeCombo >= 10) {
-        comboCountEl.classList.add("combo-max");
-    } else if (dodgeCombo >= 5) {
-        comboCountEl.classList.add("combo-burn");
-    } else {
-        comboCountEl.classList.add("combo-normal");
-    }
+    comboCountEl.className = ""; 
+    if (dodgeCombo >= 10) comboCountEl.classList.add("combo-max");
+    else if (dodgeCombo >= 5) comboCountEl.classList.add("combo-burn");
+    else comboCountEl.classList.add("combo-normal");
 }
 
 function checkDefense() {
@@ -597,49 +716,33 @@ function checkDefense() {
     let isHit = false;
 
     if (activeAttackType === 'STRAIGHT') {
-        // 【修正 5】Slip 閃躲判定放寬
-        // 之前是 0.08 (8%)，現在是 0.05 (5%)。
-        // 意思是：攻擊判定變窄了，你只要身體重心稍微偏離中線 > 0.05 就算閃避成功。
         let deviation = Math.abs(nose.x - hipCenterX);
         if (deviation < 0.05) isHit = true; 
     } 
     else if (activeAttackType === 'HOOK') {
-        // 【修正 2】Duck 判定修正
-        // 之前的判定是：鼻子 "高於" (肩膀 - 0.1) 就算被打中，可能太寬鬆導致站著也算過。
-        // 現在修正：如果鼻子位置高於 (shoulderY - 0.05)，就算被打中。
-        // 意思是你必須把頭降到非常接近肩膀高度甚至更低，才能閃過。
-        // Mediapipe Y軸：0是頂部，1是底部。數值越小越高。
         if (nose.y < (shoulderY - 0.05)) isHit = true; 
     }
 
     if (isHit) {
         takeDamage();
     } else {
-        // 閃避成功
         dodgeCombo++;
         updateComboUI();
-        
-        // 【修正 4】閃避成功加分機制 (Combo 加成)
         let bonus = dodgeCombo * 20;
         count += (100 + bonus);
         countElement.innerText = count;
-        
         spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "DODGE!", "#00ff00");
     }
 }
 
 function takeDamage() {
     synthDamage(); 
-    
-    // 【修正 3】受傷時 Combo 歸零
     dodgeCombo = 0;
     updateComboUI();
-
     damageOverlay.classList.remove('damage-flash');
     void damageOverlay.offsetWidth;
     damageOverlay.classList.add('damage-flash');
-    
-    count -= 50; // 受傷扣分稍微重一點
+    count -= 50; 
     if (count < 0) count = 0;
     countElement.innerText = count;
     spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "HIT! -50", "#ff0000");
@@ -662,22 +765,23 @@ function calculateAngle(a, b, c) {
     return angle;
 }
 
-// 【修正 1】移除文字光暈 (No Glow)
 function drawVisualText(ctx, text, visualX, visualY, color) {
   ctx.save();
   const internalX = ctx.canvas.width - visualX;
   ctx.translate(internalX, visualY); ctx.scale(-1, 1); 
   ctx.font = `900 40px 'Montserrat', sans-serif`;
   ctx.fillStyle = color; 
-  // 移除 shadowBlur 以保持大螢幕清晰
   ctx.shadowBlur = 0; 
-  ctx.strokeStyle = "white"; ctx.lineWidth = 3; // 加粗白邊增加對比
+  ctx.strokeStyle = "white"; ctx.lineWidth = 3; 
   ctx.strokeText(text, 0, 0); ctx.fillText(text, 0, 0); 
   ctx.restore();
 }
-function spawnFloatingText(x, y, text, color) {
-  floatingTexts.push({ x, y, text, color, life: 25, offsetY: 0, opacity: 1 });
+
+// 修改 FloatingText 生成邏輯，支援方向
+function spawnFloatingText(x, y, text, color, type='standard') {
+  floatingTexts.push({ x, y, text, color, life: 30, offsetY: 0, offsetX: 0, opacity: 1, type });
 }
+
 function drawLine(ctx, a, b, color) {
     ctx.beginPath(); ctx.moveTo(a.x * ctx.canvas.width, a.y * ctx.canvas.height);
     ctx.lineTo(b.x * ctx.canvas.width, b.y * ctx.canvas.height);
@@ -690,7 +794,6 @@ function drawDot(ctx, lm, color, radius=5) {
     ctx.stroke(); 
 }
 
-// 核心 Loop
 const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
 pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 pose.onResults(onResults);
@@ -709,9 +812,27 @@ function onResults(results) {
 
   for (let i = floatingTexts.length - 1; i >= 0; i--) {
     let ft = floatingTexts[i];
-    ft.life--; ft.offsetY -= 5; ft.opacity -= 0.04;
+    ft.life--; 
+    
+    // 【文字移動優化】
+    if (ft.type === 'PUNCH_L') {
+        ft.offsetX -= 2; // 往左飄 (視覺上的左，因鏡像翻轉，X座標增加)
+        ft.offsetY -= 1; // 慢慢上升
+    } else if (ft.type === 'PUNCH_R') {
+        ft.offsetX += 2; // 往右飄
+        ft.offsetY -= 1; 
+    } else {
+        ft.offsetY -= 5; // 一般文字 (如 DODGE) 維持往上飛
+    }
+    
+    ft.opacity -= 0.03;
     canvasCtx.globalAlpha = Math.max(0, ft.opacity);
-    drawVisualText(canvasCtx, ft.text, cw - ft.x, ft.y + ft.offsetY, ft.color);
+    
+    // 注意：drawVisualText 內部做了 scale(-1, 1) 鏡像翻轉
+    // 我們傳入 visualX (視覺位置)，內部會轉換成 internalX
+    // 為了讓文字在視覺上往左/右，我們直接調整 visualX
+    drawVisualText(canvasCtx, ft.text, cw - (ft.x + ft.offsetX), ft.y + ft.offsetY, ft.color);
+    
     canvasCtx.globalAlpha = 1.0;
     if (ft.life <= 0) floatingTexts.splice(i, 1);
   }
@@ -722,7 +843,6 @@ function onResults(results) {
   if (results.poseLandmarks) {
     const lm = results.poseLandmarks;
     latestLandmarks = lm;
-
     const skeletonColor = '#00ff00';
     const pairs = [[11,13], [13,15], [12,14], [14,16], [11,12]];
     pairs.forEach(p => { if(lm[p[0]] && lm[p[1]]) drawLine(canvasCtx, lm[p[0]], lm[p[1]], skeletonColor); });
@@ -783,7 +903,9 @@ function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldow
     const hitX = wrist.x * canvasElement.width;
     const hitY = wrist.y * canvasElement.height;
     const color = label === "L" ? "#00d2ff" : "#ff9900"; 
-    spawnFloatingText(hitX, hitY, label === "L" ? "JAB!" : "CROSS!", color);
+    
+    // 傳入 Punch 類型 (PUNCH_L 或 PUNCH_R)
+    spawnFloatingText(hitX, hitY, label === "L" ? "JAB!" : "CROSS!", color, label === "L" ? 'PUNCH_L' : 'PUNCH_R');
     
     nextStage = "retract";
   }
