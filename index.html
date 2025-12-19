@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V12 - BUG FIX</title>
+<title>XMAS BOXING V13 - VISUAL CUES</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -176,7 +176,7 @@ video, canvas {
 @keyframes burnPulse { from { opacity: 0.8; transform: scale(1); } to { opacity: 1; transform: scale(1.1); } }
 @keyframes shake { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, -1px); } }
 
-/* --- 4. 敵方攻擊提示 --- */
+/* --- 4. 敵方攻擊提示 (文字) --- */
 #enemy-attack-layer {
   position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
   z-index: 60; pointer-events: none; display: none;
@@ -188,6 +188,37 @@ video, canvas {
 .attack-straight { color: #ff3333; }
 .attack-hook { color: #ffff00; }
 @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+/* --- 新增：視覺特效層 (Visual Cues Layer) --- */
+#visual-cues-layer {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 55; pointer-events: none;
+}
+
+/* Slip 特效：紅圈 */
+#slip-indicator {
+    position: absolute;
+    width: 100px; height: 100px;
+    background: rgba(255, 0, 0, 0.3);
+    border: 5px solid rgba(255, 0, 0, 0.8);
+    border-radius: 50%;
+    transform: translate(-50%, -50%); /* 居中定位 */
+    display: none;
+    box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+    animation: pulse-red 0.5s infinite alternate;
+}
+@keyframes pulse-red { from { transform: translate(-50%, -50%) scale(1); opacity: 0.8; } to { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } }
+
+/* Duck 特效：紅色橫梁 */
+#duck-indicator {
+    position: absolute;
+    left: 0; width: 100%; height: 10px;
+    background: linear-gradient(to bottom, rgba(255,0,0,0.8), rgba(255,50,50,0.8), rgba(255,0,0,0.8));
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+    display: none;
+    transform: translateY(-50%);
+}
+
 
 /* --- 5. 受傷紅屏 --- */
 #damage-overlay {
@@ -237,6 +268,7 @@ video, canvas {
   #combo-panel { top: 120px; left: 15px; }
   #combo-count { font-size: 60px; }
   .attack-msg { font-size: 50px; }
+  #slip-indicator { width: 80px; height: 80px; border-width: 4px; } /* 手機版紅圈稍微縮小 */
 }
 </style>
 </head>
@@ -254,7 +286,7 @@ video, canvas {
 <div class="container">
   
   <div id="landing-layer">
-    <div class="landing-title">XMAS BOXING<br>V12</div>
+    <div class="landing-title">XMAS BOXING<br>V13</div>
     
     <div class="mode-container">
       <div class="mode-box" onclick="selectMode('speed', this)">
@@ -324,6 +356,11 @@ video, canvas {
 
   <div id="enemy-attack-layer">
     <div id="attack-text" class="attack-msg"></div>
+  </div>
+
+  <div id="visual-cues-layer">
+      <div id="slip-indicator"></div>
+      <div id="duck-indicator"></div>
   </div>
 
   <div id="rest-overlay">
@@ -519,6 +556,9 @@ const comboPanel = document.getElementById('combo-panel');
 const comboCountEl = document.getElementById('combo-count');
 const restOverlay = document.getElementById('rest-overlay');
 const restTimerEl = document.getElementById('rest-timer');
+// 新增特效元素
+const slipIndicator = document.getElementById('slip-indicator');
+const duckIndicator = document.getElementById('duck-indicator');
 
 // --- Wizard / UI Logic ---
 function selectMode(mode, element) {
@@ -578,7 +618,6 @@ async function initGame() {
         comboPanel.style.display = 'block';
         updateTimerDisplay();
         startBGM(); 
-        // 修正：這裡移除 startSparringLoop()，因為 isGameRunning 還是 false
     } else {
         sparringInfo.style.display = 'none';
         comboPanel.style.display = 'none';
@@ -591,11 +630,10 @@ async function initGame() {
         resetBtn.style.display = 'flex'; 
         setTimeout(() => gameHud.style.opacity = 1, 50);
         
-        // 修正：在這裡將狀態設為 true 之後，才啟動對戰迴圈
         isGameRunning = true;
         
         if (selectedMode === 'sparring') {
-            startSparringLoop(); // <--- 移到這裡，確保 isGameRunning = true
+            startSparringLoop(); 
         }
 
         const camera = new Camera(videoElement, {
@@ -620,7 +658,7 @@ function updateTimerDisplay() {
 }
 
 function startSparringLoop() {
-    if (gameTimerInterval) clearInterval(gameTimerInterval); // 防止重複
+    if (gameTimerInterval) clearInterval(gameTimerInterval); 
     gameTimerInterval = setInterval(() => {
         if (!isGameRunning) return;
         
@@ -645,7 +683,6 @@ function startSparringLoop() {
         }
     }, 1000);
     
-    // 啟動攻擊循環
     scheduleNextAttack();
 }
 
@@ -653,7 +690,7 @@ function startRest() {
     sparringConfig.state = 'REST';
     sparringConfig.timeLeft = sparringConfig.restTime;
     restOverlay.style.display = 'flex';
-    stopBGM(); // 休息時停止音樂
+    stopBGM(); 
 }
 
 function endRest() {
@@ -664,13 +701,12 @@ function endRest() {
     sparringConfig.timeLeft = mins * 60;
     updateTimerDisplay();
     startBGM();
-    scheduleNextAttack(); // Resume attacks
+    scheduleNextAttack(); 
 }
 
 function scheduleNextAttack() {
     if (!isGameRunning || sparringConfig.state !== 'FIGHT') return;
     
-    // 根據難度調整攻擊頻率
     let delay = Math.random() * 3000 + 2000;
     setTimeout(() => { 
         if (isGameRunning && sparringConfig.state === 'FIGHT') launchAttack(); 
@@ -684,14 +720,19 @@ function launchAttack() {
 
     enemyLayer.style.display = 'block';
     if (activeAttackType === 'STRAIGHT') {
-        attackText.innerText = "🥊 STRAIGHT! SLIP!";
+        // 移除 Emoji
+        attackText.innerText = "STRAIGHT! SLIP!";
         attackText.className = "attack-msg attack-straight";
+        // 顯示 Slip 紅圈
+        slipIndicator.style.display = 'block';
     } else {
-        attackText.innerText = "↩ HOOK! DUCK!";
+        // 移除 Emoji
+        attackText.innerText = "HOOK! DUCK!";
         attackText.className = "attack-msg attack-hook";
+        // 顯示 Duck 橫梁
+        duckIndicator.style.display = 'block';
     }
 
-    // 【難度設定實裝】
     let reactionTime = 600; // HARD (Default)
     if (sparringConfig.difficulty === 'EASY') reactionTime = 1500;
     if (sparringConfig.difficulty === 'NORMAL') reactionTime = 1000;
@@ -701,8 +742,11 @@ function launchAttack() {
         checkDefense();
         setTimeout(() => {
             enemyLayer.style.display = 'none';
+            // 隱藏特效
+            slipIndicator.style.display = 'none';
+            duckIndicator.style.display = 'none';
             enemyState = 'IDLE';
-            scheduleNextAttack(); // 繼續下一次攻擊
+            scheduleNextAttack(); 
         }, 500);
     }, reactionTime);
 }
@@ -787,7 +831,6 @@ function drawVisualText(ctx, text, visualX, visualY, color) {
   ctx.restore();
 }
 
-// 修改 FloatingText 生成邏輯，支援方向
 function spawnFloatingText(x, y, text, color, type='standard') {
   floatingTexts.push({ x, y, text, color, life: 30, offsetY: 0, offsetX: 0, opacity: 1, type });
 }
@@ -824,15 +867,14 @@ function onResults(results) {
     let ft = floatingTexts[i];
     ft.life--; 
     
-    // 【文字移動優化】
     if (ft.type === 'PUNCH_L') {
-        ft.offsetX -= 2; // 往左飄 (視覺上的左，因鏡像翻轉，X座標增加)
-        ft.offsetY -= 1; // 慢慢上升
+        ft.offsetX -= 2; 
+        ft.offsetY -= 1; 
     } else if (ft.type === 'PUNCH_R') {
-        ft.offsetX += 2; // 往右飄
+        ft.offsetX += 2; 
         ft.offsetY -= 1; 
     } else {
-        ft.offsetY -= 5; // 一般文字 (如 DODGE) 維持往上飛
+        ft.offsetY -= 5; 
     }
     
     ft.opacity -= 0.03;
@@ -850,6 +892,23 @@ function onResults(results) {
   if (results.poseLandmarks) {
     const lm = results.poseLandmarks;
     latestLandmarks = lm;
+
+    // --- 更新視覺特效位置 ---
+    // Slip 紅圈追蹤鼻子 (lm[0])
+    if (lm[0] && slipIndicator.style.display === 'block') {
+        // MediaPipe 座標是鏡像的，所以 left 要用 (1 - lm[0].x)
+        slipIndicator.style.left = (1 - lm[0].x) * 100 + '%';
+        slipIndicator.style.top = lm[0].y * 100 + '%';
+    }
+    // Duck 橫梁追蹤肩膀判定線 (lm[11], lm[12])
+    if (lm[11] && lm[12] && duckIndicator.style.display === 'block') {
+        let shoulderY = (lm[11].y + lm[12].y) / 2;
+        // 判定線在肩膀上方一點點 (數值越小越高)
+        let duckLineY = shoulderY - 0.05;
+        duckIndicator.style.top = duckLineY * 100 + '%';
+    }
+    // -----------------------
+
     const skeletonColor = '#00ff00';
     const pairs = [[11,13], [13,15], [12,14], [14,16], [11,12]];
     pairs.forEach(p => { if(lm[p[0]] && lm[p[1]]) drawLine(canvasCtx, lm[p[0]], lm[p[1]], skeletonColor); });
