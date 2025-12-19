@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V7.3 (Chin Hit Fix)</title>
+<title>XMAS BOXING V7.4 (Right Hand Fix)</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -47,7 +47,7 @@ body {
 }
 
 /* =========================================
-   【UI 佈局】
+   【UI 佈局 (維持右側)】
    ========================================= */
 .container { position: relative; width: 100vw; height: 100vh; }
 video, canvas { 
@@ -73,7 +73,7 @@ video, canvas {
   line-height: 1.2;
 }
 
-/* --- 2. 遊戲 HUD (靠右) --- */
+/* --- 2. 遊戲 HUD --- */
 #game-hud {
   position: absolute; 
   top: 85px; 
@@ -221,21 +221,21 @@ function playHitSound(type) {
 }
 
 // =========================================
-//   2. 參數設定 (V7.3 - Ultra Low Threshold)
+//   2. 參數設定 (V7.4 - Right Hand Optimized)
 // =========================================
-// 修改重點：大幅降低 triggerRatio 與 重置比率，讓短距離的下巴攻擊能被偵測
 const LEFT_HAND_CONFIG = {
-    triggerRatio: 0.22, // 極度靈敏：手臂伸出一點點就算 (解決前後透視問題)
+    triggerRatio: 0.22, // 左手維持原樣 (表現良好)
     resetRatio: 0.28,   
-    minPunchAngle: 85,  // 允許手肘比較彎 (正拳攻擊時手肘在畫面會被壓縮)
+    minPunchAngle: 85,  
     cooldownFrames: 3
 };
 
+// 【關鍵修改】右手超級特化
 const RIGHT_HAND_CONFIG = {
-    triggerRatio: 0.25, 
-    resetRatio: 0.30, 
-    minPunchAngle: 85,
-    cooldownFrames: 3
+    triggerRatio: 0.18, // 降到極低：幾乎只要右手有"離開肩膀"的動作就算
+    resetRatio: 0.24,   // 重置也跟著降低
+    minPunchAngle: 75,  // 角度再放寬：因為右手出拳常伴隨身體旋轉，看起來很彎
+    cooldownFrames: 2   // 冷卻調快一點，避免連打時卡住
 };
 
 let count = 0;
@@ -323,7 +323,7 @@ window.resetCount = function() {
 }
 
 // =========================================
-//   5. 核心偵測邏輯 (V7.3 - Chin Hit Optimized)
+//   5. 核心偵測邏輯 (V7.4)
 // =========================================
 function onResults(results) {
   canvasElement.width = videoElement.videoWidth;
@@ -358,9 +358,7 @@ function onResults(results) {
     if (lm[11] && lm[12]) {
       const shoulderWidth = calculateDistance(lm[11], lm[12]);
       
-      // === V7.3 關鍵修改：降低有效高度線 ===
-      // 以前是肩膀高度，現在改成 (肩膀+肩膀寬度*0.5) = 大約是心窩/胃部的位置
-      // 只要拳頭高於這個位置，都算有效攻擊範圍
+      // 心窩/胃部判定線 (低判定線)
       let solarPlexusY = (lm[11].y + lm[12].y) / 2 + (shoulderWidth * 0.5);
 
       const nose = lm[0];
@@ -389,13 +387,14 @@ function onResults(results) {
 }
 
 function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, validYLimit) {
-  // 高度檢查：只要手比判定線高 (數值越小越高，所以是 wrist.y < validYLimit)
-  // 如果手低於這條線 (比如在腰部以下閒置)，直接返回，不偵測
+  // 1. 高度保護：手太低(閒置)不計數
   if (wrist.y > validYLimit) return currentStage;
 
   const dist = calculateDistance(shoulder, wrist);
+  
+  // V7.4 移除原本針對右手的 1.1倍 魔法數字
+  // 改為直接使用 config.triggerRatio 進行乾淨的比較
   let ratio = dist / scale;
-  if (label === "R") ratio *= 1.1; 
 
   const armAngle = calculateAngle(shoulder, elbow, wrist);
   const isArmStraight = armAngle > config.minPunchAngle;
@@ -403,7 +402,7 @@ function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, coold
   let nextStage = currentStage;
 
   if (currentStage === "down") {
-    // 這裡 ratio 已經極度放寬，高度限制也下修了
+    // 這裡直接比對參數，右手現在是 0.18 (極低門檻)
     if (ratio > config.triggerRatio && isArmStraight && cooldown === 0) {
       nextStage = "punch";
     }
