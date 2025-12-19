@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V7.4 (Right Hand Fix)</title>
+<title>XMAS BOXING V8 - VERSUS</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -13,9 +13,7 @@ body {
   font-family: 'Montserrat', sans-serif; 
   text-align: center; margin: 0; overflow: hidden; 
   color: #fff; background: #000;
-  overscroll-behavior: none;
-  user-select: none;
-  -webkit-user-select: none;
+  overscroll-behavior: none; user-select: none; -webkit-user-select: none;
 }
 .scene-background {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -47,7 +45,7 @@ body {
 }
 
 /* =========================================
-   【UI 佈局 (維持右側)】
+   【UI 佈局】
    ========================================= */
 .container { position: relative; width: 100vw; height: 100vh; }
 video, canvas { 
@@ -55,12 +53,13 @@ video, canvas {
   object-fit: cover; transform: scaleX(-1); z-index: 0; 
 }
 
-/* --- 1. 登入頁面 --- */
+/* --- 1. 初始選單 (Mode Select) --- */
 #landing-layer {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 100;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
-  background: rgba(0,0,0,0.4); 
+  background: rgba(0,0,0,0.6); 
+  backdrop-filter: blur(5px);
   transition: opacity 0.5s ease;
 }
 
@@ -69,55 +68,112 @@ video, canvas {
   text-shadow: 0 0 20px rgba(0, 210, 255, 0.8);
   margin-bottom: 40px; letter-spacing: 4px;
   text-transform: uppercase;
-  max-width: 90%;
   line-height: 1.2;
 }
 
-/* --- 2. 遊戲 HUD --- */
+.mode-container {
+  display: flex; gap: 30px; margin-bottom: 40px;
+}
+
+.mode-box {
+  background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3);
+  padding: 30px; border-radius: 20px; cursor: pointer; width: 200px;
+  transition: all 0.3s;
+}
+.mode-box:hover, .mode-box.selected {
+  background: rgba(0, 210, 255, 0.2); border-color: #00d2ff;
+  transform: translateY(-10px); box-shadow: 0 0 30px rgba(0,210,255,0.4);
+}
+.mode-box h3 { margin: 0 0 10px 0; font-size: 24px; color: #fff; }
+.mode-box p { margin: 0; font-size: 14px; color: #ccc; }
+
+/* 對戰設定面板 */
+#sparring-settings {
+  display: none; /* 預設隱藏 */
+  background: rgba(0,0,0,0.5); padding: 20px; border-radius: 15px;
+  margin-bottom: 30px; border: 1px solid #555;
+}
+.setting-row { margin: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.setting-row label { font-weight: bold; font-size: 18px; }
+.setting-row input { 
+  background: transparent; border: 1px solid #fff; color: #fff; 
+  padding: 5px 10px; font-size: 18px; width: 80px; text-align: center; border-radius: 5px;
+}
+
+#start-btn { 
+  padding: 20px 50px; font-size: 24px; font-weight: 800; font-family: 'Montserrat', sans-serif;
+  color: #fff; background: linear-gradient(135deg, #ef4444, #b91c1c);
+  border: none; border-radius: 60px; cursor: pointer; 
+  box-shadow: 0 0 40px rgba(239, 68, 68, 0.6);
+  opacity: 0.5; pointer-events: none; /* 未選擇模式前鎖定 */
+  transition: all 0.3s;
+}
+#start-btn.ready { opacity: 1; pointer-events: auto; }
+#start-btn:active { transform: scale(0.95); }
+
+/* --- 2. 遊戲 HUD (靠右) --- */
 #game-hud {
-  position: absolute; 
-  top: 85px; 
-  right: 20px; 
-  left: auto; 
-  transform: none; 
-  z-index: 50;
-  display: none; 
-  opacity: 0;
-  transition: opacity 0.5s ease;
+  position: absolute; top: 85px; right: 20px; z-index: 50;
+  display: none; text-align: right;
   pointer-events: none; 
 }
 
 .score-board { 
-  background: rgba(15, 23, 42, 0.6); 
-  backdrop-filter: blur(12px);
-  padding: 10px 25px; 
-  border-radius: 24px; 
+  background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px);
+  padding: 10px 25px; border-radius: 24px; 
   border: 1px solid rgba(255, 255, 255, 0.15); 
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  text-align: center;
-  display: inline-block;
+  display: inline-block; text-align: center; margin-bottom: 10px;
 }
 
 #count { 
-  font-size: 60px; 
-  font-weight: 900; line-height: 1; 
+  font-size: 60px; font-weight: 900; line-height: 1; 
   background: -webkit-linear-gradient(#fff, #cbd5e1);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));
 }
 .count-label { font-size: 12px; color: #94a3b8; letter-spacing: 3px; font-weight: 700; margin-bottom: 5px; }
-#status { margin-top: 5px; font-size: 16px; font-weight: 700; color: #38bdf8; text-shadow: 0 0 5px rgba(56,189,248,0.5); }
 
-/* --- 按鈕 --- */
-#start-btn { 
-  padding: 25px 60px; font-size: 28px; font-weight: 800; font-family: 'Montserrat', sans-serif;
-  color: #fff; background: linear-gradient(135deg, #ef4444, #b91c1c);
-  border: none; border-radius: 60px; cursor: pointer; 
-  box-shadow: 0 0 40px rgba(239, 68, 68, 0.6);
-  transition: transform 0.2s;
-  touch-action: manipulation;
+/* 對戰專用 HUD */
+#sparring-info {
+  display: none; /* 快拳模式隱藏 */
+  background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 15px;
+  color: #fff; font-weight: bold; margin-top: 10px;
+  display: flex; flex-direction: column; align-items: center;
 }
-#start-btn:active { transform: scale(0.95); }
+#timer { font-size: 32px; color: #fbbf24; font-family: monospace; }
+#round-display { font-size: 14px; color: #aaa; letter-spacing: 2px; }
+
+/* --- 3. 敵方攻擊提示 (Enemy Attack UI) --- */
+#enemy-attack-layer {
+  position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+  z-index: 60; pointer-events: none; display: none;
+}
+.attack-msg {
+  font-size: 80px; font-weight: 900; text-transform: uppercase;
+  text-shadow: 0 0 20px #000; animation: blink 0.2s infinite;
+}
+.attack-straight { color: #ff3333; }
+.attack-hook { color: #ffff00; }
+
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+/* --- 4. 受傷紅屏 (Damage Overlay) --- */
+#damage-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: radial-gradient(circle, rgba(255,0,0,0) 50%, rgba(255,0,0,0.8) 100%);
+  z-index: 80; pointer-events: none; opacity: 0;
+  transition: opacity 0.1s;
+}
+.damage-flash { animation: flashRed 0.3s; }
+@keyframes flashRed { 0% { opacity: 0.8; } 100% { opacity: 0; } }
+
+/* --- 5. 結算畫面 --- */
+#result-layer {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 110; background: rgba(0,0,0,0.85);
+  display: none; flex-direction: column; justify-content: center; align-items: center;
+}
+.result-score { font-size: 100px; color: #00ff00; font-weight: 900; margin: 20px 0; }
 
 #reset-btn {
   position: absolute; top: 20px; right: 20px; z-index: 999;
@@ -126,41 +182,30 @@ video, canvas {
   width: 50px; height: 50px; border-radius: 50%;
   font-size: 24px; font-weight: 700; 
   cursor: pointer; display: none; backdrop-filter: blur(5px);
-  display: none; 
-  align-items: center; justify-content: center;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  display: none; align-items: center; justify-content: center;
 }
 #reset-btn:hover { background: rgba(255, 255, 255, 0.35); }
-#reset-btn:active { transform: scale(0.9); }
 
+/* RWD */
 @media (max-width: 768px) {
-  .landing-title { font-size: 32px; }
-  #start-btn { padding: 20px 40px; font-size: 20px; width: 80%; }
-  #reset-btn { width: 55px; height: 55px; top: 15px; right: 15px; }
-  #game-hud { top: 80px; right: 15px; transform: none; }
+  .mode-container { flex-direction: column; gap: 15px; }
+  .mode-box { width: 80vw; padding: 20px; }
+  #start-btn { width: 90%; }
+  #game-hud { top: 80px; right: 15px; }
   .score-board { padding: 8px 20px; }
   #count { font-size: 50px; }
+  .attack-msg { font-size: 50px; }
 }
-
-@media (min-width: 1024px) {
-  .landing-title { font-size: 70px; margin-bottom: 60px; }
-  #game-hud { transform: scale(1.2); transform-origin: top right; }
-}
-
-.pop-effect { animation: pop 0.1s ease-out; }
-@keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
-
 </style>
 </head>
 <body>
 
 <div class="scene-background">
   <div class="night-sky"><div class="moon"></div></div>
-  <div class="snowflake" style="left: 10%; animation-delay: 0s; width: 8px; height: 8px;"></div>
-  <div class="snowflake" style="left: 25%; animation-delay: 2s; width: 5px; height: 5px;"></div>
-  <div class="snowflake" style="left: 45%; animation-delay: 4s; width: 10px; height: 10px;"></div>
-  <div class="snowflake" style="left: 60%; animation-delay: 1s; width: 6px; height: 6px;"></div>
-  <div class="snowflake" style="left: 85%; animation-delay: 3s; width: 9px; height: 9px;"></div>
+  <div class="snowflake" style="left: 10%; animation-delay: 0s;"></div>
+  <div class="snowflake" style="left: 30%; animation-delay: 2s;"></div>
+  <div class="snowflake" style="left: 60%; animation-delay: 1s;"></div>
+  <div class="snowflake" style="left: 85%; animation-delay: 3s;"></div>
   <div class="snow-ground"></div>
 </div>
 
@@ -168,18 +213,56 @@ video, canvas {
   
   <div id="landing-layer">
     <div class="landing-title">XMAS BOXING<br>CHALLENGE</div>
+    
+    <div class="mode-container">
+      <div class="mode-box" onclick="selectMode('speed', this)">
+        <h3>快拳練習</h3>
+        <p>自由連擊・無限時間</p>
+      </div>
+      <div class="mode-box" onclick="selectMode('sparring', this)">
+        <h3>真實對戰</h3>
+        <p>閃躲反擊・受傷扣分</p>
+      </div>
+    </div>
+
+    <div id="sparring-settings">
+      <div class="setting-row">
+        <label>回合數</label>
+        <input type="number" id="input-rounds" value="1" min="1" max="10">
+      </div>
+      <div class="setting-row">
+        <label>每回合(分)</label>
+        <input type="number" id="input-minutes" value="1" min="1" max="3">
+      </div>
+    </div>
+
     <button id="start-btn" onclick="initGame()">我的拳頭準備好了！</button>
   </div>
 
   <div id="game-hud">
     <div class="score-board">
-      <div class="count-label">HITS</div>
+      <div class="count-label">SCORE</div>
       <div id="count">0</div>
-      <div id="status">READY</div>
+    </div>
+    <div id="sparring-info" style="display: none;">
+      <div id="timer">00:00</div>
+      <div id="round-display">R 1/1</div>
     </div>
   </div>
 
-  <button id="reset-btn" onclick="resetCount()">↺</button>
+  <div id="enemy-attack-layer">
+    <div id="attack-text" class="attack-msg"></div>
+  </div>
+
+  <div id="damage-overlay"></div>
+
+  <div id="result-layer">
+    <h1>GAME OVER</h1>
+    <div class="result-score" id="final-score">0</div>
+    <button class="mode-box" onclick="location.reload()">再玩一次</button>
+  </div>
+
+  <button id="reset-btn" onclick="resetGame()">↺</button>
 
   <div class="video-container">
     <video id="input_video" playsinline></video>
@@ -192,52 +275,14 @@ video, canvas {
 
 <script>
 // =========================================
-//   1. 音效引擎
+//   Game State & Config
 // =========================================
 let audioCtx;
 let punchBuffer = null;
+let selectedMode = null; // 'speed' | 'sparring'
+let isGameRunning = false;
 
-async function loadAudio() {
-    try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioCtx = new AudioContext();
-        const response = await fetch('punch.mp3');
-        const arrayBuffer = await response.arrayBuffer();
-        punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    } catch (e) {
-        console.error("Audio Load Error:", e);
-        statusElement.innerText = "AUDIO ERROR";
-    }
-}
-
-function playHitSound(type) {
-    if (!punchBuffer || !audioCtx) return;
-    const source = audioCtx.createBufferSource();
-    source.buffer = punchBuffer;
-    if (type === 'heavy') source.playbackRate.value = 0.9;
-    else source.playbackRate.value = 1.1;
-    source.connect(audioCtx.destination);
-    source.start(0);
-}
-
-// =========================================
-//   2. 參數設定 (V7.4 - Right Hand Optimized)
-// =========================================
-const LEFT_HAND_CONFIG = {
-    triggerRatio: 0.22, // 左手維持原樣 (表現良好)
-    resetRatio: 0.28,   
-    minPunchAngle: 85,  
-    cooldownFrames: 3
-};
-
-// 【關鍵修改】右手超級特化
-const RIGHT_HAND_CONFIG = {
-    triggerRatio: 0.18, // 降到極低：幾乎只要右手有"離開肩膀"的動作就算
-    resetRatio: 0.24,   // 重置也跟著降低
-    minPunchAngle: 75,  // 角度再放寬：因為右手出拳常伴隨身體旋轉，看起來很彎
-    cooldownFrames: 2   // 冷卻調快一點，避免連打時卡住
-};
-
+// Scoring
 let count = 0;
 let leftStage = "down"; 
 let rightStage = "down";
@@ -245,86 +290,321 @@ let leftCooldown = 0;
 let rightCooldown = 0;
 let floatingTexts = []; 
 
+// Sparring Logic
+let sparringConfig = {
+    totalRounds: 1,
+    secondsPerRound: 60,
+    currentRound: 1,
+    timeLeft: 0
+};
+let gameTimerInterval = null;
+let enemyLoopInterval = null;
+let enemyState = 'IDLE'; // IDLE, WARNING, ATTACK
+let activeAttackType = null; // 'STRAIGHT', 'HOOK'
+let attackCheckTimer = null;
+
+// DOM Elements
 const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
 const countElement = document.getElementById('count');
-const statusElement = document.getElementById('status');
+const startBtn = document.getElementById('start-btn');
 const landingLayer = document.getElementById('landing-layer');
 const gameHud = document.getElementById('game-hud');
 const resetBtn = document.getElementById('reset-btn');
+const sparringSettings = document.getElementById('sparring-settings');
+const sparringInfo = document.getElementById('sparring-info');
+const timerDisplay = document.getElementById('timer');
+const roundDisplay = document.getElementById('round-display');
+const enemyLayer = document.getElementById('enemy-attack-layer');
+const attackText = document.getElementById('attack-text');
+const damageOverlay = document.getElementById('damage-overlay');
+const resultLayer = document.getElementById('result-layer');
+const finalScoreEl = document.getElementById('final-score');
 
 // =========================================
-//   3. 幾何計算
+//   Audio Engine
 // =========================================
-function calculateDistance(a, b) {
-  return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+async function loadAudio() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+        const response = await fetch('punch.mp3');
+        const arrayBuffer = await response.arrayBuffer();
+        punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    } catch (e) { console.log("Audio Init Error", e); }
 }
 
+function playHitSound(type) {
+    if (!punchBuffer || !audioCtx) return;
+    const source = audioCtx.createBufferSource();
+    source.buffer = punchBuffer;
+    source.playbackRate.value = (type === 'heavy') ? 0.9 : 1.1;
+    source.connect(audioCtx.destination);
+    source.start(0);
+}
+
+// =========================================
+//   Menu & Game Logic
+// =========================================
+function selectMode(mode, element) {
+    selectedMode = mode;
+    document.querySelectorAll('.mode-box').forEach(el => el.classList.remove('selected'));
+    element.classList.add('selected');
+    
+    // UI Update
+    startBtn.classList.add('ready');
+    if (mode === 'sparring') {
+        sparringSettings.style.display = 'block';
+    } else {
+        sparringSettings.style.display = 'none';
+    }
+}
+
+async function initGame() {
+    startBtn.innerText = "啟動中...";
+    await loadAudio();
+    if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+
+    // Setup Config
+    if (selectedMode === 'sparring') {
+        let rounds = parseInt(document.getElementById('input-rounds').value) || 1;
+        let mins = parseInt(document.getElementById('input-minutes').value) || 1;
+        if (mins > 3) mins = 3; 
+        sparringConfig.totalRounds = rounds;
+        sparringConfig.secondsPerRound = mins * 60;
+        sparringConfig.currentRound = 1;
+        sparringConfig.timeLeft = sparringConfig.secondsPerRound;
+        
+        sparringInfo.style.display = 'flex';
+        updateTimerDisplay();
+    } else {
+        sparringInfo.style.display = 'none';
+    }
+
+    landingLayer.style.opacity = 0;
+    setTimeout(() => { 
+        landingLayer.style.display = 'none'; 
+        gameHud.style.display = 'block';
+        resetBtn.style.display = 'flex'; 
+        setTimeout(() => gameHud.style.opacity = 1, 50);
+        
+        // Start Loops
+        isGameRunning = true;
+        if (selectedMode === 'sparring') startSparringLoop();
+        
+        // Camera
+        const camera = new Camera(videoElement, {
+            onFrame: async () => { await pose.send({image: videoElement}); },
+            width: 640, height: 480
+        });
+        camera.start();
+    }, 500);
+}
+
+function resetGame() {
+    // Soft Reset
+    count = 0;
+    countElement.innerText = count;
+    leftStage = "down"; rightStage = "down";
+    
+    if (selectedMode === 'sparring') {
+        sparringConfig.timeLeft = sparringConfig.secondsPerRound; // Reset time but keep round? Or full reset?
+        // For simplicity: Reload page is best for full reset, button is for quick count reset
+    }
+}
+
+// =========================================
+//   Sparring System (AI & Timer)
+// =========================================
+function updateTimerDisplay() {
+    let m = Math.floor(sparringConfig.timeLeft / 60);
+    let s = sparringConfig.timeLeft % 60;
+    timerDisplay.innerText = `${m}:${s < 10 ? '0'+s : s}`;
+    roundDisplay.innerText = `ROUND ${sparringConfig.currentRound} / ${sparringConfig.totalRounds}`;
+}
+
+function startSparringLoop() {
+    // 1. Round Timer
+    gameTimerInterval = setInterval(() => {
+        if (!isGameRunning) return;
+        
+        sparringConfig.timeLeft--;
+        updateTimerDisplay();
+
+        if (sparringConfig.timeLeft <= 0) {
+            // Round Over
+            if (sparringConfig.currentRound < sparringConfig.totalRounds) {
+                // Next Round
+                sparringConfig.currentRound++;
+                sparringConfig.timeLeft = sparringConfig.secondsPerRound;
+                // Maybe play a bell sound?
+            } else {
+                // Game Over
+                endGame();
+            }
+        }
+    }, 1000);
+
+    // 2. Enemy AI Loop
+    scheduleNextAttack();
+}
+
+function scheduleNextAttack() {
+    if (!isGameRunning) return;
+    // Random delay between 2s and 5s
+    let delay = Math.random() * 3000 + 2000;
+    
+    setTimeout(() => {
+        if (!isGameRunning) return;
+        launchAttack();
+    }, delay);
+}
+
+function launchAttack() {
+    // Decide attack type
+    activeAttackType = Math.random() > 0.5 ? 'STRAIGHT' : 'HOOK';
+    enemyState = 'WARNING';
+    
+    // Show UI Warning
+    enemyLayer.style.display = 'block';
+    if (activeAttackType === 'STRAIGHT') {
+        attackText.innerText = "🥊 STRAIGHT! SLIP!";
+        attackText.className = "attack-msg attack-straight";
+    } else {
+        attackText.innerText = "↩ HOOK! DUCK!";
+        attackText.className = "attack-msg attack-hook";
+    }
+
+    // After 0.8s warning -> Hit moment
+    setTimeout(() => {
+        if (!isGameRunning) return;
+        checkDefense();
+        // Hide UI after hit check
+        setTimeout(() => {
+            enemyLayer.style.display = 'none';
+            enemyState = 'IDLE';
+            scheduleNextAttack();
+        }, 500);
+    }, 800);
+}
+
+// Defense Check (Runs at the moment of impact)
+function checkDefense() {
+    // We need player pose. Since we are in a setTimeout, we need global access to latest landmarks
+    // We will implement a `latestLandmarks` variable stored by onResults
+    
+    if (!latestLandmarks) return; // Can't check
+    
+    const lm = latestLandmarks;
+    // Basic Hip Center & Shoulder Line
+    let hipCenterX = 0.5; // Default center
+    if (lm[23] && lm[24]) hipCenterX = (lm[23].x + lm[24].x) / 2;
+    
+    let shoulderY = (lm[11].y + lm[12].y) / 2;
+    let nose = lm[0];
+    
+    let isHit = false;
+
+    if (activeAttackType === 'STRAIGHT') {
+        // Need to SLIP (Nose X deviation from Hip Center)
+        // Slip distance threshold: 0.08
+        let deviation = Math.abs(nose.x - hipCenterX);
+        if (deviation < 0.08) isHit = true; // Didn't move enough
+    } 
+    else if (activeAttackType === 'HOOK') {
+        // Need to DUCK (Nose Y drop)
+        // Check if nose is significantly lower than original standing shoulder
+        // Dynamic threshold: If nose is too close to shoulderY line (standing), HIT.
+        // Assuming nose is usually above shoulder. Ducking puts nose near or below shoulder.
+        
+        // Simple logic: If nose is higher than (shoulderY - 0.15), you are standing too tall.
+        // Remember Y is inverted (0 is top). Higher value = lower position.
+        // Standing: Nose(0.2) < Shoulder(0.4). 
+        // Ducking: Nose(0.4) ~= Shoulder(0.4).
+        
+        if (nose.y < (shoulderY - 0.1)) isHit = true; // Still standing tall
+    }
+
+    if (isHit) {
+        takeDamage();
+    } else {
+        // DODGE SUCCESS!
+        spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "DODGE!", "#00ff00");
+    }
+}
+
+function takeDamage() {
+    // Visual
+    damageOverlay.classList.remove('damage-flash');
+    void damageOverlay.offsetWidth;
+    damageOverlay.classList.add('damage-flash');
+    
+    // Score Penalty
+    count -= 5;
+    if (count < 0) count = 0;
+    countElement.innerText = count;
+    
+    // Text
+    spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "HIT! -5", "#ff0000");
+}
+
+function endGame() {
+    isGameRunning = false;
+    clearInterval(gameTimerInterval);
+    resultLayer.style.display = 'flex';
+    finalScoreEl.innerText = count;
+}
+
+// =========================================
+//   Punch Detection Parameters
+// =========================================
+const LEFT_HAND_CONFIG = { triggerRatio: 0.22, resetRatio: 0.28, minPunchAngle: 85, cooldownFrames: 3 };
+const RIGHT_HAND_CONFIG = { triggerRatio: 0.18, resetRatio: 0.24, minPunchAngle: 75, cooldownFrames: 2 };
+let latestLandmarks = null; // For defense check
+
+// =========================================
+//   Visual & Math Utils
+// =========================================
+function calculateDistance(a, b) { return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)); }
 function calculateAngle(a, b, c) {
     const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
     let angle = Math.abs(radians * 180.0 / Math.PI);
     if (angle > 180.0) angle = 360 - angle;
     return angle;
 }
-
-// =========================================
-//   4. 視覺繪製
-// =========================================
 function drawVisualText(ctx, text, visualX, visualY, color) {
   ctx.save();
   const internalX = ctx.canvas.width - visualX;
-  ctx.translate(internalX, visualY);
-  ctx.scale(-1, 1); 
+  ctx.translate(internalX, visualY); ctx.scale(-1, 1); 
   ctx.font = `900 40px 'Montserrat', sans-serif`;
-  ctx.fillStyle = color;
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 15;
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 2;
-  ctx.strokeText(text, 0, 0);
-  ctx.fillText(text, 0, 0); 
+  ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 15;
+  ctx.strokeStyle = "white"; ctx.lineWidth = 2;
+  ctx.strokeText(text, 0, 0); ctx.fillText(text, 0, 0); 
   ctx.restore();
 }
-
 function spawnFloatingText(x, y, text, color) {
   floatingTexts.push({ x, y, text, color, life: 25, offsetY: 0, opacity: 1 });
 }
-
 function drawLine(ctx, a, b, color) {
-    ctx.beginPath();
-    ctx.moveTo(a.x * ctx.canvas.width, a.y * ctx.canvas.height);
+    ctx.beginPath(); ctx.moveTo(a.x * ctx.canvas.width, a.y * ctx.canvas.height);
     ctx.lineTo(b.x * ctx.canvas.width, b.y * ctx.canvas.height);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2; 
-    ctx.stroke();
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
 }
-
 function drawDot(ctx, lm, color, radius=5) {
-    const x = lm.x * ctx.canvas.width;
-    const y = lm.y * ctx.canvas.height;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, 2 * Math.PI);
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 10;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-}
-
-window.resetCount = function() {
-  count = 0; 
-  countElement.innerText = count; 
-  floatingTexts = []; 
-  leftCooldown = 0; rightCooldown = 0;
-  leftStage = "down"; rightStage = "down";
-  statusElement.innerText = "RESET OK"; 
+    const x = lm.x * ctx.canvas.width; const y = lm.y * ctx.canvas.height;
+    ctx.beginPath(); ctx.arc(x, y, radius, 0, 2 * Math.PI);
+    ctx.fillStyle = color; ctx.fill(); ctx.shadowColor = color; ctx.shadowBlur = 10;
+    ctx.stroke(); ctx.shadowBlur = 0;
 }
 
 // =========================================
-//   5. 核心偵測邏輯 (V7.4)
+//   Main Pose Loop
 // =========================================
+const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
+pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+pose.onResults(onResults);
+
 function onResults(results) {
   canvasElement.width = videoElement.videoWidth;
   canvasElement.height = videoElement.videoHeight;
@@ -335,6 +615,7 @@ function onResults(results) {
   canvasCtx.clearRect(0, 0, cw, ch);
   canvasCtx.drawImage(results.image, 0, 0, cw, ch);
 
+  // Text Animation
   for (let i = floatingTexts.length - 1; i >= 0; i--) {
     let ft = floatingTexts[i];
     ft.life--; ft.offsetY -= 5; ft.opacity -= 0.04;
@@ -344,26 +625,26 @@ function onResults(results) {
     if (ft.life <= 0) floatingTexts.splice(i, 1);
   }
 
+  // Cooldowns
   if (leftCooldown > 0) leftCooldown--;
   if (rightCooldown > 0) rightCooldown--;
 
   if (results.poseLandmarks) {
     const lm = results.poseLandmarks;
+    latestLandmarks = lm; // Store for AI check
+
+    // Skeleton
     const skeletonColor = '#00ff00';
     const pairs = [[11,13], [13,15], [12,14], [14,16], [11,12]];
-    pairs.forEach(p => {
-        if(lm[p[0]] && lm[p[1]]) drawLine(canvasCtx, lm[p[0]], lm[p[1]], skeletonColor);
-    });
+    pairs.forEach(p => { if(lm[p[0]] && lm[p[1]]) drawLine(canvasCtx, lm[p[0]], lm[p[1]], skeletonColor); });
 
     if (lm[11] && lm[12]) {
       const shoulderWidth = calculateDistance(lm[11], lm[12]);
-      
-      // 心窩/胃部判定線 (低判定線)
       let solarPlexusY = (lm[11].y + lm[12].y) / 2 + (shoulderWidth * 0.5);
-
       const nose = lm[0];
       const guardRadius = shoulderWidth * 0.8;
 
+      // Dots
       if (lm[15]) {
          let dotColor = '#ff0000';
          if (nose && calculateDistance(lm[15], nose) < guardRadius) dotColor = '#00ff00';
@@ -375,34 +656,30 @@ function onResults(results) {
          drawDot(canvasCtx, lm[16], dotColor, 8);
       }
 
+      // Punch Processing
       if (lm[15] && lm[13] && lm[15].visibility > 0.5) {
-        leftStage = processHandV7(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, solarPlexusY);
+        leftStage = processHand(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, solarPlexusY);
       }
       if (lm[16] && lm[14] && lm[16].visibility > 0.5) {
-        rightStage = processHandV7(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG, solarPlexusY);
+        rightStage = processHand(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG, solarPlexusY);
       }
     }
   }
   canvasCtx.restore();
 }
 
-function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, validYLimit) {
-  // 1. 高度保護：手太低(閒置)不計數
+function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, validYLimit) {
   if (wrist.y > validYLimit) return currentStage;
 
   const dist = calculateDistance(shoulder, wrist);
-  
-  // V7.4 移除原本針對右手的 1.1倍 魔法數字
-  // 改為直接使用 config.triggerRatio 進行乾淨的比較
   let ratio = dist / scale;
-
+  
   const armAngle = calculateAngle(shoulder, elbow, wrist);
   const isArmStraight = armAngle > config.minPunchAngle;
 
   let nextStage = currentStage;
 
   if (currentStage === "down") {
-    // 這裡直接比對參數，右手現在是 0.18 (極低門檻)
     if (ratio > config.triggerRatio && isArmStraight && cooldown === 0) {
       nextStage = "punch";
     }
@@ -412,12 +689,9 @@ function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, coold
     countElement.innerText = count;
     
     const sb = document.querySelector('.score-board');
-    sb.classList.remove('pop-effect');
-    void sb.offsetWidth;
-    sb.classList.add('pop-effect');
+    sb.classList.remove('pop-effect'); void sb.offsetWidth; sb.classList.add('pop-effect');
 
-    if (label === "L") playHitSound('light'); 
-    else playHitSound('heavy'); 
+    if (label === "L") playHitSound('light'); else playHitSound('heavy'); 
 
     if (label === "L") leftCooldown = config.cooldownFrames;
     else rightCooldown = config.cooldownFrames;
@@ -427,9 +701,6 @@ function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, coold
     const color = label === "L" ? "#00d2ff" : "#ff9900"; 
     spawnFloatingText(hitX, hitY, label === "L" ? "JAB!" : "CROSS!", color);
     
-    statusElement.innerText = label === "L" ? "LEFT HIT!" : "RIGHT HIT!";
-    statusElement.style.color = color;
-
     nextStage = "retract";
   }
   else if (currentStage === "retract") {
@@ -438,38 +709,6 @@ function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, coold
     }
   }
   return nextStage;
-}
-
-// =========================================
-//   6. 初始化
-// =========================================
-const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
-pose.setOptions({ 
-    modelComplexity: 1, 
-    smoothLandmarks: true, 
-    minDetectionConfidence: 0.5, 
-    minTrackingConfidence: 0.5 
-});
-pose.onResults(onResults);
-
-window.initGame = async function() {
-  document.getElementById('start-btn').innerText = "啟動中...";
-  await loadAudio();
-  if (audioCtx && audioCtx.state === 'suspended') {
-      await audioCtx.resume();
-  }
-  landingLayer.style.opacity = 0;
-  setTimeout(() => { 
-      landingLayer.style.display = 'none'; 
-      gameHud.style.display = 'block';
-      resetBtn.style.display = 'flex'; 
-      setTimeout(() => gameHud.style.opacity = 1, 50);
-  }, 500);
-  const camera = new Camera(videoElement, {
-    onFrame: async () => { await pose.send({image: videoElement}); },
-    width: 640, height: 480
-  });
-  camera.start();
 }
 </script>
 </body>
