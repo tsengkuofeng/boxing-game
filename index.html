@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING CHALLENGE V7.1</title>
+<title>XMAS BOXING V7.2 (Face Hit Fix)</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -73,15 +73,13 @@ video, canvas {
   line-height: 1.2;
 }
 
-/* --- 2. 遊戲 HUD (計分板) - 修改為靠右 --- */
+/* --- 2. 遊戲 HUD (靠右) --- */
 #game-hud {
   position: absolute; 
-  top: 85px; /* 位於重置按鈕下方 (20px top + 50px btn + 15px gap) */
-  right: 20px; /* 靠右對齊 */
-  /* 移除原本的置中程式碼 */
+  top: 85px; 
+  right: 20px; 
   left: auto; 
   transform: none; 
-  
   z-index: 50;
   display: none; 
   opacity: 0;
@@ -92,7 +90,7 @@ video, canvas {
 .score-board { 
   background: rgba(15, 23, 42, 0.6); 
   backdrop-filter: blur(12px);
-  padding: 10px 25px; /* 稍微縮減寬度以適應右側佈局 */
+  padding: 10px 25px; 
   border-radius: 24px; 
   border: 1px solid rgba(255, 255, 255, 0.15); 
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
@@ -101,7 +99,7 @@ video, canvas {
 }
 
 #count { 
-  font-size: 60px; /* 稍微縮小字體以免太擋畫面 */
+  font-size: 60px; 
   font-weight: 900; line-height: 1; 
   background: -webkit-linear-gradient(#fff, #cbd5e1);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
@@ -121,7 +119,6 @@ video, canvas {
 }
 #start-btn:active { transform: scale(0.95); }
 
-/* 重置按鈕 (右上角) */
 #reset-btn {
   position: absolute; top: 20px; right: 20px; z-index: 999;
   background: rgba(255, 255, 255, 0.2); color: #fff; 
@@ -136,12 +133,9 @@ video, canvas {
 #reset-btn:hover { background: rgba(255, 255, 255, 0.35); }
 #reset-btn:active { transform: scale(0.9); }
 
-/* --- RWD --- */
 @media (max-width: 768px) {
   .landing-title { font-size: 32px; }
   #start-btn { padding: 20px 40px; font-size: 20px; width: 80%; }
-  
-  /* 手機版靠右調整 */
   #reset-btn { width: 55px; height: 55px; top: 15px; right: 15px; }
   #game-hud { top: 80px; right: 15px; transform: none; }
   .score-board { padding: 8px 20px; }
@@ -150,7 +144,6 @@ video, canvas {
 
 @media (min-width: 1024px) {
   .landing-title { font-size: 70px; margin-bottom: 60px; }
-  /* 電腦版不需要額外置中放大了，保持在右側即可，但可以稍微變大 */
   #game-hud { transform: scale(1.2); transform-origin: top right; }
 }
 
@@ -199,7 +192,7 @@ video, canvas {
 
 <script>
 // =========================================
-//   1. 專業級 Web Audio API 音效引擎
+//   1. 音效引擎
 // =========================================
 let audioCtx;
 let punchBuffer = null;
@@ -211,7 +204,6 @@ async function loadAudio() {
         const response = await fetch('punch.mp3');
         const arrayBuffer = await response.arrayBuffer();
         punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        console.log("Audio Engine Ready");
     } catch (e) {
         console.error("Audio Load Error:", e);
         statusElement.innerText = "AUDIO ERROR";
@@ -229,20 +221,21 @@ function playHitSound(type) {
 }
 
 // =========================================
-//   2. 參數設定 (V7)
+//   2. 參數設定 (V7.2 - Face Hit Fix)
 // =========================================
+// 關鍵修正：降低 triggerRatio 讓「正前方短刺拳」也能觸發
 const LEFT_HAND_CONFIG = {
-    triggerRatio: 0.38,
-    resetRatio: 0.42, 
-    minPunchAngle: 110,
-    cooldownFrames: 2
+    triggerRatio: 0.25, // 原本 0.38 -> 降至 0.25 (允許透視壓縮下的短拳)
+    resetRatio: 0.30,   // 配合降低，讓縮回判定更靈敏
+    minPunchAngle: 90,  // 角度放寬到 90度 (正拳手肘看起來會比較彎)
+    cooldownFrames: 3
 };
 
 const RIGHT_HAND_CONFIG = {
-    triggerRatio: 0.42,
-    resetRatio: 0.35, 
-    minPunchAngle: 110,
-    cooldownFrames: 2
+    triggerRatio: 0.28, // 右手重拳稍微高一點點，避免誤判
+    resetRatio: 0.30, 
+    minPunchAngle: 90,
+    cooldownFrames: 3
 };
 
 let count = 0;
@@ -330,7 +323,7 @@ window.resetCount = function() {
 }
 
 // =========================================
-//   5. 核心偵測邏輯 (V7 - Hitbox Remaster)
+//   5. 核心偵測邏輯 (V7.2 - Face Hit Optimized)
 // =========================================
 function onResults(results) {
   canvasElement.width = videoElement.videoWidth;
@@ -356,7 +349,6 @@ function onResults(results) {
 
   if (results.poseLandmarks) {
     const lm = results.poseLandmarks;
-    // 骨架繪製
     const skeletonColor = '#00ff00';
     const pairs = [[11,13], [13,15], [12,14], [14,16], [11,12]];
     pairs.forEach(p => {
@@ -366,15 +358,9 @@ function onResults(results) {
     if (lm[11] && lm[12]) {
       const shoulderWidth = calculateDistance(lm[11], lm[12]);
       
-      // 腰部線估算
-      let waistY = 1.0; 
-      if (lm[23] && lm[24]) {
-          waistY = (lm[23].y + lm[24].y) / 2;
-      } else {
-          waistY = (lm[11].y + lm[12].y) / 2 + (shoulderWidth * 1.5);
-      }
-      
-      // 視覺燈號
+      // 設定「腰線」：只要高於此線都算有效攻擊範圍 (包含胸口、頭部)
+      let chestY = (lm[11].y + lm[12].y) / 2 + 0.1; // 肩膀稍微下面一點
+
       const nose = lm[0];
       const guardRadius = shoulderWidth * 0.8;
 
@@ -389,20 +375,20 @@ function onResults(results) {
          drawDot(canvasCtx, lm[16], dotColor, 8);
       }
 
-      // 出拳處理
       if (lm[15] && lm[13] && lm[15].visibility > 0.5) {
-        leftStage = processHandV7(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, waistY);
+        leftStage = processHandV7(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, chestY);
       }
       if (lm[16] && lm[14] && lm[16].visibility > 0.5) {
-        rightStage = processHandV7(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG, waistY);
+        rightStage = processHandV7(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG, chestY);
       }
     }
   }
   canvasCtx.restore();
 }
 
-function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, waistY) {
-  if (wrist.y > waistY) return currentStage;
+function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, chestY) {
+  // 1. 高度檢查：只要手比胸口高 (MediaPipe Y值越小越高)
+  if (wrist.y > chestY) return currentStage;
 
   const dist = calculateDistance(shoulder, wrist);
   let ratio = dist / scale;
@@ -411,13 +397,11 @@ function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, coold
   const armAngle = calculateAngle(shoulder, elbow, wrist);
   const isArmStraight = armAngle > config.minPunchAngle;
 
-  const hitZoneThreshold = shoulder.y + 0.2; 
-  const isHighEnough = wrist.y < hitZoneThreshold;
-
   let nextStage = currentStage;
 
   if (currentStage === "down") {
-    if (ratio > config.triggerRatio && isArmStraight && isHighEnough && cooldown === 0) {
+    // 這裡 ratio 已經放寬，只要手臂有伸出且在胸部以上就算數
+    if (ratio > config.triggerRatio && isArmStraight && cooldown === 0) {
       nextStage = "punch";
     }
   }
@@ -455,7 +439,7 @@ function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, coold
 }
 
 // =========================================
-//   6. 初始化與啟動
+//   6. 初始化
 // =========================================
 const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
 pose.setOptions({ 
@@ -468,12 +452,10 @@ pose.onResults(onResults);
 
 window.initGame = async function() {
   document.getElementById('start-btn').innerText = "啟動中...";
-  
   await loadAudio();
   if (audioCtx && audioCtx.state === 'suspended') {
       await audioCtx.resume();
   }
-
   landingLayer.style.opacity = 0;
   setTimeout(() => { 
       landingLayer.style.display = 'none'; 
@@ -481,7 +463,6 @@ window.initGame = async function() {
       resetBtn.style.display = 'flex'; 
       setTimeout(() => gameHud.style.opacity = 1, 50);
   }, 500);
-
   const camera = new Camera(videoElement, {
     onFrame: async () => { await pose.send({image: videoElement}); },
     width: 640, height: 480
