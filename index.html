@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V9 - HYBRID AUDIO</title>
+<title>XMAS BOXING V10 - COMBO UPDATE</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -62,19 +62,13 @@ video, canvas {
   backdrop-filter: blur(5px);
   transition: opacity 0.5s ease;
 }
-
 .landing-title {
   font-size: 48px; font-weight: 900; color: #00d2ff;
   text-shadow: 0 0 20px rgba(0, 210, 255, 0.8);
   margin-bottom: 40px; letter-spacing: 4px;
-  text-transform: uppercase;
-  line-height: 1.2;
+  text-transform: uppercase; line-height: 1.2;
 }
-
-.mode-container {
-  display: flex; gap: 30px; margin-bottom: 40px;
-}
-
+.mode-container { display: flex; gap: 30px; margin-bottom: 40px; }
 .mode-box {
   background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3);
   padding: 30px; border-radius: 20px; cursor: pointer; width: 200px;
@@ -87,7 +81,6 @@ video, canvas {
 .mode-box h3 { margin: 0 0 10px 0; font-size: 24px; color: #fff; }
 .mode-box p { margin: 0; font-size: 14px; color: #ccc; }
 
-/* 對戰設定面板 */
 #sparring-settings {
   display: none; background: rgba(0,0,0,0.5); padding: 20px; border-radius: 15px;
   margin-bottom: 30px; border: 1px solid #555;
@@ -98,19 +91,17 @@ video, canvas {
   background: transparent; border: 1px solid #fff; color: #fff; 
   padding: 5px 10px; font-size: 18px; width: 80px; text-align: center; border-radius: 5px;
 }
-
 #start-btn { 
   padding: 20px 50px; font-size: 24px; font-weight: 800; font-family: 'Montserrat', sans-serif;
   color: #fff; background: linear-gradient(135deg, #ef4444, #b91c1c);
   border: none; border-radius: 60px; cursor: pointer; 
   box-shadow: 0 0 40px rgba(239, 68, 68, 0.6);
-  opacity: 0.5; pointer-events: none; 
-  transition: all 0.3s;
+  opacity: 0.5; pointer-events: none; transition: all 0.3s;
 }
 #start-btn.ready { opacity: 1; pointer-events: auto; }
 #start-btn:active { transform: scale(0.95); }
 
-/* --- 2. 遊戲 HUD --- */
+/* --- 2. 遊戲 HUD (右側分數) --- */
 #game-hud {
   position: absolute; top: 85px; right: 20px; z-index: 50;
   display: none; text-align: right; pointer-events: none; 
@@ -138,7 +129,36 @@ video, canvas {
 #timer { font-size: 32px; color: #fbbf24; font-family: monospace; }
 #round-display { font-size: 14px; color: #aaa; letter-spacing: 2px; }
 
-/* --- 3. 敵方攻擊提示 --- */
+/* --- 3. Combo 系統 (左側) --- */
+#combo-panel {
+  position: absolute; top: 150px; left: 20px; z-index: 50;
+  display: none; text-align: left; pointer-events: none;
+}
+.combo-label { 
+  font-size: 14px; color: #ccc; font-weight: 800; letter-spacing: 2px; margin-bottom: -5px; 
+  text-shadow: 1px 1px 2px black;
+}
+#combo-count {
+  font-size: 80px; font-weight: 900; font-style: italic;
+  color: #fff; line-height: 1;
+  transition: transform 0.1s;
+}
+/* Combo 特效等級 */
+.combo-normal { color: #fff; }
+.combo-burn {
+  color: #ff9900 !important;
+  text-shadow: 0 0 10px #ff4500, 0 0 20px #ff4500;
+  animation: burnPulse 1s infinite alternate;
+}
+.combo-max {
+  color: #ff0000 !important;
+  text-shadow: 0 0 15px #ff0000, 0 0 30px #8b0000;
+  animation: shake 0.2s infinite;
+}
+@keyframes burnPulse { from { opacity: 0.8; transform: scale(1); } to { opacity: 1; transform: scale(1.1); } }
+@keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+
+/* --- 4. 敵方攻擊提示 --- */
 #enemy-attack-layer {
   position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
   z-index: 60; pointer-events: none; display: none;
@@ -151,7 +171,7 @@ video, canvas {
 .attack-hook { color: #ffff00; }
 @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-/* --- 4. 受傷紅屏 --- */
+/* --- 5. 受傷紅屏 --- */
 #damage-overlay {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   background: radial-gradient(circle, rgba(255,0,0,0) 50%, rgba(255,0,0,0.8) 100%);
@@ -161,7 +181,7 @@ video, canvas {
 .damage-flash { animation: flashRed 0.3s; }
 @keyframes flashRed { 0% { opacity: 0.8; } 100% { opacity: 0; } }
 
-/* --- 5. 結算畫面 --- */
+/* --- 6. 結算畫面 --- */
 #result-layer {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 110; background: rgba(0,0,0,0.85);
@@ -188,6 +208,8 @@ video, canvas {
   #game-hud { top: 80px; right: 15px; }
   .score-board { padding: 8px 20px; }
   #count { font-size: 50px; }
+  #combo-panel { top: 120px; left: 15px; }
+  #combo-count { font-size: 60px; }
   .attack-msg { font-size: 50px; }
 }
 </style>
@@ -244,6 +266,11 @@ video, canvas {
     </div>
   </div>
 
+  <div id="combo-panel">
+    <div class="combo-label">DODGE COMBO</div>
+    <div id="combo-count">0</div>
+  </div>
+
   <div id="enemy-attack-layer">
     <div id="attack-text" class="attack-msg"></div>
   </div>
@@ -269,11 +296,9 @@ video, canvas {
 <script>
 // =========================================
 //   Audio Engine (Hybrid)
-//   - Punch: External MP3
-//   - FX/BGM: Web Audio Synthesis
 // =========================================
 let audioCtx = null;
-let punchBuffer = null; // 儲存 punch.mp3
+let punchBuffer = null; 
 let bgmOscillators = [];
 let nextNoteTime = 0.0;
 let isPlayingBGM = false;
@@ -285,80 +310,57 @@ let current16thNote = 0;
 async function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') await audioCtx.resume();
-    
-    // 載入 punch.mp3
     try {
         const response = await fetch('punch.mp3');
         if (!response.ok) throw new Error("punch.mp3 not found");
         const arrayBuffer = await response.arrayBuffer();
         punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        console.log("Punch MP3 Loaded");
     } catch (e) { 
         console.warn("Audio Load Error:", e);
-        // 如果載入失敗，我們可以在這裡寫一個 fallback 或者是單純顯示錯誤
-        alert("請確認 'punch.mp3' 檔案存在於相同目錄中！");
     }
 }
 
-// 1. 播放真實 punch.mp3
 function playPunchSound(type) {
     if (!punchBuffer || !audioCtx) return;
     const source = audioCtx.createBufferSource();
     source.buffer = punchBuffer;
-    // 簡單的音調變化，區分輕重拳
     source.playbackRate.value = (type === 'heavy') ? 0.9 : 1.1;
     source.connect(audioCtx.destination);
     source.start(0);
 }
 
-// 2. 合成警示音 (Warning SFX)
 function synthWarning() {
     if (!audioCtx) return;
     const t = audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    
     osc.type = 'square';
     osc.frequency.setValueAtTime(800, t);
     osc.frequency.linearRampToValueAtTime(600, t + 0.1);
     osc.frequency.setValueAtTime(800, t + 0.15);
     osc.frequency.linearRampToValueAtTime(600, t + 0.25);
-
     gain.gain.setValueAtTime(0.1, t);
     gain.gain.linearRampToValueAtTime(0, t + 0.3);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start(t);
-    osc.stop(t + 0.3);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + 0.3);
 }
 
-// 3. 合成受傷音 (Damage SFX)
 function synthDamage() {
     if (!audioCtx) return;
     const t = audioCtx.currentTime;
-    
-    // Low punch
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = 'sawtooth';
     osc.frequency.setValueAtTime(100, t);
     osc.frequency.exponentialRampToValueAtTime(10, t + 0.3);
-    
     gain.gain.setValueAtTime(0.5, t);
     gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start(t);
-    osc.stop(t + 0.3);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + 0.3);
 }
 
-// 4. 合成背景音樂 (BGM) - Drum Sequencer
 function scheduleNote(beatNumber, time) {
     if (!audioCtx) return;
-    
-    // Kick Drum
     if (beatNumber % 4 === 0) {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -366,13 +368,9 @@ function scheduleNote(beatNumber, time) {
         osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
         gain.gain.setValueAtTime(0.8, time);
         gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(time);
-        osc.stop(time + 0.5);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(time); osc.stop(time + 0.5);
     }
-    
-    // Snare
     if (beatNumber % 8 === 4) {
         const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
         const output = noiseBuffer.getChannelData(0);
@@ -385,13 +383,9 @@ function scheduleNote(beatNumber, time) {
         const noiseGain = audioCtx.createGain();
         noiseGain.gain.setValueAtTime(0.6, time);
         noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
-        noise.connect(noiseFilter);
-        noiseFilter.connect(noiseGain);
-        noiseGain.connect(audioCtx.destination);
+        noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(audioCtx.destination);
         noise.start(time);
     }
-
-    // Hi-hat
     if (beatNumber % 2 === 0) {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -399,10 +393,8 @@ function scheduleNote(beatNumber, time) {
         osc.frequency.setValueAtTime(8000, time);
         gain.gain.setValueAtTime(0.1, time);
         gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(time);
-        osc.stop(time + 0.05);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(time); osc.stop(time + 0.05);
     }
 }
 
@@ -413,16 +405,11 @@ function startBGM() {
     nextNoteTime = audioCtx.currentTime;
     timerWorker();
 }
-
-function stopBGM() {
-    isPlayingBGM = false;
-}
-
+function stopBGM() { isPlayingBGM = false; }
 function timerWorker() {
     if (!isPlayingBGM) return;
     const secondsPerBeat = 60.0 / tempo;
     const secondsPer16th = secondsPerBeat / 4; 
-    
     while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
         scheduleNote(current16thNote, nextNoteTime);
         nextNoteTime += secondsPer16th;
@@ -430,7 +417,6 @@ function timerWorker() {
     }
     setTimeout(timerWorker, 25);
 }
-
 
 // =========================================
 //   Game Logic
@@ -446,15 +432,15 @@ let floatingTexts = [];
 
 // Sparring Logic
 let sparringConfig = {
-    totalRounds: 1,
-    secondsPerRound: 60,
-    currentRound: 1,
-    timeLeft: 0
+    totalRounds: 1, secondsPerRound: 60, currentRound: 1, timeLeft: 0
 };
 let gameTimerInterval = null;
 let enemyState = 'IDLE'; 
 let activeAttackType = null;
 let latestLandmarks = null;
+
+// Combo Logic
+let dodgeCombo = 0;
 
 // DOM
 const videoElement = document.getElementById('input_video');
@@ -474,6 +460,8 @@ const attackText = document.getElementById('attack-text');
 const damageOverlay = document.getElementById('damage-overlay');
 const resultLayer = document.getElementById('result-layer');
 const finalScoreEl = document.getElementById('final-score');
+const comboPanel = document.getElementById('combo-panel');
+const comboCountEl = document.getElementById('combo-count');
 
 function selectMode(mode, element) {
     selectedMode = mode;
@@ -485,7 +473,7 @@ function selectMode(mode, element) {
 
 async function initGame() {
     startBtn.innerText = "啟動中...";
-    await initAudio(); // 等待 punch.mp3 下載完成
+    await initAudio(); 
 
     if (selectedMode === 'sparring') {
         let rounds = parseInt(document.getElementById('input-rounds').value) || 1;
@@ -497,10 +485,12 @@ async function initGame() {
         sparringConfig.timeLeft = sparringConfig.secondsPerRound;
         
         sparringInfo.style.display = 'flex';
+        comboPanel.style.display = 'block'; // 顯示 Combo
         updateTimerDisplay();
         startBGM(); 
     } else {
         sparringInfo.style.display = 'none';
+        comboPanel.style.display = 'none';
     }
 
     landingLayer.style.opacity = 0;
@@ -523,6 +513,7 @@ async function initGame() {
 
 function resetGame() {
     count = 0; countElement.innerText = count;
+    dodgeCombo = 0; updateComboUI();
     leftStage = "down"; rightStage = "down";
 }
 
@@ -560,8 +551,7 @@ function scheduleNextAttack() {
 function launchAttack() {
     activeAttackType = Math.random() > 0.5 ? 'STRAIGHT' : 'HOOK';
     enemyState = 'WARNING';
-    
-    synthWarning(); // 合成音
+    synthWarning();
 
     enemyLayer.style.display = 'block';
     if (activeAttackType === 'STRAIGHT') {
@@ -583,6 +573,19 @@ function launchAttack() {
     }, 800);
 }
 
+function updateComboUI() {
+    comboCountEl.innerText = dodgeCombo;
+    comboCountEl.className = ""; // Reset class
+    
+    if (dodgeCombo >= 10) {
+        comboCountEl.classList.add("combo-max");
+    } else if (dodgeCombo >= 5) {
+        comboCountEl.classList.add("combo-burn");
+    } else {
+        comboCountEl.classList.add("combo-normal");
+    }
+}
+
 function checkDefense() {
     if (!latestLandmarks) return; 
     const lm = latestLandmarks;
@@ -594,31 +597,52 @@ function checkDefense() {
     let isHit = false;
 
     if (activeAttackType === 'STRAIGHT') {
+        // 【修正 5】Slip 閃躲判定放寬
+        // 之前是 0.08 (8%)，現在是 0.05 (5%)。
+        // 意思是：攻擊判定變窄了，你只要身體重心稍微偏離中線 > 0.05 就算閃避成功。
         let deviation = Math.abs(nose.x - hipCenterX);
-        if (deviation < 0.08) isHit = true; 
+        if (deviation < 0.05) isHit = true; 
     } 
     else if (activeAttackType === 'HOOK') {
-        if (nose.y < (shoulderY - 0.1)) isHit = true; 
+        // 【修正 2】Duck 判定修正
+        // 之前的判定是：鼻子 "高於" (肩膀 - 0.1) 就算被打中，可能太寬鬆導致站著也算過。
+        // 現在修正：如果鼻子位置高於 (shoulderY - 0.05)，就算被打中。
+        // 意思是你必須把頭降到非常接近肩膀高度甚至更低，才能閃過。
+        // Mediapipe Y軸：0是頂部，1是底部。數值越小越高。
+        if (nose.y < (shoulderY - 0.05)) isHit = true; 
     }
 
     if (isHit) {
         takeDamage();
     } else {
+        // 閃避成功
+        dodgeCombo++;
+        updateComboUI();
+        
+        // 【修正 4】閃避成功加分機制 (Combo 加成)
+        let bonus = dodgeCombo * 20;
+        count += (100 + bonus);
+        countElement.innerText = count;
+        
         spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "DODGE!", "#00ff00");
     }
 }
 
 function takeDamage() {
-    synthDamage(); // 合成音
+    synthDamage(); 
     
+    // 【修正 3】受傷時 Combo 歸零
+    dodgeCombo = 0;
+    updateComboUI();
+
     damageOverlay.classList.remove('damage-flash');
     void damageOverlay.offsetWidth;
     damageOverlay.classList.add('damage-flash');
     
-    count -= 5;
+    count -= 50; // 受傷扣分稍微重一點
     if (count < 0) count = 0;
     countElement.innerText = count;
-    spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "HIT! -5", "#ff0000");
+    spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "HIT! -50", "#ff0000");
 }
 
 function endGame() {
@@ -637,13 +661,17 @@ function calculateAngle(a, b, c) {
     if (angle > 180.0) angle = 360 - angle;
     return angle;
 }
+
+// 【修正 1】移除文字光暈 (No Glow)
 function drawVisualText(ctx, text, visualX, visualY, color) {
   ctx.save();
   const internalX = ctx.canvas.width - visualX;
   ctx.translate(internalX, visualY); ctx.scale(-1, 1); 
   ctx.font = `900 40px 'Montserrat', sans-serif`;
-  ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 15;
-  ctx.strokeStyle = "white"; ctx.lineWidth = 2;
+  ctx.fillStyle = color; 
+  // 移除 shadowBlur 以保持大螢幕清晰
+  ctx.shadowBlur = 0; 
+  ctx.strokeStyle = "white"; ctx.lineWidth = 3; // 加粗白邊增加對比
   ctx.strokeText(text, 0, 0); ctx.fillText(text, 0, 0); 
   ctx.restore();
 }
@@ -658,8 +686,8 @@ function drawLine(ctx, a, b, color) {
 function drawDot(ctx, lm, color, radius=5) {
     const x = lm.x * ctx.canvas.width; const y = lm.y * ctx.canvas.height;
     ctx.beginPath(); ctx.arc(x, y, radius, 0, 2 * Math.PI);
-    ctx.fillStyle = color; ctx.fill(); ctx.shadowColor = color; ctx.shadowBlur = 10;
-    ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.fillStyle = color; ctx.fill(); 
+    ctx.stroke(); 
 }
 
 // 核心 Loop
@@ -747,7 +775,6 @@ function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldow
     const sb = document.querySelector('.score-board');
     sb.classList.remove('pop-effect'); void sb.offsetWidth; sb.classList.add('pop-effect');
 
-    // 播放 MP3 打擊音效
     playPunchSound(label === "L" ? 'light' : 'heavy');
 
     if (label === "L") leftCooldown = config.cooldownFrames;
