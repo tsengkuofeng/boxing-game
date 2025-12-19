@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V16 - SCORE REPORT</title>
+<title>XMAS BOXING V17 - REST FIX</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -232,7 +232,7 @@ video, canvas {
 .damage-flash { animation: flashRed 0.3s; }
 @keyframes flashRed { 0% { opacity: 0.8; } 100% { opacity: 0; } }
 
-/* 結算畫面 (更新版) */
+/* 結算畫面 */
 #result-layer {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 110; background: rgba(0,0,0,0.9);
@@ -301,7 +301,7 @@ video, canvas {
 <div class="container">
   
   <div id="landing-layer">
-    <div class="landing-title">XMAS BOXING<br>V16</div>
+    <div class="landing-title">XMAS BOXING<br>V17</div>
     
     <div class="mode-container">
       <div class="mode-box" onclick="selectMode('speed', this)">
@@ -333,7 +333,7 @@ video, canvas {
         <div class="step-title">STEP 2/3: 休息設定</div>
         <div class="setting-row">
           <label>休息時間(分)</label>
-          <input type="number" id="input-rest" value="1" min="0" max="3">
+          <input type="number" id="input-rest" value="1" min="0" max="5" step="0.5">
         </div>
         <button class="nav-btn" onclick="nextStep(3)">下一步</button>
       </div>
@@ -387,8 +387,7 @@ video, canvas {
   
   <div id="result-layer">
     <h1>BATTLE REPORT</h1>
-    <div id="score-details" class="score-table">
-        </div>
+    <div id="score-details" class="score-table"></div>
     <button class="mode-box" onclick="location.reload()">再玩一次</button>
   </div>
 
@@ -405,7 +404,7 @@ video, canvas {
 
 <script>
 // =========================================
-//   Audio Engine (保持不變)
+//   Audio Engine
 // =========================================
 let audioCtx = null;
 let punchBuffer = null; 
@@ -465,7 +464,6 @@ function synthDamage() {
 
 function scheduleNote(beatNumber, time) {
     if (!audioCtx) return;
-    // Kick
     if (beatNumber % 4 === 0) {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -476,7 +474,6 @@ function scheduleNote(beatNumber, time) {
         osc.connect(gain); gain.connect(audioCtx.destination);
         osc.start(time); osc.stop(time + 0.5);
     }
-    // Snare
     if (beatNumber % 8 === 4) {
         const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
         const output = noiseBuffer.getChannelData(0);
@@ -492,7 +489,6 @@ function scheduleNote(beatNumber, time) {
         noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(audioCtx.destination);
         noise.start(time);
     }
-    // Hi-hat
     if (beatNumber % 2 === 0) {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -530,8 +526,8 @@ function timerWorker() {
 // =========================================
 let selectedMode = null; 
 let isGameRunning = false;
-let count = 0; // 當前回合分數
-let roundScores = []; // 儲存各回合分數
+let count = 0;
+let roundScores = [];
 let leftStage = "down"; 
 let rightStage = "down";
 let leftCooldown = 0;
@@ -579,15 +575,12 @@ const restTimerEl = document.getElementById('rest-timer');
 const slipIndicator = document.getElementById('slip-indicator');
 const duckIndicator = document.getElementById('duck-indicator');
 
-// --- Wizard / UI Logic ---
 function selectMode(mode, element) {
     selectedMode = mode;
     document.querySelectorAll('.mode-box').forEach(el => el.classList.remove('selected'));
     element.classList.add('selected');
-    
     startBtn.style.display = 'none';
     wizardContainer.style.display = 'none';
-
     if (mode === 'sparring') {
         wizardContainer.style.display = 'block';
         showStep(1);
@@ -622,9 +615,8 @@ async function initGame() {
 
     if (selectedMode === 'sparring') {
         let rounds = parseInt(document.getElementById('input-rounds').value) || 1;
-        // 使用 parseFloat 以支援 0.5 分鐘
         let mins = parseFloat(document.getElementById('input-minutes').value) || 1;
-        let restMins = parseInt(document.getElementById('input-rest').value) || 1;
+        let restMins = parseFloat(document.getElementById('input-rest').value) || 1; // 支援小數點
         
         sparringConfig.totalRounds = rounds;
         sparringConfig.secondsPerRound = mins * 60;
@@ -633,9 +625,7 @@ async function initGame() {
         sparringConfig.timeLeft = sparringConfig.secondsPerRound;
         sparringConfig.state = 'FIGHT';
         
-        // 初始計分陣列
         roundScores = [];
-        
         sparringInfo.style.display = 'flex';
         comboPanel.style.display = 'block';
         updateTimerDisplay();
@@ -651,13 +641,8 @@ async function initGame() {
         gameHud.style.display = 'block';
         resetBtn.style.display = 'flex'; 
         setTimeout(() => gameHud.style.opacity = 1, 50);
-        
         isGameRunning = true;
-        
-        if (selectedMode === 'sparring') {
-            startSparringLoop(); 
-        }
-
+        if (selectedMode === 'sparring') startSparringLoop(); 
         const camera = new Camera(videoElement, {
             onFrame: async () => { await pose.send({image: videoElement}); },
             width: 640, height: 480
@@ -705,34 +690,28 @@ function startSparringLoop() {
              }
         }
     }, 1000);
-    
     scheduleNextAttack();
 }
 
-// === 核心更新：休息與計分邏輯 ===
 function startRest() {
-    // 1. 記錄這一回合的分數
-    roundScores.push(count);
-    
-    // 2. 顯示休息 UI
+    roundScores.push(count); // Record Score
     sparringConfig.state = 'REST';
     sparringConfig.timeLeft = sparringConfig.restTime;
     restOverlay.style.display = 'flex';
     stopBGM(); 
-    
-    // 3. 重置當前分數歸零，準備下一回合
-    count = 0;
-    countElement.innerText = count;
-    dodgeCombo = 0;
-    updateComboUI();
+    // 注意：這裡不重置 count，讓使用者在休息時能看到上一回合分數
 }
 
 function endRest() {
     restOverlay.style.display = 'none';
+    // 休息結束，準備開打，這時才歸零
+    count = 0;
+    countElement.innerText = count;
+    dodgeCombo = 0;
+    updateComboUI();
+
     sparringConfig.state = 'FIGHT';
     sparringConfig.currentRound++;
-    
-    // 重新讀取時間設定
     let mins = parseFloat(document.getElementById('input-minutes').value) || 1;
     sparringConfig.timeLeft = mins * 60;
     updateTimerDisplay();
@@ -740,21 +719,15 @@ function endRest() {
     scheduleNextAttack(); 
 }
 
-// === 核心更新：結束遊戲與戰報 ===
 function endGame() {
     isGameRunning = false;
     stopBGM(); 
     clearInterval(gameTimerInterval);
-    
-    // 記錄最後一回合的分數
     roundScores.push(count);
-
     resultLayer.style.display = 'flex';
     
-    // 產生戰報 HTML
     let html = '';
     let total = 0;
-    
     roundScores.forEach((score, index) => {
         total += score;
         html += `
@@ -764,9 +737,7 @@ function endGame() {
           </div>
         `;
     });
-    
     let avg = roundScores.length > 0 ? Math.round(total / roundScores.length) : 0;
-    
     html += `
       <div class="score-row total-row">
         <span>TOTAL</span>
@@ -777,11 +748,8 @@ function endGame() {
         <span class="round-score">${avg}</span>
       </div>
     `;
-    
     scoreDetailsEl.innerHTML = html;
 }
-
-// --- 攻擊與判定邏輯 (保持 V15) ---
 
 function scheduleNextAttack() {
     if (!isGameRunning || sparringConfig.state !== 'FIGHT') return;
@@ -818,7 +786,7 @@ function launchAttack() {
         }
     }
 
-    let reactionTime = 600; // HARD
+    let reactionTime = 600; 
     if (sparringConfig.difficulty === 'EASY') reactionTime = 1500;
     if (sparringConfig.difficulty === 'NORMAL') reactionTime = 1000;
 
@@ -888,7 +856,7 @@ function takeDamage() {
     spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "HIT! -50", "#ff0000");
 }
 
-// 幾何與繪圖 (保持不變)
+// 幾何與繪圖 (維持不變)
 function calculateDistance(a, b) { return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)); }
 function calculateAngle(a, b, c) {
     const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
@@ -896,7 +864,6 @@ function calculateAngle(a, b, c) {
     if (angle > 180.0) angle = 360 - angle;
     return angle;
 }
-
 function drawVisualText(ctx, text, visualX, visualY, color) {
   ctx.save();
   const internalX = ctx.canvas.width - visualX;
@@ -908,11 +875,9 @@ function drawVisualText(ctx, text, visualX, visualY, color) {
   ctx.strokeText(text, 0, 0); ctx.fillText(text, 0, 0); 
   ctx.restore();
 }
-
 function spawnFloatingText(x, y, text, color, type='standard') {
   floatingTexts.push({ x, y, text, color, life: 30, offsetY: 0, offsetX: 0, opacity: 1, type });
 }
-
 function drawLine(ctx, a, b, color) {
     ctx.beginPath(); ctx.moveTo(a.x * ctx.canvas.width, a.y * ctx.canvas.height);
     ctx.lineTo(b.x * ctx.canvas.width, b.y * ctx.canvas.height);
@@ -960,9 +925,6 @@ function onResults(results) {
   if (results.poseLandmarks) {
     const lm = results.poseLandmarks;
     latestLandmarks = lm;
-
-    // Visual indicators logic (handled in launchAttack)
-
     const skeletonColor = '#00ff00';
     const pairs = [[11,13], [13,15], [12,14], [14,16], [11,12]];
     pairs.forEach(p => { if(lm[p[0]] && lm[p[1]]) drawLine(canvasCtx, lm[p[0]], lm[p[1]], skeletonColor); });
@@ -997,6 +959,11 @@ function onResults(results) {
 
 function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, validYLimit) {
   if (wrist.y > validYLimit) return currentStage;
+
+  // 【核心修改】防止休息時間偷分
+  if (selectedMode === 'sparring' && sparringConfig.state !== 'FIGHT') {
+      return currentStage;
+  }
 
   const dist = calculateDistance(shoulder, wrist);
   let ratio = dist / scale;
