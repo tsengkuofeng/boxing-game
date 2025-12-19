@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING CHALLENGE V5.5 (Visual Guard)</title>
+<title>XMAS BOXING CHALLENGE V7.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -13,7 +13,6 @@ body {
   font-family: 'Montserrat', sans-serif; 
   text-align: center; margin: 0; overflow: hidden; 
   color: #fff; background: #000;
-  /* 禁止手機下拉刷新與選取 */
   overscroll-behavior: none;
   user-select: none;
   -webkit-user-select: none;
@@ -48,7 +47,7 @@ body {
 }
 
 /* =========================================
-   【UI 佈局系統】
+   【UI 佈局】
    ========================================= */
 .container { position: relative; width: 100vw; height: 100vh; }
 video, canvas { 
@@ -56,7 +55,7 @@ video, canvas {
   object-fit: cover; transform: scaleX(-1); z-index: 0; 
 }
 
-/* --- 1. 登入頁面 (Landing Page) --- */
+/* --- 1. 登入頁面 --- */
 #landing-layer {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 100;
@@ -74,20 +73,26 @@ video, canvas {
   line-height: 1.2;
 }
 
-/* --- 2. 遊戲 HUD (Game UI) --- */
+/* --- 2. 遊戲 HUD (計分板) - 修改為靠右 --- */
 #game-hud {
-  position: absolute; top: 30px; left: 50%; transform: translateX(-50%); 
+  position: absolute; 
+  top: 85px; /* 位於重置按鈕下方 (20px top + 50px btn + 15px gap) */
+  right: 20px; /* 靠右對齊 */
+  /* 移除原本的置中程式碼 */
+  left: auto; 
+  transform: none; 
+  
   z-index: 50;
   display: none; 
   opacity: 0;
   transition: opacity 0.5s ease;
-  pointer-events: none; /* 讓點擊穿透，不擋手勢 */
+  pointer-events: none; 
 }
 
 .score-board { 
   background: rgba(15, 23, 42, 0.6); 
   backdrop-filter: blur(12px);
-  padding: 10px 40px; 
+  padding: 10px 25px; /* 稍微縮減寬度以適應右側佈局 */
   border-radius: 24px; 
   border: 1px solid rgba(255, 255, 255, 0.15); 
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
@@ -96,13 +101,14 @@ video, canvas {
 }
 
 #count { 
-  font-size: 80px; font-weight: 900; line-height: 1; 
+  font-size: 60px; /* 稍微縮小字體以免太擋畫面 */
+  font-weight: 900; line-height: 1; 
   background: -webkit-linear-gradient(#fff, #cbd5e1);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));
 }
-.count-label { font-size: 14px; color: #94a3b8; letter-spacing: 3px; font-weight: 700; margin-bottom: 5px; }
-#status { margin-top: 8px; font-size: 18px; font-weight: 700; color: #38bdf8; text-shadow: 0 0 5px rgba(56,189,248,0.5); }
+.count-label { font-size: 12px; color: #94a3b8; letter-spacing: 3px; font-weight: 700; margin-bottom: 5px; }
+#status { margin-top: 5px; font-size: 16px; font-weight: 700; color: #38bdf8; text-shadow: 0 0 5px rgba(56,189,248,0.5); }
 
 /* --- 按鈕 --- */
 #start-btn { 
@@ -111,12 +117,11 @@ video, canvas {
   border: none; border-radius: 60px; cursor: pointer; 
   box-shadow: 0 0 40px rgba(239, 68, 68, 0.6);
   transition: transform 0.2s;
-  /* 解決手機點擊延遲 */
   touch-action: manipulation;
 }
 #start-btn:active { transform: scale(0.95); }
 
-/* V5 修正：重置按鈕改到右上角，避免手機底部遮擋 */
+/* 重置按鈕 (右上角) */
 #reset-btn {
   position: absolute; top: 20px; right: 20px; z-index: 999;
   background: rgba(255, 255, 255, 0.2); color: #fff; 
@@ -124,30 +129,29 @@ video, canvas {
   width: 50px; height: 50px; border-radius: 50%;
   font-size: 24px; font-weight: 700; 
   cursor: pointer; display: none; backdrop-filter: blur(5px);
-  display: none; /* 初始隱藏 */
+  display: none; 
   align-items: center; justify-content: center;
   box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
 #reset-btn:hover { background: rgba(255, 255, 255, 0.35); }
 #reset-btn:active { transform: scale(0.9); }
 
-/* --- 響應式調整 (RWD) --- */
+/* --- RWD --- */
 @media (max-width: 768px) {
   .landing-title { font-size: 32px; }
   #start-btn { padding: 20px 40px; font-size: 20px; width: 80%; }
-  .score-board { padding: 8px 30px; }
-  #count { font-size: 70px; }
-  /* 手機版按鈕稍微大一點好按 */
-  #reset-btn { width: 55px; height: 55px; top: 15px; right: 15px; font-size: 28px; }
+  
+  /* 手機版靠右調整 */
+  #reset-btn { width: 55px; height: 55px; top: 15px; right: 15px; }
+  #game-hud { top: 80px; right: 15px; transform: none; }
+  .score-board { padding: 8px 20px; }
+  #count { font-size: 50px; }
 }
 
 @media (min-width: 1024px) {
   .landing-title { font-size: 70px; margin-bottom: 60px; }
-  #game-hud { 
-    top: 50px;
-    transform: translateX(-50%) scale(1.5); 
-    transform-origin: top center; 
-  }
+  /* 電腦版不需要額外置中放大了，保持在右側即可，但可以稍微變大 */
+  #game-hud { transform: scale(1.2); transform-origin: top right; }
 }
 
 .pop-effect { animation: pop 0.1s ease-out; }
@@ -171,12 +175,12 @@ video, canvas {
   
   <div id="landing-layer">
     <div class="landing-title">XMAS BOXING<br>CHALLENGE</div>
-    <button id="start-btn" onclick="startCamera()">我的拳頭準備好了！</button>
+    <button id="start-btn" onclick="initGame()">我的拳頭準備好了！</button>
   </div>
 
   <div id="game-hud">
     <div class="score-board">
-      <div class="count-label">TOTAL HITS</div>
+      <div class="count-label">HITS</div>
       <div id="count">0</div>
       <div id="status">READY</div>
     </div>
@@ -194,18 +198,39 @@ video, canvas {
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <script>
-// --- 0. 音效 ---
-const punchAudioBase = new Audio('punch.mp3');
-punchAudioBase.load();
-function playHitSound(type) {
-    let clone = punchAudioBase.cloneNode();
-    clone.volume = 0.9;
-    if (type === 'heavy') clone.playbackRate = 0.9; 
-    else clone.playbackRate = 1.2; 
-    clone.play().catch(e => {});
+// =========================================
+//   1. 專業級 Web Audio API 音效引擎
+// =========================================
+let audioCtx;
+let punchBuffer = null;
+
+async function loadAudio() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+        const response = await fetch('punch.mp3');
+        const arrayBuffer = await response.arrayBuffer();
+        punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        console.log("Audio Engine Ready");
+    } catch (e) {
+        console.error("Audio Load Error:", e);
+        statusElement.innerText = "AUDIO ERROR";
+    }
 }
 
-// --- 1. 核心參數 (V5 左右拳獨立調校) ---
+function playHitSound(type) {
+    if (!punchBuffer || !audioCtx) return;
+    const source = audioCtx.createBufferSource();
+    source.buffer = punchBuffer;
+    if (type === 'heavy') source.playbackRate.value = 0.9;
+    else source.playbackRate.value = 1.1;
+    source.connect(audioCtx.destination);
+    source.start(0);
+}
+
+// =========================================
+//   2. 參數設定 (V7)
+// =========================================
 const LEFT_HAND_CONFIG = {
     triggerRatio: 0.38,
     resetRatio: 0.42, 
@@ -219,8 +244,6 @@ const RIGHT_HAND_CONFIG = {
     minPunchAngle: 110,
     cooldownFrames: 2
 };
-
-const ELEVATION_TOLERANCE = 0.5;
 
 let count = 0;
 let leftStage = "down"; 
@@ -238,7 +261,9 @@ const landingLayer = document.getElementById('landing-layer');
 const gameHud = document.getElementById('game-hud');
 const resetBtn = document.getElementById('reset-btn');
 
-// --- 2. 幾何計算 ---
+// =========================================
+//   3. 幾何計算
+// =========================================
 function calculateDistance(a, b) {
   return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 }
@@ -250,7 +275,9 @@ function calculateAngle(a, b, c) {
     return angle;
 }
 
-// --- 3. 視覺繪製 ---
+// =========================================
+//   4. 視覺繪製
+// =========================================
 function drawVisualText(ctx, text, visualX, visualY, color) {
   ctx.save();
   const internalX = ctx.canvas.width - visualX;
@@ -302,7 +329,9 @@ window.resetCount = function() {
   statusElement.innerText = "RESET OK"; 
 }
 
-// --- 4. 核心偵測邏輯 ---
+// =========================================
+//   5. 核心偵測邏輯 (V7 - Hitbox Remaster)
+// =========================================
 function onResults(results) {
   canvasElement.width = videoElement.videoWidth;
   canvasElement.height = videoElement.videoHeight;
@@ -313,7 +342,6 @@ function onResults(results) {
   canvasCtx.clearRect(0, 0, cw, ch);
   canvasCtx.drawImage(results.image, 0, 0, cw, ch);
 
-  // 浮動文字
   for (let i = floatingTexts.length - 1; i >= 0; i--) {
     let ft = floatingTexts[i];
     ft.life--; ft.offsetY -= 5; ft.opacity -= 0.04;
@@ -328,85 +356,75 @@ function onResults(results) {
 
   if (results.poseLandmarks) {
     const lm = results.poseLandmarks;
-
     // 骨架繪製
     const skeletonColor = '#00ff00';
-    if(lm[11] && lm[13]) drawLine(canvasCtx, lm[11], lm[13], skeletonColor);
-    if(lm[13] && lm[15]) drawLine(canvasCtx, lm[13], lm[15], skeletonColor);
-    if(lm[12] && lm[14]) drawLine(canvasCtx, lm[12], lm[14], skeletonColor);
-    if(lm[14] && lm[16]) drawLine(canvasCtx, lm[14], lm[16], skeletonColor);
-    if(lm[11] && lm[12]) drawLine(canvasCtx, lm[11], lm[12], skeletonColor);
+    const pairs = [[11,13], [13,15], [12,14], [14,16], [11,12]];
+    pairs.forEach(p => {
+        if(lm[p[0]] && lm[p[1]]) drawLine(canvasCtx, lm[p[0]], lm[p[1]], skeletonColor);
+    });
 
     if (lm[11] && lm[12]) {
       const shoulderWidth = calculateDistance(lm[11], lm[12]);
-
-      // === 新增：防禦架勢視覺檢測 ===
-      // 使用鼻子(lm[0])作為頭部中心，計算手腕與鼻子的距離
+      
+      // 腰部線估算
+      let waistY = 1.0; 
+      if (lm[23] && lm[24]) {
+          waistY = (lm[23].y + lm[24].y) / 2;
+      } else {
+          waistY = (lm[11].y + lm[12].y) / 2 + (shoulderWidth * 1.5);
+      }
+      
+      // 視覺燈號
       const nose = lm[0];
-      const guardRadius = shoulderWidth * 0.8; // 防禦圈判定 (約0.8倍肩寬)
+      const guardRadius = shoulderWidth * 0.8;
 
-      // 左手圓點邏輯
       if (lm[15]) {
-         let dotColor = '#ff0000'; // 預設紅色 (未防禦/遠離下巴)
-         if (nose) {
-             const distToFace = calculateDistance(lm[15], nose);
-             // 如果距離小於防禦圈，變綠色
-             if (distToFace < guardRadius) {
-                 dotColor = '#00ff00';
-             }
-         }
+         let dotColor = '#ff0000';
+         if (nose && calculateDistance(lm[15], nose) < guardRadius) dotColor = '#00ff00';
          drawDot(canvasCtx, lm[15], dotColor, 8);
       }
-
-      // 右手圓點邏輯
       if (lm[16]) {
-         let dotColor = '#ff0000'; // 預設紅色
-         if (nose) {
-             const distToFace = calculateDistance(lm[16], nose);
-             if (distToFace < guardRadius) {
-                 dotColor = '#00ff00';
-             }
-         }
+         let dotColor = '#ff0000';
+         if (nose && calculateDistance(lm[16], nose) < guardRadius) dotColor = '#00ff00';
          drawDot(canvasCtx, lm[16], dotColor, 8);
       }
 
-      // 出拳判定
+      // 出拳處理
       if (lm[15] && lm[13] && lm[15].visibility > 0.5) {
-        leftStage = processHandV5(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG);
+        leftStage = processHandV7(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, waistY);
       }
       if (lm[16] && lm[14] && lm[16].visibility > 0.5) {
-        rightStage = processHandV5(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG);
+        rightStage = processHandV7(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG, waistY);
       }
     }
   }
   canvasCtx.restore();
 }
 
-// V5 通用處理函數
-function processHandV5(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config) {
+function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, waistY) {
+  if (wrist.y > waistY) return currentStage;
+
   const dist = calculateDistance(shoulder, wrist);
   let ratio = dist / scale;
-  
   if (label === "R") ratio *= 1.1; 
 
   const armAngle = calculateAngle(shoulder, elbow, wrist);
   const isArmStraight = armAngle > config.minPunchAngle;
-  const isHighEnough = wrist.y < (elbow.y + ELEVATION_TOLERANCE);
+
+  const hitZoneThreshold = shoulder.y + 0.2; 
+  const isHighEnough = wrist.y < hitZoneThreshold;
 
   let nextStage = currentStage;
 
   if (currentStage === "down") {
-    // 判定觸發
     if (ratio > config.triggerRatio && isArmStraight && isHighEnough && cooldown === 0) {
       nextStage = "punch";
     }
   }
   else if (currentStage === "punch") {
-    // 擊中
     count++;
     countElement.innerText = count;
     
-    // UI 動畫
     const sb = document.querySelector('.score-board');
     sb.classList.remove('pop-effect');
     void sb.offsetWidth;
@@ -436,7 +454,9 @@ function processHandV5(shoulder, elbow, wrist, scale, currentStage, label, coold
   return nextStage;
 }
 
-// --- 初始化 ---
+// =========================================
+//   6. 初始化與啟動
+// =========================================
 const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
 pose.setOptions({ 
     modelComplexity: 1, 
@@ -446,11 +466,13 @@ pose.setOptions({
 });
 pose.onResults(onResults);
 
-window.startCamera = function() {
-  punchAudioBase.play().then(() => {
-    punchAudioBase.pause();
-    punchAudioBase.currentTime = 0;
-  }).catch(e => console.log("Audio unlock failed"));
+window.initGame = async function() {
+  document.getElementById('start-btn').innerText = "啟動中...";
+  
+  await loadAudio();
+  if (audioCtx && audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+  }
 
   landingLayer.style.opacity = 0;
   setTimeout(() => { 
