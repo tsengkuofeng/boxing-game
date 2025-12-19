@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING CHALLENGE</title>
+<title>XMAS BOXING V12 - BUG FIX</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -254,7 +254,7 @@ video, canvas {
 <div class="container">
   
   <div id="landing-layer">
-    <div class="landing-title">XMAS BOXING<br>CHALLENGE</div>
+    <div class="landing-title">XMAS BOXING<br>V12</div>
     
     <div class="mode-container">
       <div class="mode-box" onclick="selectMode('speed', this)">
@@ -553,11 +553,12 @@ function setDifficulty(diff, btn) {
 
 function finishSetup() {
     wizardContainer.style.display = 'none';
-    startBtn.innerText = "準備開戰 START";
+    startBtn.innerText = "準備開戰 (START)";
     startBtn.style.display = 'block';
 }
 
 async function initGame() {
+    isGameRunning = false;
     startBtn.innerText = "啟動中...";
     await initAudio(); 
 
@@ -577,7 +578,7 @@ async function initGame() {
         comboPanel.style.display = 'block';
         updateTimerDisplay();
         startBGM(); 
-        startSparringLoop();
+        // 修正：這裡移除 startSparringLoop()，因為 isGameRunning 還是 false
     } else {
         sparringInfo.style.display = 'none';
         comboPanel.style.display = 'none';
@@ -590,7 +591,13 @@ async function initGame() {
         resetBtn.style.display = 'flex'; 
         setTimeout(() => gameHud.style.opacity = 1, 50);
         
+        // 修正：在這裡將狀態設為 true 之後，才啟動對戰迴圈
         isGameRunning = true;
+        
+        if (selectedMode === 'sparring') {
+            startSparringLoop(); // <--- 移到這裡，確保 isGameRunning = true
+        }
+
         const camera = new Camera(videoElement, {
             onFrame: async () => { await pose.send({image: videoElement}); },
             width: 640, height: 480
@@ -613,6 +620,7 @@ function updateTimerDisplay() {
 }
 
 function startSparringLoop() {
+    if (gameTimerInterval) clearInterval(gameTimerInterval); // 防止重複
     gameTimerInterval = setInterval(() => {
         if (!isGameRunning) return;
         
@@ -636,6 +644,8 @@ function startSparringLoop() {
              }
         }
     }, 1000);
+    
+    // 啟動攻擊循環
     scheduleNextAttack();
 }
 
@@ -660,7 +670,7 @@ function endRest() {
 function scheduleNextAttack() {
     if (!isGameRunning || sparringConfig.state !== 'FIGHT') return;
     
-    // 根據難度調整攻擊頻率 (Optional, 但這裡主要調整反應時間)
+    // 根據難度調整攻擊頻率
     let delay = Math.random() * 3000 + 2000;
     setTimeout(() => { 
         if (isGameRunning && sparringConfig.state === 'FIGHT') launchAttack(); 
@@ -692,7 +702,7 @@ function launchAttack() {
         setTimeout(() => {
             enemyLayer.style.display = 'none';
             enemyState = 'IDLE';
-            scheduleNextAttack();
+            scheduleNextAttack(); // 繼續下一次攻擊
         }, 500);
     }, reactionTime);
 }
@@ -828,9 +838,6 @@ function onResults(results) {
     ft.opacity -= 0.03;
     canvasCtx.globalAlpha = Math.max(0, ft.opacity);
     
-    // 注意：drawVisualText 內部做了 scale(-1, 1) 鏡像翻轉
-    // 我們傳入 visualX (視覺位置)，內部會轉換成 internalX
-    // 為了讓文字在視覺上往左/右，我們直接調整 visualX
     drawVisualText(canvasCtx, ft.text, cw - (ft.x + ft.offsetX), ft.y + ft.offsetY, ft.color);
     
     canvasCtx.globalAlpha = 1.0;
@@ -904,7 +911,6 @@ function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldow
     const hitY = wrist.y * canvasElement.height;
     const color = label === "L" ? "#00d2ff" : "#ff9900"; 
     
-    // 傳入 Punch 類型 (PUNCH_L 或 PUNCH_R)
     spawnFloatingText(hitX, hitY, label === "L" ? "JAB!" : "CROSS!", color, label === "L" ? 'PUNCH_L' : 'PUNCH_R');
     
     nextStage = "retract";
