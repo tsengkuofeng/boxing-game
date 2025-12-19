@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V8.5 - AUDIO ON</title>
+<title>XMAS BOXING V8.6 - HYBRID AUDIO</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -268,15 +268,16 @@ video, canvas {
 
 <script>
 // =========================================
-//   Audio Engine (Procedural Synthesis)
-//   不需要外部檔案，全部用程式碼合成
+//   Audio Engine (Hybrid: MP3 + Synth)
 // =========================================
 let audioCtx = null;
+let punchBuffer = null; // 儲存 MP3
+
+// BGM 相關變數
 let bgmOscillators = [];
 let nextNoteTime = 0.0;
 let isPlayingBGM = false;
-let tempo = 130; // BPM
-let lookahead = 25.0; 
+let tempo = 130; 
 let scheduleAheadTime = 0.1;
 let current16thNote = 0;
 
@@ -285,56 +286,53 @@ function initAudio() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
-// 1. 合成打擊音效 (Punch SFX)
+// 1. 讀取 MP3 (用於出拳)
+async function loadMp3() {
+    try {
+        const response = await fetch('punch.mp3');
+        if (!response.ok) throw new Error("punch.mp3 not found");
+        const arrayBuffer = await response.arrayBuffer();
+        punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        console.log("MP3 Loaded successfully");
+    } catch (e) { 
+        console.log("Audio Load Error (Using fallback synth):", e); 
+    }
+}
+
+// 2. 播放出拳音效 (優先用 MP3，失敗則用合成)
+function triggerPunchSound(type) {
+    if (punchBuffer) {
+        // 使用 MP3
+        const source = audioCtx.createBufferSource();
+        source.buffer = punchBuffer;
+        // 輕拳快一點，重拳慢一點
+        source.playbackRate.value = (type === 'heavy') ? 0.9 : 1.1;
+        source.connect(audioCtx.destination);
+        source.start(0);
+    } else {
+        // 沒有 MP3 則使用合成音
+        synthPunch(type);
+    }
+}
+
+// 3. 合成音效：出拳備用
 function synthPunch(type) {
     if (!audioCtx) return;
     const t = audioCtx.currentTime;
-    
-    // 噪音 (Impact)
-    const bufferSize = audioCtx.sampleRate * 0.1; 
-    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1;
-    }
-    const noise = audioCtx.createBufferSource();
-    noise.buffer = buffer;
-    
-    const noiseFilter = audioCtx.createBiquadFilter();
-    noiseFilter.type = 'lowpass';
-    noiseFilter.frequency.value = 1000;
-    
-    const noiseGain = audioCtx.createGain();
-    noiseGain.gain.setValueAtTime(1, t);
-    noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-    
-    noise.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(audioCtx.destination);
-    noise.start(t);
-
-    // 震動 (Thump)
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = 'triangle';
-    if(type === 'heavy') {
-        osc.frequency.setValueAtTime(150, t);
-        osc.frequency.exponentialRampToValueAtTime(40, t + 0.15);
-        gain.gain.setValueAtTime(1, t);
-        gain.gain.linearRampToValueAtTime(0, t + 0.15);
-    } else {
-        osc.frequency.setValueAtTime(200, t);
-        osc.frequency.exponentialRampToValueAtTime(60, t + 0.1);
-        gain.gain.setValueAtTime(0.8, t);
-        gain.gain.linearRampToValueAtTime(0, t + 0.1);
-    }
+    osc.frequency.setValueAtTime(200, t);
+    osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
+    gain.gain.setValueAtTime(0.5, t);
+    gain.gain.linearRampToValueAtTime(0, t + 0.1);
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start(t);
-    osc.stop(t + 0.2);
+    osc.stop(t + 0.1);
 }
 
-// 2. 合成警示音 (Warning SFX)
+// 4. 合成音效：警示音 (Warning)
 function synthWarning() {
     if (!audioCtx) return;
     const t = audioCtx.currentTime;
@@ -356,32 +354,27 @@ function synthWarning() {
     osc.stop(t + 0.3);
 }
 
-// 3. 合成受傷音 (Damage SFX)
+// 5. 合成音效：受傷音 (Damage)
 function synthDamage() {
     if (!audioCtx) return;
     const t = audioCtx.currentTime;
-    
-    // Low punch
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = 'sawtooth';
     osc.frequency.setValueAtTime(100, t);
     osc.frequency.exponentialRampToValueAtTime(10, t + 0.3);
-    
     gain.gain.setValueAtTime(0.5, t);
     gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
-
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start(t);
     osc.stop(t + 0.3);
 }
 
-// 4. 合成背景音樂 (BGM) - Drum Sequencer
+// 6. 合成背景音樂 (BGM)
 function scheduleNote(beatNumber, time) {
     if (!audioCtx) return;
-    
-    // Kick Drum (on beats 0, 4, 8, 12)
+    // Kick (Beats 0, 4, 8, 12)
     if (beatNumber % 4 === 0) {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -394,27 +387,22 @@ function scheduleNote(beatNumber, time) {
         osc.start(time);
         osc.stop(time + 0.5);
     }
-    
-    // Snare (on beats 4, 12)
+    // Snare (Beats 4, 12)
     if (beatNumber % 8 === 4) {
-        const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < audioCtx.sampleRate * 0.1; i++) output[i] = Math.random() * 2 - 1;
+        const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
         const noise = audioCtx.createBufferSource();
-        noise.buffer = noiseBuffer;
-        const noiseFilter = audioCtx.createBiquadFilter();
-        noiseFilter.type = 'highpass';
-        noiseFilter.frequency.value = 1000;
-        const noiseGain = audioCtx.createGain();
-        noiseGain.gain.setValueAtTime(0.6, time);
-        noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
-        noise.connect(noiseFilter);
-        noiseFilter.connect(noiseGain);
-        noiseGain.connect(audioCtx.destination);
+        noise.buffer = buffer;
+        const nFilter = audioCtx.createBiquadFilter();
+        nFilter.type = 'highpass'; nFilter.frequency.value = 1000;
+        const nGain = audioCtx.createGain();
+        nGain.gain.setValueAtTime(0.6, time);
+        nGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+        noise.connect(nFilter); nFilter.connect(nGain); nGain.connect(audioCtx.destination);
         noise.start(time);
     }
-
-    // Hi-hat (every other beat)
+    // Hi-hat
     if (beatNumber % 2 === 0) {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -422,10 +410,8 @@ function scheduleNote(beatNumber, time) {
         osc.frequency.setValueAtTime(8000, time);
         gain.gain.setValueAtTime(0.1, time);
         gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
-        osc.connect(gain); // Simple filter logic omitted for brevity
-        gain.connect(audioCtx.destination);
-        osc.start(time);
-        osc.stop(time + 0.05);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(time); osc.stop(time + 0.05);
     }
 }
 
@@ -445,7 +431,6 @@ function timerWorker() {
     if (!isPlayingBGM) return;
     const secondsPerBeat = 60.0 / tempo;
     const secondsPer16th = secondsPerBeat / 4; 
-    
     while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
         scheduleNote(current16thNote, nextNoteTime);
         nextNoteTime += secondsPer16th;
@@ -508,7 +493,8 @@ function selectMode(mode, element) {
 
 async function initGame() {
     startBtn.innerText = "啟動中...";
-    initAudio(); // 初始化音頻
+    initAudio(); 
+    await loadMp3(); // 嘗試讀取 MP3
 
     if (selectedMode === 'sparring') {
         let rounds = parseInt(document.getElementById('input-rounds').value) || 1;
@@ -521,7 +507,7 @@ async function initGame() {
         
         sparringInfo.style.display = 'flex';
         updateTimerDisplay();
-        startBGM(); // 播放背景音樂
+        startBGM(); // 播放合成背景音樂
     } else {
         sparringInfo.style.display = 'none';
     }
@@ -617,12 +603,10 @@ function checkDefense() {
     let isHit = false;
 
     if (activeAttackType === 'STRAIGHT') {
-        // 閃躲判定：鼻子偏離臀部中心線
         let deviation = Math.abs(nose.x - hipCenterX);
         if (deviation < 0.08) isHit = true; 
     } 
     else if (activeAttackType === 'HOOK') {
-        // 下潛判定：鼻子不能高於肩膀線太少 (需要下蹲)
         if (nose.y < (shoulderY - 0.1)) isHit = true; 
     }
 
@@ -648,7 +632,7 @@ function takeDamage() {
 
 function endGame() {
     isGameRunning = false;
-    stopBGM(); // 停止音樂
+    stopBGM(); 
     clearInterval(gameTimerInterval);
     resultLayer.style.display = 'flex';
     finalScoreEl.innerText = count;
@@ -772,8 +756,8 @@ function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldow
     const sb = document.querySelector('.score-board');
     sb.classList.remove('pop-effect'); void sb.offsetWidth; sb.classList.add('pop-effect');
 
-    // 播放合成音效
-    synthPunch(label === "L" ? 'light' : 'heavy');
+    // 觸發音效 (優先使用 MP3)
+    triggerPunchSound(label === "L" ? 'light' : 'heavy');
 
     if (label === "L") leftCooldown = config.cooldownFrames;
     else rightCooldown = config.cooldownFrames;
