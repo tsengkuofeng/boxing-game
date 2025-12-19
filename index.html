@@ -3,116 +3,159 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>聖誕拳擊特訓 V3</title>
+<title>XMAS BOXING CHALLENGE V3</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
-   【背景與場景】
+   【V3 高質感背景與場景】
    ========================================= */
+body { 
+  font-family: 'Montserrat', sans-serif; 
+  text-align: center; margin: 0; overflow: hidden; 
+  color: #fff; background: #000;
+}
+
 .scene-background {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
   z-index: -1; overflow: hidden;
-  background: linear-gradient(to bottom, #020111 10%, #191d3a 50%, #2d3e5e 90%);
+  /* 升級為深邃的極光夜空漸層 */
+  background: radial-gradient(circle at 50% 20%, #1a2a6c, #b21f1f00),
+              linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
 }
+
+/* 月亮升級：增加光暈層次 */
 .moon {
-  position: absolute; top: 50px; right: 50px; width: 80px; height: 80px;
-  background: #fefcd7; border-radius: 50%;
-  box-shadow: 0 0 20px #fefcd7, 0 0 50px rgba(254, 252, 215, 0.4);
+  position: absolute; top: 40px; right: 40px; width: 100px; height: 100px;
+  background: #fff; border-radius: 50%;
+  box-shadow: 0 0 30px #fdfbf7, 0 0 80px rgba(255, 255, 255, 0.4);
+  filter: blur(0.5px);
 }
+
+/* 雪地升級：更自然的起伏 */
 .snow-ground {
-  position: absolute; bottom: 0; left: 0; width: 100%; height: 30%;
-  background: #fffafa; border-top: 5px solid #e3e3e3;
-  border-radius: 50% 50% 0 0 / 20px 20px 0 0;
+  position: absolute; bottom: 0; left: 0; width: 100%; height: 25%;
+  background: linear-gradient(to bottom, #eef2f3, #8e9eab);
+  border-radius: 100% 100% 0 0 / 30px 30px 0 0;
+  box-shadow: 0 -10px 20px rgba(255,255,255,0.2);
 }
+
+/* 雪花動畫維持原樣，增加一點層次 */
 .snowflake {
   position: absolute; top: -10px; background: white; border-radius: 50%; opacity: 0.8;
   animation: fall linear infinite;
+  box-shadow: 0 0 5px rgba(255,255,255,0.8);
 }
 @keyframes fall {
-  0% { top: -10%; transform: translateX(0); }
-  100% { top: 100%; transform: translateX(20px); }
+  0% { top: -10%; transform: translateX(0); opacity: 0; }
+  10% { opacity: 1; }
+  100% { top: 105%; transform: translateX(20px); opacity: 0.3; }
 }
-.snowflake:nth-child(2) { width: 8px; height: 8px; animation-duration: 7s; opacity: 0.6; }
-.snowflake:nth-child(3) { width: 12px; height: 12px; animation-duration: 5s; opacity: 0.9; }
-.snowflake:nth-child(4) { width: 6px; height: 6px; animation-duration: 8s; opacity: 0.5; }
-.snowflake:nth-child(5) { width: 10px; height: 10px; animation-duration: 6s; opacity: 0.7; }
 
 /* =========================================
-   【UI 介面】
+   【UI 介面升級】
    ========================================= */
-body { 
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-  text-align: center; margin: 0; overflow: hidden; color: #fff; background: transparent;
-}
 .container { position: relative; width: 100vw; height: 100vh; }
 video, canvas { 
   position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
   object-fit: cover; transform: scaleX(-1); z-index: 0; 
 }
 
-/* 計分板 */
-.score-board { 
-  position: absolute; top: 80px; left: 50%; transform: translateX(-50%); z-index: 10; 
-  background: rgba(0, 0, 0, 0.6); padding: 10px 40px; border-radius: 20px; 
-  border: 1px solid rgba(255, 255, 255, 0.3); pointer-events: none; transition: all 0.3s ease;
+/* 標題與計分板 */
+.header {
+  position: absolute; top: 30px; left: 50%; transform: translateX(-50%); z-index: 10;
+  width: 90%; max-width: 600px;
 }
-#count { font-size: 70px; font-weight: 800; color: #fff; line-height: 1; }
-.count-title { font-size: 14px; color: #ccc; letter-spacing: 2px; }
-#status { margin-top: 5px; font-size: 18px; font-weight: bold; color: #ddd; }
+.main-title {
+  font-size: 24px; font-weight: 900; color: #00d2ff;
+  text-shadow: 0 0 10px rgba(0, 210, 255, 0.7);
+  margin-bottom: 10px; letter-spacing: 2px;
+  text-transform: uppercase;
+}
 
-/* 按鈕 */
+.score-board { 
+  background: rgba(15, 23, 42, 0.7); 
+  backdrop-filter: blur(10px);
+  padding: 15px 50px; 
+  border-radius: 20px; 
+  border: 1px solid rgba(255, 255, 255, 0.15); 
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  display: inline-block;
+  transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#count { 
+  font-size: 80px; font-weight: 900; color: #fff; line-height: 1; 
+  background: -webkit-linear-gradient(#fff, #cbd5e1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));
+}
+.count-label { font-size: 12px; color: #94a3b8; letter-spacing: 3px; font-weight: 700; margin-bottom: 5px; }
+#status { margin-top: 8px; font-size: 16px; font-weight: 700; color: #38bdf8; text-shadow: 0 0 5px rgba(56,189,248,0.5); }
+
+/* 開始按鈕 (高質感) */
 #start-btn { 
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 50; 
-  padding: 25px 50px; font-size: 30px; font-weight: 900; 
-  background: linear-gradient(135deg, #007bff, #0056b3); color: white; border: 4px solid rgba(255, 255, 255, 0.5); 
-  border-radius: 60px; cursor: pointer; box-shadow: 0 0 30px rgba(0, 123, 255, 0.6); animation: pulse 1.5s infinite;
+  padding: 20px 40px; font-size: 24px; font-weight: 800; font-family: 'Montserrat', sans-serif;
+  color: #fff; 
+  background: linear-gradient(135deg, #ef4444, #b91c1c); /* 聖誕紅 */
+  border: none; border-radius: 50px; cursor: pointer; 
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.5), 0 4px 6px rgba(0,0,0,0.3);
+  transition: all 0.3s ease;
+  white-space: nowrap;
 }
-@keyframes pulse { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.05); } 100% { transform: translate(-50%, -50%) scale(1); } }
+#start-btn:hover { transform: translate(-50%, -50%) scale(1.05); box-shadow: 0 0 50px rgba(239, 68, 68, 0.8); }
+#start-btn:active { transform: translate(-50%, -50%) scale(0.95); }
 
+/* 重置按鈕 */
 #reset-btn {
-  position: absolute; bottom: 40px; right: 20px; z-index: 100;
-  background: #ff4757; color: white; border: 2px solid white; padding: 15px 30px; 
-  font-size: 18px; font-weight: bold; border-radius: 30px; cursor: pointer; display: none; 
+  position: absolute; bottom: 30px; right: 30px; z-index: 100;
+  background: rgba(255, 255, 255, 0.1); color: #fff; 
+  border: 1px solid rgba(255,255,255,0.3); padding: 10px 25px; 
+  font-size: 14px; font-weight: 700; border-radius: 30px; 
+  cursor: pointer; display: none; backdrop-filter: blur(5px);
+  transition: background 0.3s;
 }
-#reset-btn:active { transform: scale(0.9); }
+#reset-btn:hover { background: rgba(255, 255, 255, 0.2); }
 
 /* 特效與RWD */
-.pop-effect { animation: pop 0.1s ease-out; color: #00ff00 !important; }
-@keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+.pop-effect { transform: scale(1.2); }
 
-@media (max-height: 500px) and (orientation: landscape) {
-  .score-board { top: 10px; left: 20px; transform: none; padding: 5px 20px; }
-  #count { font-size: 40px; }
-  #start-btn { padding: 15px 30px; font-size: 20px; }
-  #reset-btn { bottom: auto; top: 10px; right: 20px; padding: 8px 15px; }
-}
-@media (min-width: 1024px) {
-  .score-board { top: 60px; padding: 20px 80px; }
-  #count { font-size: 140px; text-shadow: 0 0 30px currentColor; }
+@media (max-width: 768px) {
+  .main-title { font-size: 18px; }
+  #count { font-size: 60px; }
+  #start-btn { font-size: 18px; padding: 15px 30px; }
 }
 
-/* 火焰等級 */
-.fire-lv1 { border-color: #ffd700 !important; color: #ffd700 !important; box-shadow: 0 0 15px gold; }
-.fire-lv2 { border-color: #ff4500 !important; color: #ff4500 !important; box-shadow: 0 0 30px orangered; }
-.fire-lv3 { border-color: #00ffff !important; color: #00ffff !important; box-shadow: 0 0 40px cyan; }
+/* 狀態指示燈 */
+.indicator {
+    width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px;
+    background: #555;
+}
+.indicator.active { background: #00ff00; box-shadow: 0 0 10px #00ff00; }
+
 </style>
 </head>
 <body>
 
 <div class="scene-background">
   <div class="night-sky"><div class="moon"></div></div>
-  <div class="snowflake" style="left: 10%; animation-delay: 0s;"></div>
-  <div class="snowflake" style="left: 30%; animation-delay: 2s;"></div>
-  <div class="snowflake" style="left: 50%; animation-delay: 4s;"></div>
-  <div class="snowflake" style="left: 70%; animation-delay: 1s;"></div>
-  <div class="snowflake" style="left: 90%; animation-delay: 3s;"></div>
+  <div class="snowflake" style="left: 10%; animation-delay: 0s; width: 8px; height: 8px;"></div>
+  <div class="snowflake" style="left: 25%; animation-delay: 2s; width: 5px; height: 5px;"></div>
+  <div class="snowflake" style="left: 45%; animation-delay: 4s; width: 10px; height: 10px;"></div>
+  <div class="snowflake" style="left: 60%; animation-delay: 1s; width: 6px; height: 6px;"></div>
+  <div class="snowflake" style="left: 85%; animation-delay: 3s; width: 9px; height: 9px;"></div>
   <div class="snow-ground"></div>
 </div>
 
 <div class="container">
-  <div class="score-board">
-    <div class="count-title">TOTAL HITS</div>
-    <div id="count">0</div>
-    <div id="status">READY</div>
+  <div class="header">
+    <div class="main-title">XMAS BOXING CHALLENGE</div>
+    <div class="score-board">
+      <div class="count-label">TOTAL HITS</div>
+      <div id="count">0</div>
+      <div id="status">READY</div>
+    </div>
   </div>
 
   <div class="video-container">
@@ -120,8 +163,8 @@ video, canvas {
     <canvas id="output_canvas"></canvas>
   </div>
 
-  <button id="start-btn" onclick="startCamera()">🥊 點擊開始 (START)</button>
-  <button id="reset-btn" onclick="resetCount()">歸零重置 (RESET)</button>
+  <button id="start-btn" onclick="startCamera()">我的拳頭準備好了！</button>
+  <button id="reset-btn" onclick="resetCount()">↺ 重置 (RESET)</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
@@ -129,30 +172,45 @@ video, canvas {
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
 
 <script>
-// --- 0. 音效設定 (單一檔案 punch.mp3) ---
-// 警告：請確保 punch.mp3 與此 HTML 在同一目錄下
+// --- 0. 音效 ---
 const punchAudioBase = new Audio('punch.mp3');
-
-// 預先載入
 punchAudioBase.load();
 
 function playHitSound(type) {
-    // 複製音訊節點以允許重疊播放
     let clone = punchAudioBase.cloneNode();
-    clone.volume = 0.8;
-    
-    if (type === 'heavy') {
-        // 重拳 (Cross)：聲音變低、變慢
-        clone.playbackRate = 0.9; 
-    } else {
-        // 輕拳 (Jab)：聲音變高、變快
-        clone.playbackRate = 1.2; 
-    }
-    
-    clone.play().catch(e => console.log("Audio play failed:", e));
+    clone.volume = 0.9;
+    if (type === 'heavy') clone.playbackRate = 0.9; 
+    else clone.playbackRate = 1.2; 
+    clone.play().catch(e => {});
 }
 
-// --- 1. 變數與設定 (高敏度版) ---
+// --- 1. 核心參數 (V3 調校版) ---
+const FRONT_PUNCH_CONFIG = {
+  // === 靈敏度 (Distance Ratio) ===
+  // 為了保持流暢，我們維持較低的觸發門檻
+  // 右手通常因為透視比較短，所以我們可以給右手稍微寬鬆一點的係數 (在下方邏輯處理)
+  triggerRatio: 0.42, 
+  
+  // === 防誤判 (Elbow Angle) ===
+  // 這是 V3 的核心：只有當手肘角度大於此數值 (手臂伸直) 時才算拳
+  // 180度是全直，90度是垂直。110度是一個很寬鬆的「微伸直」界線
+  // 這能有效過濾掉「轉身但手彎曲」的動作
+  minPunchAngle: 110, 
+  
+  resetRatio: 0.35,
+  cooldownFrames: 3, // 極速連打
+  elevationTolerance: 0.5 
+};
+
+// 狀態變數
+let count = 0;
+let leftStage = "down"; 
+let rightStage = "down";
+let leftCooldown = 0;
+let rightCooldown = 0;
+let floatingTexts = []; 
+
+// UI 參考
 const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
@@ -162,61 +220,41 @@ const statusElement = document.getElementById('status');
 const startBtn = document.getElementById('start-btn'); 
 const resetBtn = document.getElementById('reset-btn'); 
 
-// 【正面判定參數 - 高靈敏度調整】
-const FRONT_PUNCH_CONFIG = {
-  // 觸發判定 (Trigger Ratio)：
-  // 原本 0.55，降為 0.45 -> 手臂伸出一半左右就算擊中
-  triggerRatio: 0.48, 
-  
-  // 縮回判定 (Reset Ratio)：
-  // 必須小於此數值才能打下一拳
-  resetRatio: 0.35,
-  
-  // 冷卻時間 (Frames)：
-  // 原本 4，降為 3 -> 可以更快速連打
-  cooldownFrames: 3,
-  
-  // 高度容忍 (Elevation Tolerance)：
-  // 原本 0.2，升為 0.5 -> 允許出拳位置比較低，不容易因為手垂下來就沒反應
-  elevationTolerance: 0.5 
-};
+// --- 2. 幾何計算函數 ---
 
-let count = 0;
-let leftStage = "down"; 
-let rightStage = "down";
-let leftCooldown = 0;
-let rightCooldown = 0;
-let floatingTexts = []; 
-
-// --- 2. 工具函數 ---
+// 計算兩點距離
 function calculateDistance(a, b) {
   return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 }
 
-function drawVisualText(ctx, text, visualX, visualY, color, fontSize = "24px") {
+// 計算三點角度 (肩-肘-腕)
+// 回傳角度 0~180
+function calculateAngle(a, b, c) {
+    const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+    let angle = Math.abs(radians * 180.0 / Math.PI);
+    if (angle > 180.0) angle = 360 - angle;
+    return angle;
+}
+
+// 視覺文字
+function drawVisualText(ctx, text, visualX, visualY, color) {
   ctx.save();
   const internalX = ctx.canvas.width - visualX;
   ctx.translate(internalX, visualY);
   ctx.scale(-1, 1); 
-  ctx.font = `900 ${fontSize} Arial`;
+  ctx.font = `900 40px 'Montserrat', sans-serif`;
   ctx.fillStyle = color;
-  ctx.strokeStyle = "black";
-  ctx.lineWidth = 2;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 10;
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 1;
   ctx.strokeText(text, 0, 0);
   ctx.fillText(text, 0, 0); 
   ctx.restore();
 }
 
 function spawnFloatingText(x, y, text, color) {
-  floatingTexts.push({ x, y, text, color, life: 20, offsetY: 0 });
-}
-
-function updateFireEffect(currentCount) {
-  if (!scoreBoard) return;
-  scoreBoard.classList.remove('fire-lv1', 'fire-lv2', 'fire-lv3');
-  if (currentCount >= 100) scoreBoard.classList.add('fire-lv3');
-  else if (currentCount >= 50) scoreBoard.classList.add('fire-lv2');
-  else if (currentCount >= 20) scoreBoard.classList.add('fire-lv1');
+  floatingTexts.push({ x, y, text, color, life: 25, offsetY: 0, opacity: 1 });
 }
 
 window.resetCount = function() {
@@ -225,12 +263,11 @@ window.resetCount = function() {
   floatingTexts = []; 
   leftCooldown = 0; rightCooldown = 0;
   leftStage = "down"; rightStage = "down";
-  if (scoreBoard) scoreBoard.classList.remove('fire-lv1', 'fire-lv2', 'fire-lv3');
   statusElement.innerText = "RESET OK"; 
-  statusElement.style.color = "white";
+  statusElement.style.color = "#38bdf8";
 }
 
-// --- 3. 核心偵測邏輯 ---
+// --- 3. 核心偵測邏輯 (V3) ---
 function onResults(results) {
   canvasElement.width = videoElement.videoWidth;
   canvasElement.height = videoElement.videoHeight;
@@ -239,17 +276,17 @@ function onResults(results) {
 
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, cw, ch);
-  // 繪製半透明影像
-  canvasCtx.globalAlpha = 0.8;
   canvasCtx.drawImage(results.image, 0, 0, cw, ch);
-  canvasCtx.globalAlpha = 1.0;
 
-  // 浮動文字更新
+  // 浮動文字動畫
   for (let i = floatingTexts.length - 1; i >= 0; i--) {
     let ft = floatingTexts[i];
-    ft.life--; ft.offsetY -= 3;
-    const visualX = cw - ft.x; 
-    drawVisualText(canvasCtx, ft.text, visualX, ft.y + ft.offsetY, ft.color, "50px");
+    ft.life--; ft.offsetY -= 4; ft.opacity -= 0.04;
+    
+    canvasCtx.globalAlpha = Math.max(0, ft.opacity);
+    drawVisualText(canvasCtx, ft.text, cw - ft.x, ft.y + ft.offsetY, ft.color);
+    canvasCtx.globalAlpha = 1.0;
+    
     if (ft.life <= 0) floatingTexts.splice(i, 1);
   }
 
@@ -257,8 +294,8 @@ function onResults(results) {
   if (rightCooldown > 0) rightCooldown--;
 
   if (results.poseLandmarks) {
-    // 簡單畫骨架
-    drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: 'rgba(255, 255, 255, 0.3)', lineWidth: 2});
+    // 繪製簡約骨架
+    drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: 'rgba(255, 255, 255, 0.2)', lineWidth: 2});
     
     const lm = results.poseLandmarks;
     const leftShoulder = lm[11];
@@ -269,70 +306,80 @@ function onResults(results) {
     const rightWrist = lm[16];
 
     if (leftShoulder && rightShoulder) {
-      // 基準尺：肩寬 (這是相對穩定的長度)
       const shoulderWidth = calculateDistance(leftShoulder, rightShoulder);
 
       // 左手處理
       if (leftWrist && leftElbow && leftWrist.visibility > 0.5) {
-        leftStage = processFrontHand(leftShoulder, leftWrist, leftElbow, shoulderWidth, leftStage, "L", leftCooldown);
+        leftStage = processHandV3(
+            leftShoulder, leftElbow, leftWrist, 
+            shoulderWidth, leftStage, "L", leftCooldown
+        );
       }
       
       // 右手處理
       if (rightWrist && rightElbow && rightWrist.visibility > 0.5) {
-        rightStage = processFrontHand(rightShoulder, rightWrist, rightElbow, shoulderWidth, rightStage, "R", rightCooldown);
+        rightStage = processHandV3(
+            rightShoulder, rightElbow, rightWrist, 
+            shoulderWidth, rightStage, "R", rightCooldown
+        );
       }
     }
   }
   canvasCtx.restore();
 }
 
-// 正面打擊判定邏輯
-function processFrontHand(shoulder, wrist, elbow, scale, currentStage, label, cooldown) {
-  // 1. 計算手腕到肩膀的距離 (Normalized by Shoulder Width)
+// V3 判定邏輯：距離 + 角度 雙重驗證
+function processHandV3(shoulder, elbow, wrist, scale, currentStage, label, cooldown) {
+  // 1. 距離比例
   const dist = calculateDistance(shoulder, wrist);
-  const ratio = dist / scale;
+  let ratio = dist / scale;
   
-  // 2. 高度檢查：手腕不能掉到太下面 (防止放下手時誤判)
+  // 右手補償：因為大部分人右拳(後手直拳)身體轉動大，透視導致距離看起來較短
+  // 我們人為給右手加一點分數，讓它更容易觸發
+  if (label === "R") {
+    ratio *= 1.1; 
+  }
+
+  // 2. 角度檢查 (關鍵！)
+  // 計算肩膀-手肘-手腕的夾角
+  const armAngle = calculateAngle(shoulder, elbow, wrist);
+  const isArmStraight = armAngle > FRONT_PUNCH_CONFIG.minPunchAngle;
+
+  // 3. 高度檢查
   const isHighEnough = wrist.y < (elbow.y + FRONT_PUNCH_CONFIG.elevationTolerance);
 
   let nextStage = currentStage;
 
-  // 狀態機
   if (currentStage === "down") {
-    // 準備狀態 -> 出拳
-    if (ratio > FRONT_PUNCH_CONFIG.triggerRatio && isHighEnough && cooldown === 0) {
+    // 觸發條件：(距離夠遠) AND (手有稍微伸直) AND (沒有冷卻)
+    // 加上 isArmStraight 後，純粹轉身(手彎曲)就不會觸發了！
+    if (ratio > FRONT_PUNCH_CONFIG.triggerRatio && isArmStraight && isHighEnough && cooldown === 0) {
       nextStage = "punch";
     }
   }
   else if (currentStage === "punch") {
-    // 出拳狀態 -> 判定擊中
-    
-    // === 擊中判定 ===
+    // === 擊中處理 ===
     count++;
     countElement.innerText = count;
     
-    // UI特效
-    countElement.classList.remove('pop-effect'); 
-    void countElement.offsetWidth; 
-    countElement.classList.add('pop-effect'); 
-    updateFireEffect(count);
+    // UI 動畫
+    scoreBoard.style.transform = "translateX(-50%) scale(1.1)";
+    setTimeout(() => scoreBoard.style.transform = "translateX(-50%) scale(1)", 100);
 
-    // 音效 (Punch.mp3 變速)
-    if (label === "L") {
-       playHitSound('light'); 
-    } else {
-       playHitSound('heavy'); 
-    }
+    // 音效
+    if (label === "L") playHitSound('light'); 
+    else playHitSound('heavy'); 
 
-    // 設定冷卻
+    // 冷卻設定
     if (label === "L") leftCooldown = FRONT_PUNCH_CONFIG.cooldownFrames;
     else rightCooldown = FRONT_PUNCH_CONFIG.cooldownFrames;
 
     // 浮動文字
     const hitX = wrist.x * canvasElement.width;
     const hitY = wrist.y * canvasElement.height;
-    const color = label === "L" ? "#00FFFF" : "#FFA500"; 
-    spawnFloatingText(hitX, hitY, "+1", color);
+    // 左手青色，右手橘色，配合背景
+    const color = label === "L" ? "#00d2ff" : "#ff9900"; 
+    spawnFloatingText(hitX, hitY, label === "L" ? "JAB!" : "CROSS!", color);
     
     statusElement.innerText = label === "L" ? "LEFT HIT!" : "RIGHT HIT!";
     statusElement.style.color = color;
@@ -340,7 +387,7 @@ function processFrontHand(shoulder, wrist, elbow, scale, currentStage, label, co
     nextStage = "retract";
   }
   else if (currentStage === "retract") {
-    // 收拳狀態 -> 回到準備
+    // 收拳：距離縮短 OR 手臂彎曲回來
     if (ratio < FRONT_PUNCH_CONFIG.resetRatio) {
       nextStage = "down"; 
     }
@@ -354,13 +401,11 @@ const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@medi
 pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 pose.onResults(onResults);
 
-// --- 啟動 ---
 window.startCamera = function() {
-  // 解鎖音效 (播放瞬間靜音)
   punchAudioBase.play().then(() => {
     punchAudioBase.pause();
     punchAudioBase.currentTime = 0;
-  }).catch(e => console.log("Audio unlock failed", e));
+  }).catch(e => console.log("Audio unlock failed"));
 
   const camera = new Camera(videoElement, {
     onFrame: async () => { await pose.send({image: videoElement}); },
@@ -370,6 +415,7 @@ window.startCamera = function() {
   
   document.getElementById('start-btn').style.display = 'none'; 
   document.getElementById('reset-btn').style.display = 'block';
+  statusElement.innerText = "GO!";
 }
 </script>
 </body>
