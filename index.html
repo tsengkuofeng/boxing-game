@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V8 - VERSUS</title>
+<title>XMAS BOXING V8.5 - AUDIO ON</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -53,7 +53,7 @@ video, canvas {
   object-fit: cover; transform: scaleX(-1); z-index: 0; 
 }
 
-/* --- 1. 初始選單 (Mode Select) --- */
+/* --- 1. 初始選單 --- */
 #landing-layer {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 100;
@@ -89,8 +89,7 @@ video, canvas {
 
 /* 對戰設定面板 */
 #sparring-settings {
-  display: none; /* 預設隱藏 */
-  background: rgba(0,0,0,0.5); padding: 20px; border-radius: 15px;
+  display: none; background: rgba(0,0,0,0.5); padding: 20px; border-radius: 15px;
   margin-bottom: 30px; border: 1px solid #555;
 }
 .setting-row { margin: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
@@ -105,19 +104,17 @@ video, canvas {
   color: #fff; background: linear-gradient(135deg, #ef4444, #b91c1c);
   border: none; border-radius: 60px; cursor: pointer; 
   box-shadow: 0 0 40px rgba(239, 68, 68, 0.6);
-  opacity: 0.5; pointer-events: none; /* 未選擇模式前鎖定 */
+  opacity: 0.5; pointer-events: none; 
   transition: all 0.3s;
 }
 #start-btn.ready { opacity: 1; pointer-events: auto; }
 #start-btn:active { transform: scale(0.95); }
 
-/* --- 2. 遊戲 HUD (靠右) --- */
+/* --- 2. 遊戲 HUD --- */
 #game-hud {
   position: absolute; top: 85px; right: 20px; z-index: 50;
-  display: none; text-align: right;
-  pointer-events: none; 
+  display: none; text-align: right; pointer-events: none; 
 }
-
 .score-board { 
   background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px);
   padding: 10px 25px; border-radius: 24px; 
@@ -125,7 +122,6 @@ video, canvas {
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   display: inline-block; text-align: center; margin-bottom: 10px;
 }
-
 #count { 
   font-size: 60px; font-weight: 900; line-height: 1; 
   background: -webkit-linear-gradient(#fff, #cbd5e1);
@@ -133,17 +129,16 @@ video, canvas {
 }
 .count-label { font-size: 12px; color: #94a3b8; letter-spacing: 3px; font-weight: 700; margin-bottom: 5px; }
 
-/* 對戰專用 HUD */
+/* 對戰資訊 */
 #sparring-info {
-  display: none; /* 快拳模式隱藏 */
-  background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 15px;
+  display: none; background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 15px;
   color: #fff; font-weight: bold; margin-top: 10px;
   display: flex; flex-direction: column; align-items: center;
 }
 #timer { font-size: 32px; color: #fbbf24; font-family: monospace; }
 #round-display { font-size: 14px; color: #aaa; letter-spacing: 2px; }
 
-/* --- 3. 敵方攻擊提示 (Enemy Attack UI) --- */
+/* --- 3. 敵方攻擊提示 --- */
 #enemy-attack-layer {
   position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
   z-index: 60; pointer-events: none; display: none;
@@ -154,10 +149,9 @@ video, canvas {
 }
 .attack-straight { color: #ff3333; }
 .attack-hook { color: #ffff00; }
-
 @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-/* --- 4. 受傷紅屏 (Damage Overlay) --- */
+/* --- 4. 受傷紅屏 --- */
 #damage-overlay {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   background: radial-gradient(circle, rgba(255,0,0,0) 50%, rgba(255,0,0,0.8) 100%);
@@ -244,7 +238,7 @@ video, canvas {
       <div class="count-label">SCORE</div>
       <div id="count">0</div>
     </div>
-    <div id="sparring-info" style="display: none;">
+    <div id="sparring-info">
       <div id="timer">00:00</div>
       <div id="round-display">R 1/1</div>
     </div>
@@ -255,7 +249,6 @@ video, canvas {
   </div>
 
   <div id="damage-overlay"></div>
-
   <div id="result-layer">
     <h1>GAME OVER</h1>
     <div class="result-score" id="final-score">0</div>
@@ -275,14 +268,198 @@ video, canvas {
 
 <script>
 // =========================================
-//   Game State & Config
+//   Audio Engine (Procedural Synthesis)
+//   不需要外部檔案，全部用程式碼合成
 // =========================================
-let audioCtx;
-let punchBuffer = null;
-let selectedMode = null; // 'speed' | 'sparring'
-let isGameRunning = false;
+let audioCtx = null;
+let bgmOscillators = [];
+let nextNoteTime = 0.0;
+let isPlayingBGM = false;
+let tempo = 130; // BPM
+let lookahead = 25.0; 
+let scheduleAheadTime = 0.1;
+let current16thNote = 0;
 
-// Scoring
+function initAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+// 1. 合成打擊音效 (Punch SFX)
+function synthPunch(type) {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    
+    // 噪音 (Impact)
+    const bufferSize = audioCtx.sampleRate * 0.1; 
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    
+    const noiseFilter = audioCtx.createBiquadFilter();
+    noiseFilter.type = 'lowpass';
+    noiseFilter.frequency.value = 1000;
+    
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(1, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+    
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(audioCtx.destination);
+    noise.start(t);
+
+    // 震動 (Thump)
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    if(type === 'heavy') {
+        osc.frequency.setValueAtTime(150, t);
+        osc.frequency.exponentialRampToValueAtTime(40, t + 0.15);
+        gain.gain.setValueAtTime(1, t);
+        gain.gain.linearRampToValueAtTime(0, t + 0.15);
+    } else {
+        osc.frequency.setValueAtTime(200, t);
+        osc.frequency.exponentialRampToValueAtTime(60, t + 0.1);
+        gain.gain.setValueAtTime(0.8, t);
+        gain.gain.linearRampToValueAtTime(0, t + 0.1);
+    }
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.2);
+}
+
+// 2. 合成警示音 (Warning SFX)
+function synthWarning() {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(800, t);
+    osc.frequency.linearRampToValueAtTime(600, t + 0.1);
+    osc.frequency.setValueAtTime(800, t + 0.15);
+    osc.frequency.linearRampToValueAtTime(600, t + 0.25);
+
+    gain.gain.setValueAtTime(0.1, t);
+    gain.gain.linearRampToValueAtTime(0, t + 0.3);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.3);
+}
+
+// 3. 合成受傷音 (Damage SFX)
+function synthDamage() {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    
+    // Low punch
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(100, t);
+    osc.frequency.exponentialRampToValueAtTime(10, t + 0.3);
+    
+    gain.gain.setValueAtTime(0.5, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.3);
+}
+
+// 4. 合成背景音樂 (BGM) - Drum Sequencer
+function scheduleNote(beatNumber, time) {
+    if (!audioCtx) return;
+    
+    // Kick Drum (on beats 0, 4, 8, 12)
+    if (beatNumber % 4 === 0) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(150, time);
+        osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
+        gain.gain.setValueAtTime(0.8, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(time);
+        osc.stop(time + 0.5);
+    }
+    
+    // Snare (on beats 4, 12)
+    if (beatNumber % 8 === 4) {
+        const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < audioCtx.sampleRate * 0.1; i++) output[i] = Math.random() * 2 - 1;
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = noiseBuffer;
+        const noiseFilter = audioCtx.createBiquadFilter();
+        noiseFilter.type = 'highpass';
+        noiseFilter.frequency.value = 1000;
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(0.6, time);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(audioCtx.destination);
+        noise.start(time);
+    }
+
+    // Hi-hat (every other beat)
+    if (beatNumber % 2 === 0) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(8000, time);
+        gain.gain.setValueAtTime(0.1, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+        osc.connect(gain); // Simple filter logic omitted for brevity
+        gain.connect(audioCtx.destination);
+        osc.start(time);
+        osc.stop(time + 0.05);
+    }
+}
+
+function startBGM() {
+    if (isPlayingBGM || !audioCtx) return;
+    isPlayingBGM = true;
+    current16thNote = 0;
+    nextNoteTime = audioCtx.currentTime;
+    timerWorker();
+}
+
+function stopBGM() {
+    isPlayingBGM = false;
+}
+
+function timerWorker() {
+    if (!isPlayingBGM) return;
+    const secondsPerBeat = 60.0 / tempo;
+    const secondsPer16th = secondsPerBeat / 4; 
+    
+    while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
+        scheduleNote(current16thNote, nextNoteTime);
+        nextNoteTime += secondsPer16th;
+        current16thNote = (current16thNote + 1) % 16;
+    }
+    setTimeout(timerWorker, 25);
+}
+
+
+// =========================================
+//   Game Logic
+// =========================================
+let selectedMode = null; 
+let isGameRunning = false;
 let count = 0;
 let leftStage = "down"; 
 let rightStage = "down";
@@ -298,12 +475,11 @@ let sparringConfig = {
     timeLeft: 0
 };
 let gameTimerInterval = null;
-let enemyLoopInterval = null;
-let enemyState = 'IDLE'; // IDLE, WARNING, ATTACK
-let activeAttackType = null; // 'STRAIGHT', 'HOOK'
-let attackCheckTimer = null;
+let enemyState = 'IDLE'; 
+let activeAttackType = null;
+let latestLandmarks = null;
 
-// DOM Elements
+// DOM
 const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
@@ -322,51 +498,18 @@ const damageOverlay = document.getElementById('damage-overlay');
 const resultLayer = document.getElementById('result-layer');
 const finalScoreEl = document.getElementById('final-score');
 
-// =========================================
-//   Audio Engine
-// =========================================
-async function loadAudio() {
-    try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioCtx = new AudioContext();
-        const response = await fetch('punch.mp3');
-        const arrayBuffer = await response.arrayBuffer();
-        punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    } catch (e) { console.log("Audio Init Error", e); }
-}
-
-function playHitSound(type) {
-    if (!punchBuffer || !audioCtx) return;
-    const source = audioCtx.createBufferSource();
-    source.buffer = punchBuffer;
-    source.playbackRate.value = (type === 'heavy') ? 0.9 : 1.1;
-    source.connect(audioCtx.destination);
-    source.start(0);
-}
-
-// =========================================
-//   Menu & Game Logic
-// =========================================
 function selectMode(mode, element) {
     selectedMode = mode;
     document.querySelectorAll('.mode-box').forEach(el => el.classList.remove('selected'));
     element.classList.add('selected');
-    
-    // UI Update
     startBtn.classList.add('ready');
-    if (mode === 'sparring') {
-        sparringSettings.style.display = 'block';
-    } else {
-        sparringSettings.style.display = 'none';
-    }
+    sparringSettings.style.display = (mode === 'sparring') ? 'block' : 'none';
 }
 
 async function initGame() {
     startBtn.innerText = "啟動中...";
-    await loadAudio();
-    if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+    initAudio(); // 初始化音頻
 
-    // Setup Config
     if (selectedMode === 'sparring') {
         let rounds = parseInt(document.getElementById('input-rounds').value) || 1;
         let mins = parseInt(document.getElementById('input-minutes').value) || 1;
@@ -378,6 +521,7 @@ async function initGame() {
         
         sparringInfo.style.display = 'flex';
         updateTimerDisplay();
+        startBGM(); // 播放背景音樂
     } else {
         sparringInfo.style.display = 'none';
     }
@@ -389,11 +533,9 @@ async function initGame() {
         resetBtn.style.display = 'flex'; 
         setTimeout(() => gameHud.style.opacity = 1, 50);
         
-        // Start Loops
         isGameRunning = true;
         if (selectedMode === 'sparring') startSparringLoop();
         
-        // Camera
         const camera = new Camera(videoElement, {
             onFrame: async () => { await pose.send({image: videoElement}); },
             width: 640, height: 480
@@ -403,20 +545,10 @@ async function initGame() {
 }
 
 function resetGame() {
-    // Soft Reset
-    count = 0;
-    countElement.innerText = count;
+    count = 0; countElement.innerText = count;
     leftStage = "down"; rightStage = "down";
-    
-    if (selectedMode === 'sparring') {
-        sparringConfig.timeLeft = sparringConfig.secondsPerRound; // Reset time but keep round? Or full reset?
-        // For simplicity: Reload page is best for full reset, button is for quick count reset
-    }
 }
 
-// =========================================
-//   Sparring System (AI & Timer)
-// =========================================
 function updateTimerDisplay() {
     let m = Math.floor(sparringConfig.timeLeft / 60);
     let s = sparringConfig.timeLeft % 60;
@@ -425,48 +557,35 @@ function updateTimerDisplay() {
 }
 
 function startSparringLoop() {
-    // 1. Round Timer
     gameTimerInterval = setInterval(() => {
         if (!isGameRunning) return;
-        
         sparringConfig.timeLeft--;
         updateTimerDisplay();
 
         if (sparringConfig.timeLeft <= 0) {
-            // Round Over
             if (sparringConfig.currentRound < sparringConfig.totalRounds) {
-                // Next Round
                 sparringConfig.currentRound++;
                 sparringConfig.timeLeft = sparringConfig.secondsPerRound;
-                // Maybe play a bell sound?
             } else {
-                // Game Over
                 endGame();
             }
         }
     }, 1000);
-
-    // 2. Enemy AI Loop
     scheduleNextAttack();
 }
 
 function scheduleNextAttack() {
     if (!isGameRunning) return;
-    // Random delay between 2s and 5s
     let delay = Math.random() * 3000 + 2000;
-    
-    setTimeout(() => {
-        if (!isGameRunning) return;
-        launchAttack();
-    }, delay);
+    setTimeout(() => { if (isGameRunning) launchAttack(); }, delay);
 }
 
 function launchAttack() {
-    // Decide attack type
     activeAttackType = Math.random() > 0.5 ? 'STRAIGHT' : 'HOOK';
     enemyState = 'WARNING';
     
-    // Show UI Warning
+    synthWarning(); // 播放警示音
+
     enemyLayer.style.display = 'block';
     if (activeAttackType === 'STRAIGHT') {
         attackText.innerText = "🥊 STRAIGHT! SLIP!";
@@ -476,11 +595,9 @@ function launchAttack() {
         attackText.className = "attack-msg attack-hook";
     }
 
-    // After 0.8s warning -> Hit moment
     setTimeout(() => {
         if (!isGameRunning) return;
         checkDefense();
-        // Hide UI after hit check
         setTimeout(() => {
             enemyLayer.style.display = 'none';
             enemyState = 'IDLE';
@@ -489,83 +606,55 @@ function launchAttack() {
     }, 800);
 }
 
-// Defense Check (Runs at the moment of impact)
 function checkDefense() {
-    // We need player pose. Since we are in a setTimeout, we need global access to latest landmarks
-    // We will implement a `latestLandmarks` variable stored by onResults
-    
-    if (!latestLandmarks) return; // Can't check
-    
+    if (!latestLandmarks) return; 
     const lm = latestLandmarks;
-    // Basic Hip Center & Shoulder Line
-    let hipCenterX = 0.5; // Default center
+    let hipCenterX = 0.5;
     if (lm[23] && lm[24]) hipCenterX = (lm[23].x + lm[24].x) / 2;
-    
     let shoulderY = (lm[11].y + lm[12].y) / 2;
     let nose = lm[0];
     
     let isHit = false;
 
     if (activeAttackType === 'STRAIGHT') {
-        // Need to SLIP (Nose X deviation from Hip Center)
-        // Slip distance threshold: 0.08
+        // 閃躲判定：鼻子偏離臀部中心線
         let deviation = Math.abs(nose.x - hipCenterX);
-        if (deviation < 0.08) isHit = true; // Didn't move enough
+        if (deviation < 0.08) isHit = true; 
     } 
     else if (activeAttackType === 'HOOK') {
-        // Need to DUCK (Nose Y drop)
-        // Check if nose is significantly lower than original standing shoulder
-        // Dynamic threshold: If nose is too close to shoulderY line (standing), HIT.
-        // Assuming nose is usually above shoulder. Ducking puts nose near or below shoulder.
-        
-        // Simple logic: If nose is higher than (shoulderY - 0.15), you are standing too tall.
-        // Remember Y is inverted (0 is top). Higher value = lower position.
-        // Standing: Nose(0.2) < Shoulder(0.4). 
-        // Ducking: Nose(0.4) ~= Shoulder(0.4).
-        
-        if (nose.y < (shoulderY - 0.1)) isHit = true; // Still standing tall
+        // 下潛判定：鼻子不能高於肩膀線太少 (需要下蹲)
+        if (nose.y < (shoulderY - 0.1)) isHit = true; 
     }
 
     if (isHit) {
         takeDamage();
     } else {
-        // DODGE SUCCESS!
         spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "DODGE!", "#00ff00");
     }
 }
 
 function takeDamage() {
-    // Visual
+    synthDamage(); // 播放受傷音效
+    
     damageOverlay.classList.remove('damage-flash');
     void damageOverlay.offsetWidth;
     damageOverlay.classList.add('damage-flash');
     
-    // Score Penalty
     count -= 5;
     if (count < 0) count = 0;
     countElement.innerText = count;
-    
-    // Text
     spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "HIT! -5", "#ff0000");
 }
 
 function endGame() {
     isGameRunning = false;
+    stopBGM(); // 停止音樂
     clearInterval(gameTimerInterval);
     resultLayer.style.display = 'flex';
     finalScoreEl.innerText = count;
 }
 
-// =========================================
-//   Punch Detection Parameters
-// =========================================
-const LEFT_HAND_CONFIG = { triggerRatio: 0.22, resetRatio: 0.28, minPunchAngle: 85, cooldownFrames: 3 };
-const RIGHT_HAND_CONFIG = { triggerRatio: 0.18, resetRatio: 0.24, minPunchAngle: 75, cooldownFrames: 2 };
-let latestLandmarks = null; // For defense check
-
-// =========================================
-//   Visual & Math Utils
-// =========================================
+// 幾何與繪圖
 function calculateDistance(a, b) { return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)); }
 function calculateAngle(a, b, c) {
     const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
@@ -598,24 +687,23 @@ function drawDot(ctx, lm, color, radius=5) {
     ctx.stroke(); ctx.shadowBlur = 0;
 }
 
-// =========================================
-//   Main Pose Loop
-// =========================================
+// 核心 Loop
 const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
 pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 pose.onResults(onResults);
 
+const LEFT_HAND_CONFIG = { triggerRatio: 0.22, resetRatio: 0.28, minPunchAngle: 85, cooldownFrames: 3 };
+const RIGHT_HAND_CONFIG = { triggerRatio: 0.18, resetRatio: 0.24, minPunchAngle: 75, cooldownFrames: 2 };
+
 function onResults(results) {
   canvasElement.width = videoElement.videoWidth;
   canvasElement.height = videoElement.videoHeight;
-  const cw = canvasElement.width;
-  const ch = canvasElement.height;
+  const cw = canvasElement.width; const ch = canvasElement.height;
 
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, cw, ch);
   canvasCtx.drawImage(results.image, 0, 0, cw, ch);
 
-  // Text Animation
   for (let i = floatingTexts.length - 1; i >= 0; i--) {
     let ft = floatingTexts[i];
     ft.life--; ft.offsetY -= 5; ft.opacity -= 0.04;
@@ -625,15 +713,13 @@ function onResults(results) {
     if (ft.life <= 0) floatingTexts.splice(i, 1);
   }
 
-  // Cooldowns
   if (leftCooldown > 0) leftCooldown--;
   if (rightCooldown > 0) rightCooldown--;
 
   if (results.poseLandmarks) {
     const lm = results.poseLandmarks;
-    latestLandmarks = lm; // Store for AI check
+    latestLandmarks = lm;
 
-    // Skeleton
     const skeletonColor = '#00ff00';
     const pairs = [[11,13], [13,15], [12,14], [14,16], [11,12]];
     pairs.forEach(p => { if(lm[p[0]] && lm[p[1]]) drawLine(canvasCtx, lm[p[0]], lm[p[1]], skeletonColor); });
@@ -644,7 +730,6 @@ function onResults(results) {
       const nose = lm[0];
       const guardRadius = shoulderWidth * 0.8;
 
-      // Dots
       if (lm[15]) {
          let dotColor = '#ff0000';
          if (nose && calculateDistance(lm[15], nose) < guardRadius) dotColor = '#00ff00';
@@ -656,7 +741,6 @@ function onResults(results) {
          drawDot(canvasCtx, lm[16], dotColor, 8);
       }
 
-      // Punch Processing
       if (lm[15] && lm[13] && lm[15].visibility > 0.5) {
         leftStage = processHand(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, solarPlexusY);
       }
@@ -673,10 +757,8 @@ function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldow
 
   const dist = calculateDistance(shoulder, wrist);
   let ratio = dist / scale;
-  
   const armAngle = calculateAngle(shoulder, elbow, wrist);
   const isArmStraight = armAngle > config.minPunchAngle;
-
   let nextStage = currentStage;
 
   if (currentStage === "down") {
@@ -687,11 +769,11 @@ function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldow
   else if (currentStage === "punch") {
     count++;
     countElement.innerText = count;
-    
     const sb = document.querySelector('.score-board');
     sb.classList.remove('pop-effect'); void sb.offsetWidth; sb.classList.add('pop-effect');
 
-    if (label === "L") playHitSound('light'); else playHitSound('heavy'); 
+    // 播放合成音效
+    synthPunch(label === "L" ? 'light' : 'heavy');
 
     if (label === "L") leftCooldown = config.cooldownFrames;
     else rightCooldown = config.cooldownFrames;
