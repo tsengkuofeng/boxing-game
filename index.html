@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V8.6 - HYBRID AUDIO</title>
+<title>XMAS BOXING V9 - HYBRID AUDIO</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -268,71 +268,50 @@ video, canvas {
 
 <script>
 // =========================================
-//   Audio Engine (Hybrid: MP3 + Synth)
+//   Audio Engine (Hybrid)
+//   - Punch: External MP3
+//   - FX/BGM: Web Audio Synthesis
 // =========================================
 let audioCtx = null;
-let punchBuffer = null; // 儲存 MP3
-
-// BGM 相關變數
+let punchBuffer = null; // 儲存 punch.mp3
 let bgmOscillators = [];
 let nextNoteTime = 0.0;
 let isPlayingBGM = false;
 let tempo = 130; 
+let lookahead = 25.0; 
 let scheduleAheadTime = 0.1;
 let current16thNote = 0;
 
-function initAudio() {
+async function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-}
-
-// 1. 讀取 MP3 (用於出拳)
-async function loadMp3() {
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    
+    // 載入 punch.mp3
     try {
         const response = await fetch('punch.mp3');
         if (!response.ok) throw new Error("punch.mp3 not found");
         const arrayBuffer = await response.arrayBuffer();
         punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        console.log("MP3 Loaded successfully");
+        console.log("Punch MP3 Loaded");
     } catch (e) { 
-        console.log("Audio Load Error (Using fallback synth):", e); 
+        console.warn("Audio Load Error:", e);
+        // 如果載入失敗，我們可以在這裡寫一個 fallback 或者是單純顯示錯誤
+        alert("請確認 'punch.mp3' 檔案存在於相同目錄中！");
     }
 }
 
-// 2. 播放出拳音效 (優先用 MP3，失敗則用合成)
-function triggerPunchSound(type) {
-    if (punchBuffer) {
-        // 使用 MP3
-        const source = audioCtx.createBufferSource();
-        source.buffer = punchBuffer;
-        // 輕拳快一點，重拳慢一點
-        source.playbackRate.value = (type === 'heavy') ? 0.9 : 1.1;
-        source.connect(audioCtx.destination);
-        source.start(0);
-    } else {
-        // 沒有 MP3 則使用合成音
-        synthPunch(type);
-    }
+// 1. 播放真實 punch.mp3
+function playPunchSound(type) {
+    if (!punchBuffer || !audioCtx) return;
+    const source = audioCtx.createBufferSource();
+    source.buffer = punchBuffer;
+    // 簡單的音調變化，區分輕重拳
+    source.playbackRate.value = (type === 'heavy') ? 0.9 : 1.1;
+    source.connect(audioCtx.destination);
+    source.start(0);
 }
 
-// 3. 合成音效：出拳備用
-function synthPunch(type) {
-    if (!audioCtx) return;
-    const t = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(200, t);
-    osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
-    gain.gain.setValueAtTime(0.5, t);
-    gain.gain.linearRampToValueAtTime(0, t + 0.1);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start(t);
-    osc.stop(t + 0.1);
-}
-
-// 4. 合成音效：警示音 (Warning)
+// 2. 合成警示音 (Warning SFX)
 function synthWarning() {
     if (!audioCtx) return;
     const t = audioCtx.currentTime;
@@ -354,27 +333,32 @@ function synthWarning() {
     osc.stop(t + 0.3);
 }
 
-// 5. 合成音效：受傷音 (Damage)
+// 3. 合成受傷音 (Damage SFX)
 function synthDamage() {
     if (!audioCtx) return;
     const t = audioCtx.currentTime;
+    
+    // Low punch
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = 'sawtooth';
     osc.frequency.setValueAtTime(100, t);
     osc.frequency.exponentialRampToValueAtTime(10, t + 0.3);
+    
     gain.gain.setValueAtTime(0.5, t);
     gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start(t);
     osc.stop(t + 0.3);
 }
 
-// 6. 合成背景音樂 (BGM)
+// 4. 合成背景音樂 (BGM) - Drum Sequencer
 function scheduleNote(beatNumber, time) {
     if (!audioCtx) return;
-    // Kick (Beats 0, 4, 8, 12)
+    
+    // Kick Drum
     if (beatNumber % 4 === 0) {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -387,21 +371,26 @@ function scheduleNote(beatNumber, time) {
         osc.start(time);
         osc.stop(time + 0.5);
     }
-    // Snare (Beats 4, 12)
+    
+    // Snare
     if (beatNumber % 8 === 4) {
-        const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < audioCtx.sampleRate * 0.1; i++) output[i] = Math.random() * 2 - 1;
         const noise = audioCtx.createBufferSource();
-        noise.buffer = buffer;
-        const nFilter = audioCtx.createBiquadFilter();
-        nFilter.type = 'highpass'; nFilter.frequency.value = 1000;
-        const nGain = audioCtx.createGain();
-        nGain.gain.setValueAtTime(0.6, time);
-        nGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
-        noise.connect(nFilter); nFilter.connect(nGain); nGain.connect(audioCtx.destination);
+        noise.buffer = noiseBuffer;
+        const noiseFilter = audioCtx.createBiquadFilter();
+        noiseFilter.type = 'highpass';
+        noiseFilter.frequency.value = 1000;
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(0.6, time);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(audioCtx.destination);
         noise.start(time);
     }
+
     // Hi-hat
     if (beatNumber % 2 === 0) {
         const osc = audioCtx.createOscillator();
@@ -410,8 +399,10 @@ function scheduleNote(beatNumber, time) {
         osc.frequency.setValueAtTime(8000, time);
         gain.gain.setValueAtTime(0.1, time);
         gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(time); osc.stop(time + 0.05);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(time);
+        osc.stop(time + 0.05);
     }
 }
 
@@ -431,6 +422,7 @@ function timerWorker() {
     if (!isPlayingBGM) return;
     const secondsPerBeat = 60.0 / tempo;
     const secondsPer16th = secondsPerBeat / 4; 
+    
     while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
         scheduleNote(current16thNote, nextNoteTime);
         nextNoteTime += secondsPer16th;
@@ -493,8 +485,7 @@ function selectMode(mode, element) {
 
 async function initGame() {
     startBtn.innerText = "啟動中...";
-    initAudio(); 
-    await loadMp3(); // 嘗試讀取 MP3
+    await initAudio(); // 等待 punch.mp3 下載完成
 
     if (selectedMode === 'sparring') {
         let rounds = parseInt(document.getElementById('input-rounds').value) || 1;
@@ -507,7 +498,7 @@ async function initGame() {
         
         sparringInfo.style.display = 'flex';
         updateTimerDisplay();
-        startBGM(); // 播放合成背景音樂
+        startBGM(); 
     } else {
         sparringInfo.style.display = 'none';
     }
@@ -570,7 +561,7 @@ function launchAttack() {
     activeAttackType = Math.random() > 0.5 ? 'STRAIGHT' : 'HOOK';
     enemyState = 'WARNING';
     
-    synthWarning(); // 播放警示音
+    synthWarning(); // 合成音
 
     enemyLayer.style.display = 'block';
     if (activeAttackType === 'STRAIGHT') {
@@ -618,7 +609,7 @@ function checkDefense() {
 }
 
 function takeDamage() {
-    synthDamage(); // 播放受傷音效
+    synthDamage(); // 合成音
     
     damageOverlay.classList.remove('damage-flash');
     void damageOverlay.offsetWidth;
@@ -756,8 +747,8 @@ function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldow
     const sb = document.querySelector('.score-board');
     sb.classList.remove('pop-effect'); void sb.offsetWidth; sb.classList.add('pop-effect');
 
-    // 觸發音效 (優先使用 MP3)
-    triggerPunchSound(label === "L" ? 'light' : 'heavy');
+    // 播放 MP3 打擊音效
+    playPunchSound(label === "L" ? 'light' : 'heavy');
 
     if (label === "L") leftCooldown = config.cooldownFrames;
     else rightCooldown = config.cooldownFrames;
