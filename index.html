@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V8 (Turbo)</title>
+<title>XMAS BOXING V7.3 (Chin Hit Fix)</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -221,25 +221,21 @@ function playHitSound(type) {
 }
 
 // =========================================
-//   2. 參數設定 (V8 - Turbo Combo)
+//   2. 參數設定 (V7.3 - Ultra Low Threshold)
 // =========================================
+// 修改重點：大幅降低 triggerRatio 與 重置比率，讓短距離的下巴攻擊能被偵測
 const LEFT_HAND_CONFIG = {
-    // 觸發：保持敏銳 (0.28)
-    triggerRatio: 0.28, 
-    // 重置：放寬到 0.25 (原本 V7 是 0.30)
-    // 意思是你伸出去(>0.28)觸發後，只要稍微縮回一點點(<0.25)就可以打下一拳
-    resetRatio: 0.25,   
-    // 角度：放寬到 75度，快拳不用全直
-    minPunchAngle: 75,  
-    // 冷卻：極限 1 幀，確保不漏算
-    cooldownFrames: 1
+    triggerRatio: 0.22, // 極度靈敏：手臂伸出一點點就算 (解決前後透視問題)
+    resetRatio: 0.28,   
+    minPunchAngle: 85,  // 允許手肘比較彎 (正拳攻擊時手肘在畫面會被壓縮)
+    cooldownFrames: 3
 };
 
 const RIGHT_HAND_CONFIG = {
-    triggerRatio: 0.30, 
-    resetRatio: 0.27, 
-    minPunchAngle: 75,
-    cooldownFrames: 1
+    triggerRatio: 0.25, 
+    resetRatio: 0.30, 
+    minPunchAngle: 85,
+    cooldownFrames: 3
 };
 
 let count = 0;
@@ -327,7 +323,7 @@ window.resetCount = function() {
 }
 
 // =========================================
-//   5. 核心偵測邏輯
+//   5. 核心偵測邏輯 (V7.3 - Chin Hit Optimized)
 // =========================================
 function onResults(results) {
   canvasElement.width = videoElement.videoWidth;
@@ -362,13 +358,14 @@ function onResults(results) {
     if (lm[11] && lm[12]) {
       const shoulderWidth = calculateDistance(lm[11], lm[12]);
       
-      // 有效攻擊高度：肩膀線以下一點點 (胸口)
-      let chestY = (lm[11].y + lm[12].y) / 2 + 0.1; 
+      // === V7.3 關鍵修改：降低有效高度線 ===
+      // 以前是肩膀高度，現在改成 (肩膀+肩膀寬度*0.5) = 大約是心窩/胃部的位置
+      // 只要拳頭高於這個位置，都算有效攻擊範圍
+      let solarPlexusY = (lm[11].y + lm[12].y) / 2 + (shoulderWidth * 0.5);
 
       const nose = lm[0];
       const guardRadius = shoulderWidth * 0.8;
 
-      // Visual Guard Indicators
       if (lm[15]) {
          let dotColor = '#ff0000';
          if (nose && calculateDistance(lm[15], nose) < guardRadius) dotColor = '#00ff00';
@@ -381,19 +378,20 @@ function onResults(results) {
       }
 
       if (lm[15] && lm[13] && lm[15].visibility > 0.5) {
-        leftStage = processHandV8(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, chestY);
+        leftStage = processHandV7(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, solarPlexusY);
       }
       if (lm[16] && lm[14] && lm[16].visibility > 0.5) {
-        rightStage = processHandV8(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG, chestY);
+        rightStage = processHandV7(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG, solarPlexusY);
       }
     }
   }
   canvasCtx.restore();
 }
 
-function processHandV8(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, chestY) {
-  // 腰部過濾：手太低(數值大)不計
-  if (wrist.y > chestY) return currentStage;
+function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, validYLimit) {
+  // 高度檢查：只要手比判定線高 (數值越小越高，所以是 wrist.y < validYLimit)
+  // 如果手低於這條線 (比如在腰部以下閒置)，直接返回，不偵測
+  if (wrist.y > validYLimit) return currentStage;
 
   const dist = calculateDistance(shoulder, wrist);
   let ratio = dist / scale;
@@ -405,7 +403,7 @@ function processHandV8(shoulder, elbow, wrist, scale, currentStage, label, coold
   let nextStage = currentStage;
 
   if (currentStage === "down") {
-    // 觸發判定
+    // 這裡 ratio 已經極度放寬，高度限制也下修了
     if (ratio > config.triggerRatio && isArmStraight && cooldown === 0) {
       nextStage = "punch";
     }
@@ -436,7 +434,6 @@ function processHandV8(shoulder, elbow, wrist, scale, currentStage, label, coold
     nextStage = "retract";
   }
   else if (currentStage === "retract") {
-    // 縮回判定 (比觸發值小一點即可)
     if (ratio < config.resetRatio) {
       nextStage = "down"; 
     }
