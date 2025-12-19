@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V7.3 (Face Hit Fix)</title>
+<title>XMAS BOXING V8 (Turbo)</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -221,20 +221,24 @@ function playHitSound(type) {
 }
 
 // =========================================
-//   2. 參數設定 (V7.2 - Face Hit Fix)
+//   2. 參數設定 (V8 - Turbo Combo)
 // =========================================
-// 關鍵修正：降低 triggerRatio 讓「正前方短刺拳」也能觸發
 const LEFT_HAND_CONFIG = {
-    triggerRatio: 0.25, // 原本 0.38 -> 降至 0.25 (允許透視壓縮下的短拳)
-    resetRatio: 0.30,   // 配合降低，讓縮回判定更靈敏
-    minPunchAngle: 90,  // 角度放寬到 90度 (正拳手肘看起來會比較彎)
-    cooldownFrames: 2
+    // 觸發：保持敏銳 (0.28)
+    triggerRatio: 0.28, 
+    // 重置：放寬到 0.25 (原本 V7 是 0.30)
+    // 意思是你伸出去(>0.28)觸發後，只要稍微縮回一點點(<0.25)就可以打下一拳
+    resetRatio: 0.25,   
+    // 角度：放寬到 75度，快拳不用全直
+    minPunchAngle: 75,  
+    // 冷卻：極限 1 幀，確保不漏算
+    cooldownFrames: 1
 };
 
 const RIGHT_HAND_CONFIG = {
-    triggerRatio: 0.28, // 右手重拳稍微高一點點，避免誤判
-    resetRatio: 0.30, 
-    minPunchAngle: 90,
+    triggerRatio: 0.30, 
+    resetRatio: 0.27, 
+    minPunchAngle: 75,
     cooldownFrames: 1
 };
 
@@ -323,7 +327,7 @@ window.resetCount = function() {
 }
 
 // =========================================
-//   5. 核心偵測邏輯 (V7.2 - Face Hit Optimized)
+//   5. 核心偵測邏輯
 // =========================================
 function onResults(results) {
   canvasElement.width = videoElement.videoWidth;
@@ -358,12 +362,13 @@ function onResults(results) {
     if (lm[11] && lm[12]) {
       const shoulderWidth = calculateDistance(lm[11], lm[12]);
       
-      // 設定「腰線」：只要高於此線都算有效攻擊範圍 (包含胸口、頭部)
-      let chestY = (lm[11].y + lm[12].y) / 2 + 0.1; // 肩膀稍微下面一點
+      // 有效攻擊高度：肩膀線以下一點點 (胸口)
+      let chestY = (lm[11].y + lm[12].y) / 2 + 0.1; 
 
       const nose = lm[0];
       const guardRadius = shoulderWidth * 0.8;
 
+      // Visual Guard Indicators
       if (lm[15]) {
          let dotColor = '#ff0000';
          if (nose && calculateDistance(lm[15], nose) < guardRadius) dotColor = '#00ff00';
@@ -376,18 +381,18 @@ function onResults(results) {
       }
 
       if (lm[15] && lm[13] && lm[15].visibility > 0.5) {
-        leftStage = processHandV7(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, chestY);
+        leftStage = processHandV8(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, chestY);
       }
       if (lm[16] && lm[14] && lm[16].visibility > 0.5) {
-        rightStage = processHandV7(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG, chestY);
+        rightStage = processHandV8(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG, chestY);
       }
     }
   }
   canvasCtx.restore();
 }
 
-function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, chestY) {
-  // 1. 高度檢查：只要手比胸口高 (MediaPipe Y值越小越高)
+function processHandV8(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, chestY) {
+  // 腰部過濾：手太低(數值大)不計
   if (wrist.y > chestY) return currentStage;
 
   const dist = calculateDistance(shoulder, wrist);
@@ -400,7 +405,7 @@ function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, coold
   let nextStage = currentStage;
 
   if (currentStage === "down") {
-    // 這裡 ratio 已經放寬，只要手臂有伸出且在胸部以上就算數
+    // 觸發判定
     if (ratio > config.triggerRatio && isArmStraight && cooldown === 0) {
       nextStage = "punch";
     }
@@ -431,6 +436,7 @@ function processHandV7(shoulder, elbow, wrist, scale, currentStage, label, coold
     nextStage = "retract";
   }
   else if (currentStage === "retract") {
+    // 縮回判定 (比觸發值小一點即可)
     if (ratio < config.resetRatio) {
       nextStage = "down"; 
     }
