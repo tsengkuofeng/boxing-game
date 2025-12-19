@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V13 - VISUAL CUES</title>
+<title>XMAS BOXING V14 - TARGET LOCK</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -198,16 +198,15 @@ video, canvas {
 /* Slip 特效：紅圈 */
 #slip-indicator {
     position: absolute;
-    width: 100px; height: 100px;
-    background: rgba(255, 0, 0, 0.3);
+    width: 120px; height: 120px; /* 稍微加大範圍 */
+    background: rgba(255, 0, 0, 0.2);
     border: 5px solid rgba(255, 0, 0, 0.8);
     border-radius: 50%;
-    transform: translate(-50%, -50%); /* 居中定位 */
+    transform: translate(-50%, -50%); 
     display: none;
     box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
-    animation: pulse-red 0.5s infinite alternate;
+    /* 移除動畫，讓它看起來像是一個固定的鎖定點，更有壓迫感 */
 }
-@keyframes pulse-red { from { transform: translate(-50%, -50%) scale(1); opacity: 0.8; } to { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } }
 
 /* Duck 特效：紅色橫梁 */
 #duck-indicator {
@@ -268,7 +267,7 @@ video, canvas {
   #combo-panel { top: 120px; left: 15px; }
   #combo-count { font-size: 60px; }
   .attack-msg { font-size: 50px; }
-  #slip-indicator { width: 80px; height: 80px; border-width: 4px; } /* 手機版紅圈稍微縮小 */
+  #slip-indicator { width: 100px; height: 100px; border-width: 4px; }
 }
 </style>
 </head>
@@ -286,7 +285,7 @@ video, canvas {
 <div class="container">
   
   <div id="landing-layer">
-    <div class="landing-title">XMAS BOXING<br>V13</div>
+    <div class="landing-title">XMAS BOXING<br>V14</div>
     
     <div class="mode-container">
       <div class="mode-box" onclick="selectMode('speed', this)">
@@ -525,14 +524,17 @@ let floatingTexts = [];
 let sparringConfig = {
     totalRounds: 1, secondsPerRound: 60, restTime: 60,
     currentRound: 1, timeLeft: 0, 
-    difficulty: 'HARD', // Default
-    state: 'READY' // READY, FIGHT, REST, END
+    difficulty: 'HARD', 
+    state: 'READY' 
 };
 let gameTimerInterval = null;
 let enemyState = 'IDLE'; 
 let activeAttackType = null;
 let latestLandmarks = null;
 let dodgeCombo = 0;
+
+// Target Locking for Slip
+let lockedTarget = null; // 記錄攻擊開始時的鼻子位置 {x, y}
 
 // DOM
 const videoElement = document.getElementById('input_video');
@@ -556,7 +558,6 @@ const comboPanel = document.getElementById('combo-panel');
 const comboCountEl = document.getElementById('combo-count');
 const restOverlay = document.getElementById('rest-overlay');
 const restTimerEl = document.getElementById('rest-timer');
-// 新增特效元素
 const slipIndicator = document.getElementById('slip-indicator');
 const duckIndicator = document.getElementById('duck-indicator');
 
@@ -719,17 +720,27 @@ function launchAttack() {
     synthWarning();
 
     enemyLayer.style.display = 'block';
+    
     if (activeAttackType === 'STRAIGHT') {
-        // 移除 Emoji
         attackText.innerText = "STRAIGHT! SLIP!";
         attackText.className = "attack-msg attack-straight";
-        // 顯示 Slip 紅圈
-        slipIndicator.style.display = 'block';
+        
+        // 【核心修改】鎖定目前位置
+        if (latestLandmarks && latestLandmarks[0]) {
+            lockedTarget = { x: latestLandmarks[0].x, y: latestLandmarks[0].y };
+            
+            // 將紅圈定位在「鎖定時」的座標，之後不隨身體移動
+            // MediaPipe x 座標是 0~1，0在左邊。CSS left 0% 也是左邊。
+            // 但因為我們 canvas `transform: scaleX(-1)` 做鏡像，
+            // 視覺上看到的「左」其實是 CSS 的 right，或者需要翻轉計算。
+            // 為了讓 CSS div 和鏡像後的影像對齊： CSS left = (1 - x) * 100%
+            slipIndicator.style.left = (1 - lockedTarget.x) * 100 + '%';
+            slipIndicator.style.top = lockedTarget.y * 100 + '%';
+            slipIndicator.style.display = 'block';
+        }
     } else {
-        // 移除 Emoji
         attackText.innerText = "HOOK! DUCK!";
         attackText.className = "attack-msg attack-hook";
-        // 顯示 Duck 橫梁
         duckIndicator.style.display = 'block';
     }
 
@@ -745,6 +756,7 @@ function launchAttack() {
             // 隱藏特效
             slipIndicator.style.display = 'none';
             duckIndicator.style.display = 'none';
+            lockedTarget = null; // 清除鎖定
             enemyState = 'IDLE';
             scheduleNextAttack(); 
         }, 500);
@@ -762,18 +774,27 @@ function updateComboUI() {
 function checkDefense() {
     if (!latestLandmarks) return; 
     const lm = latestLandmarks;
-    let hipCenterX = 0.5;
-    if (lm[23] && lm[24]) hipCenterX = (lm[23].x + lm[24].x) / 2;
-    let shoulderY = (lm[11].y + lm[12].y) / 2;
     let nose = lm[0];
+    let shoulderY = (lm[11].y + lm[12].y) / 2;
     
     let isHit = false;
 
     if (activeAttackType === 'STRAIGHT') {
-        let deviation = Math.abs(nose.x - hipCenterX);
-        if (deviation < 0.05) isHit = true; 
+        // 【核心修改】判定邏輯：是否還在鎖定範圍內？
+        if (lockedTarget && nose) {
+            // 計算目前鼻子位置與鎖定點的距離
+            // 由於 x, y 都是 0~1 的正規化座標，我們可以用歐幾里得距離
+            // 假設紅圈半徑約為 0.1 (螢幕寬度的 10%)
+            let dist = Math.sqrt(Math.pow(nose.x - lockedTarget.x, 2) + Math.pow(nose.y - lockedTarget.y, 2));
+            
+            // 如果距離小於閥值，代表沒有移開 -> 被打中
+            if (dist < 0.1) {
+                isHit = true;
+            }
+        }
     } 
     else if (activeAttackType === 'HOOK') {
+        // Duck 判定維持原樣 (高度判定)
         if (nose.y < (shoulderY - 0.05)) isHit = true; 
     }
 
@@ -894,16 +915,13 @@ function onResults(results) {
     latestLandmarks = lm;
 
     // --- 更新視覺特效位置 ---
-    // Slip 紅圈追蹤鼻子 (lm[0])
-    if (lm[0] && slipIndicator.style.display === 'block') {
-        // MediaPipe 座標是鏡像的，所以 left 要用 (1 - lm[0].x)
-        slipIndicator.style.left = (1 - lm[0].x) * 100 + '%';
-        slipIndicator.style.top = lm[0].y * 100 + '%';
-    }
-    // Duck 橫梁追蹤肩膀判定線 (lm[11], lm[12])
+    
+    // 1. Slip Indicator: 現在只在啟動時設定一次位置 (在 launchAttack 裡)，這裡不再更新 left/top，
+    //    確保它是一個「固定」的目標點，不會追著臉跑。
+
+    // 2. Duck Indicator: 繼續追蹤肩膀高度，保持高度判定的準確性
     if (lm[11] && lm[12] && duckIndicator.style.display === 'block') {
         let shoulderY = (lm[11].y + lm[12].y) / 2;
-        // 判定線在肩膀上方一點點 (數值越小越高)
         let duckLineY = shoulderY - 0.05;
         duckIndicator.style.top = duckLineY * 100 + '%';
     }
