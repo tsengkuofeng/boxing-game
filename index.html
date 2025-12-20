@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V18 - MOBILE UI</title>
+<title>XMAS BOXING CHALLENGE 一起來打拳</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -318,7 +318,7 @@ video, canvas {
 <div class="container">
   
   <div id="landing-layer">
-    <div class="landing-title">XMAS BOXING<br>V18</div>
+    <div class="landing-title">XMAS BOXING<br>CHALLENGE</div>
     
     <div class="mode-container">
       <div class="mode-box" onclick="selectMode('speed', this)">
@@ -383,9 +383,9 @@ video, canvas {
       <div id="step-3" class="wizard-step">
         <div class="step-title">STEP 3/3: 難易度</div>
         <div style="display:flex; flex-direction:column; gap:10px;">
-          <button class="diff-btn" onclick="setDifficulty('EASY', this)">簡單 (慢速)</button>
+          <button class="diff-btn" onclick="setDifficulty('EASY', this)">簡單 (反應時間長)</button>
           <button class="diff-btn" onclick="setDifficulty('NORMAL', this)">普通 (標準)</button>
-          <button class="diff-btn selected" onclick="setDifficulty('HARD', this)">困難 (極速)</button>
+          <button class="diff-btn selected" onclick="setDifficulty('HARD', this)">困難 (反應時間短)</button>
         </div>
         <button class="nav-btn" style="background:#059669;" onclick="finishSetup()">完成設定</button>
       </div>
