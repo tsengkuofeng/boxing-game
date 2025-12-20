@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>XMAS BOXING V17 - REST FIX</title>
+<title>XMAS BOXING V18 - MOBILE UI</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -85,33 +85,50 @@ video, canvas {
 
 /* Wizard 容器 (分步驟) */
 #wizard-container {
-  display: none; background: rgba(0,0,0,0.6); padding: 20px; border-radius: 15px;
+  display: none; background: rgba(0,0,0,0.8); padding: 25px; border-radius: 15px;
   border: 1px solid #555; width: 85%; max-width: 320px;
-  margin-bottom: 20px;
+  margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
-.wizard-step { display: none; flex-direction: column; gap: 15px; }
+.wizard-step { display: none; flex-direction: column; gap: 20px; }
 .wizard-step.active { display: flex; animation: fadeIn 0.3s; }
 .step-title { font-size: 18px; font-weight: 700; color: #fbbf24; margin-bottom: 5px; }
 
-.setting-row { display: flex; align-items: center; justify-content: space-between; }
-.setting-row label { font-size: 16px; font-weight: bold; }
-.setting-row input { 
-  background: transparent; border: 1px solid #fff; color: #fff; 
-  padding: 8px; font-size: 16px; width: 60px; text-align: center; border-radius: 5px;
+.setting-row { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.setting-row label { font-size: 14px; font-weight: bold; color: #ddd; letter-spacing: 1px; }
+
+/* 🔴 下拉選單樣式優化 */
+.setup-select {
+  appearance: none; -webkit-appearance: none;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 8px;
+  width: 100%;
+  cursor: pointer;
+  text-align: center;
+  font-family: 'Montserrat', sans-serif;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 20px;
 }
+.setup-select:focus { outline: none; border-color: #00d2ff; background-color: rgba(0,0,0,0.5); }
+.setup-select option { background-color: #333; color: #fff; }
 
 /* 難度按鈕 */
 .diff-btn {
-  padding: 10px; border: 1px solid #fff; background: transparent; color: #fff;
+  padding: 12px; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: #fff;
   border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Montserrat';
   transition: 0.2s;
 }
-.diff-btn.selected { background: #fbbf24; color: #000; border-color: #fbbf24; }
+.diff-btn.selected { background: #fbbf24; color: #000; border-color: #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
 
 /* 導覽按鈕 */
 .nav-btn {
-  padding: 10px 0; background: #334155; color: #fff; border: none; 
-  border-radius: 8px; margin-top: 10px; font-weight: bold; cursor: pointer;
+  padding: 12px 0; background: #334155; color: #fff; border: none; 
+  border-radius: 8px; margin-top: 5px; font-weight: bold; cursor: pointer; font-size: 16px;
 }
 .nav-btn:active { transform: scale(0.98); }
 
@@ -277,7 +294,7 @@ video, canvas {
 @media (max-width: 768px) {
   .landing-title { font-size: 28px; margin-bottom: 20px; }
   .mode-box { width: 120px; padding: 15px; }
-  #wizard-container { width: 90%; padding: 15px; }
+  #wizard-container { width: 90%; padding: 20px; }
   #game-hud { top: 80px; right: 15px; }
   .score-board { padding: 8px 20px; }
   #count { font-size: 50px; }
@@ -301,7 +318,7 @@ video, canvas {
 <div class="container">
   
   <div id="landing-layer">
-    <div class="landing-title">XMAS BOXING<br>V17</div>
+    <div class="landing-title">XMAS BOXING<br>V18</div>
     
     <div class="mode-container">
       <div class="mode-box" onclick="selectMode('speed', this)">
@@ -319,12 +336,29 @@ video, canvas {
       <div id="step-1" class="wizard-step active">
         <div class="step-title">STEP 1/3: 回合設定</div>
         <div class="setting-row">
-          <label>回合數</label>
-          <input type="number" id="input-rounds" value="3" min="1" max="15">
+          <label>回合數 (Rounds)</label>
+          <select id="input-rounds" class="setup-select">
+            <option value="1">1 回合</option>
+            <option value="2">2 回合</option>
+            <option value="3" selected>3 回合 (標準)</option>
+            <option value="4">4 回合</option>
+            <option value="5">5 回合</option>
+            <option value="6">6 回合</option>
+            <option value="8">8 回合</option>
+            <option value="10">10 回合</option>
+            <option value="12">12 回合</option>
+          </select>
         </div>
         <div class="setting-row">
-          <label>每回合(分)</label>
-          <input type="number" id="input-minutes" value="1" min="0.5" max="3" step="0.5">
+          <label>每回合長度 (Duration)</label>
+          <select id="input-minutes" class="setup-select">
+            <option value="0.5">30秒 (0.5分)</option>
+            <option value="1.0" selected>1分鐘 (標準)</option>
+            <option value="1.5">1分30秒 (1.5分)</option>
+            <option value="2.0">2分鐘</option>
+            <option value="2.5">2分30秒 (2.5分)</option>
+            <option value="3.0">3分鐘 (職業)</option>
+          </select>
         </div>
         <button class="nav-btn" onclick="nextStep(2)">下一步</button>
       </div>
@@ -332,8 +366,16 @@ video, canvas {
       <div id="step-2" class="wizard-step">
         <div class="step-title">STEP 2/3: 休息設定</div>
         <div class="setting-row">
-          <label>休息時間(分)</label>
-          <input type="number" id="input-rest" value="1" min="0" max="5" step="0.5">
+          <label>休息時間 (Rest)</label>
+          <select id="input-rest" class="setup-select">
+            <option value="0.5">30秒 (快速)</option>
+            <option value="1.0" selected>1分鐘 (標準)</option>
+            <option value="1.5">1分30秒</option>
+            <option value="2.0">2分鐘</option>
+            <option value="3.0">3分鐘</option>
+            <option value="4.0">4分鐘</option>
+            <option value="5.0">5分鐘 (完全恢復)</option>
+          </select>
         </div>
         <button class="nav-btn" onclick="nextStep(3)">下一步</button>
       </div>
@@ -614,9 +656,10 @@ async function initGame() {
     await initAudio(); 
 
     if (selectedMode === 'sparring') {
+        // 從 Select 讀取數值
         let rounds = parseInt(document.getElementById('input-rounds').value) || 1;
         let mins = parseFloat(document.getElementById('input-minutes').value) || 1;
-        let restMins = parseFloat(document.getElementById('input-rest').value) || 1; // 支援小數點
+        let restMins = parseFloat(document.getElementById('input-rest').value) || 1;
         
         sparringConfig.totalRounds = rounds;
         sparringConfig.secondsPerRound = mins * 60;
@@ -694,17 +737,15 @@ function startSparringLoop() {
 }
 
 function startRest() {
-    roundScores.push(count); // Record Score
+    roundScores.push(count); 
     sparringConfig.state = 'REST';
     sparringConfig.timeLeft = sparringConfig.restTime;
     restOverlay.style.display = 'flex';
     stopBGM(); 
-    // 注意：這裡不重置 count，讓使用者在休息時能看到上一回合分數
 }
 
 function endRest() {
     restOverlay.style.display = 'none';
-    // 休息結束，準備開打，這時才歸零
     count = 0;
     countElement.innerText = count;
     dodgeCombo = 0;
@@ -856,7 +897,7 @@ function takeDamage() {
     spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "HIT! -50", "#ff0000");
 }
 
-// 幾何與繪圖 (維持不變)
+// 幾何與繪圖
 function calculateDistance(a, b) { return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)); }
 function calculateAngle(a, b, c) {
     const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
@@ -959,8 +1000,6 @@ function onResults(results) {
 
 function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, validYLimit) {
   if (wrist.y > validYLimit) return currentStage;
-
-  // 【核心修改】防止休息時間偷分
   if (selectedMode === 'sparring' && sparringConfig.state !== 'FIGHT') {
       return currentStage;
   }
