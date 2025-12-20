@@ -37,7 +37,6 @@ body {
   border-radius: 100% 100% 0 0 / 30px 30px 0 0;
   box-shadow: 0 -10px 20px rgba(255,255,255,0.2);
 }
-/* 雪花樣式優化 */
 .snowflake {
   position: absolute; top: -10px; background: white; border-radius: 50%; opacity: 0.9;
   animation: fall linear infinite;
@@ -54,7 +53,35 @@ body {
 /* =========================================
    【UI 佈局】
    ========================================= */
-.container { position: relative; width: 100vw; height: 100vh; }
+.container { 
+  position: relative; width: 100vw; height: 100vh; 
+  /* 新增：為了讓 filter 模糊消失時有過渡效果 */
+  transition: filter 0.2s ease-out;
+  transform-origin: center center;
+}
+
+/* 🔥🔥🔥 新增：受傷震動與暈眩特效 🔥🔥🔥
+   當 .hit-shock class 被加到 .container 時觸發
+*/
+@keyframes shake-hard {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  10% { transform: translate(-15px, -15px) rotate(-1deg); } 
+  20% { transform: translate(15px, 15px) rotate(1deg); }    
+  30% { transform: translate(-15px, 15px) rotate(0deg); }   
+  40% { transform: translate(15px, -15px) rotate(1deg); }   
+  50% { transform: translate(-5px, 0) rotate(-1deg); }      
+  70% { transform: translate(5px, 0) rotate(0deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.hit-shock {
+  /* 劇烈震動 */
+  animation: shake-hard 0.4s cubic-bezier(.36,.07,.19,.97) both;
+  /* 視覺模糊 + 去色 (模擬暈眩) + 增加對比 (刺眼感) */
+  filter: blur(4px) grayscale(0.8) contrast(1.2);
+  will-change: transform, filter;
+}
+
 video, canvas { 
   position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
   object-fit: cover; transform: scaleX(-1); z-index: 0; 
@@ -65,9 +92,8 @@ video, canvas {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 100;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
-  /* 🔴 修改：透明度調低至 0.3，讓背景清楚可見 */
   background: rgba(0, 0, 0, 0.35); 
-  backdrop-filter: blur(3px); /* 輕微模糊背景 */
+  backdrop-filter: blur(3px);
   transition: opacity 0.5s ease;
 }
 .landing-title {
@@ -76,8 +102,6 @@ video, canvas {
   margin-bottom: 20px; letter-spacing: 2px;
   text-transform: uppercase; line-height: 1.2;
 }
-
-/* 模式選擇 */
 .mode-container { display: flex; gap: 20px; margin-bottom: 20px; }
 .mode-box {
   background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.5);
@@ -93,7 +117,6 @@ video, canvas {
 .mode-box h3 { margin: 0 0 5px 0; font-size: 18px; color: #fff; text-shadow: 1px 1px 2px black; }
 .mode-box p { margin: 0; font-size: 12px; color: #eee; text-shadow: 1px 1px 2px black; }
 
-/* Wizard 容器 (分步驟) */
 #wizard-container {
   display: none; background: rgba(0,0,0,0.85); padding: 25px; border-radius: 15px;
   border: 1px solid #555; width: 85%; max-width: 320px;
@@ -106,7 +129,6 @@ video, canvas {
 .setting-row { display: flex; flex-direction: column; gap: 8px; text-align: left; }
 .setting-row label { font-size: 14px; font-weight: bold; color: #ddd; letter-spacing: 1px; }
 
-/* 🔴 下拉選單樣式優化 */
 .setup-select {
   appearance: none; -webkit-appearance: none;
   background-color: rgba(255, 255, 255, 0.1);
@@ -127,7 +149,6 @@ video, canvas {
 .setup-select:focus { outline: none; border-color: #00d2ff; background-color: rgba(0,0,0,0.5); }
 .setup-select option { background-color: #333; color: #fff; }
 
-/* 難度按鈕 */
 .diff-btn {
   padding: 12px; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: #fff;
   border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Montserrat';
@@ -135,7 +156,6 @@ video, canvas {
 }
 .diff-btn.selected { background: #fbbf24; color: #000; border-color: #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
 
-/* 導覽按鈕 */
 .nav-btn {
   padding: 12px 0; background: #334155; color: #fff; border: none; 
   border-radius: 8px; margin-top: 5px; font-weight: bold; cursor: pointer; font-size: 16px;
@@ -144,12 +164,11 @@ video, canvas {
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* 紅色開始按鈕 */
 #start-btn { 
   display: none; 
   padding: 20px 40px; font-size: 22px; font-weight: 800; font-family: 'Montserrat', sans-serif;
   color: #fff; background: linear-gradient(135deg, #ef4444, #b91c1c);
-  border: 2px solid #fff; /* 增加邊框讓它在淡背景下更明顯 */
+  border: 2px solid #fff; 
   border-radius: 50px; cursor: pointer; 
   box-shadow: 0 0 30px rgba(239, 68, 68, 0.8);
   transition: all 0.3s; margin-top: 10px;
@@ -175,7 +194,6 @@ video, canvas {
 }
 .count-label { font-size: 12px; color: #94a3b8; letter-spacing: 3px; font-weight: 700; margin-bottom: 5px; }
 
-/* 對戰資訊 */
 #sparring-info {
   display: none; background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 15px;
   color: #fff; font-weight: bold; margin-top: 10px;
@@ -217,7 +235,7 @@ video, canvas {
 .attack-hook { color: #ffff00; }
 @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-/* --- 5. 視覺特效層 (Visual Cues Layer) --- */
+/* --- 5. 視覺特效層 --- */
 #visual-cues-layer {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     z-index: 55; pointer-events: none;
@@ -260,7 +278,6 @@ video, canvas {
 .damage-flash { animation: flashRed 0.3s; }
 @keyframes flashRed { 0% { opacity: 0.8; } 100% { opacity: 0; } }
 
-/* 結算畫面 */
 #result-layer {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 110; background: rgba(0,0,0,0.9);
@@ -269,7 +286,6 @@ video, canvas {
 }
 #result-layer h1 { margin: 0 0 20px 0; font-size: 50px; color: #fbbf24; }
 
-/* 戰報表格 */
 .score-table {
   background: rgba(255,255,255,0.1);
   padding: 20px; border-radius: 15px; border: 1px solid #555;
@@ -293,7 +309,6 @@ video, canvas {
 }
 #reset-btn:hover { background: rgba(255, 255, 255, 0.35); }
 
-/* 休息畫面 */
 #rest-overlay {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 90; background: rgba(0, 100, 255, 0.5); backdrop-filter: blur(5px);
@@ -301,7 +316,6 @@ video, canvas {
 }
 .rest-title { font-size: 60px; font-weight: 900; color: #fff; text-transform: uppercase; }
 
-/* RWD */
 @media (max-width: 768px) {
   .landing-title { font-size: 28px; margin-bottom: 20px; }
   .mode-box { width: 120px; padding: 15px; }
@@ -333,7 +347,6 @@ video, canvas {
   <div class="snowflake" style="left: 75%; width: 4px; height: 4px; animation-duration: 3.8s; animation-delay: 2.5s;"></div>
   <div class="snowflake" style="left: 85%; width: 8px; height: 8px; animation-duration: 5.5s;"></div>
   <div class="snowflake" style="left: 95%; width: 5px; height: 5px; animation-duration: 4.2s; animation-delay: 1s;"></div>
-  
   <div class="snow-ground"></div>
 </div>
 
@@ -354,7 +367,6 @@ video, canvas {
     </div>
 
     <div id="wizard-container">
-      
       <div id="step-1" class="wizard-step active">
         <div class="step-title">STEP 1/3: 回合設定</div>
         <div class="setting-row">
@@ -411,7 +423,6 @@ video, canvas {
         </div>
         <button class="nav-btn" style="background:#059669;" onclick="finishSetup()">完成設定</button>
       </div>
-
     </div>
 
     <button id="start-btn" onclick="initGame()">FIGHT!</button>
@@ -478,13 +489,10 @@ let nextNoteTime = 0.0;
 let scheduleAheadTime = 0.1;
 let current16thNote = 0;
 
-// 🎄 Christmas BGM Control
 let xmasAudio = document.getElementById('xmas-bgm');
-xmasAudio.volume = 0.4; // 設定音量適中
+xmasAudio.volume = 0.4; 
 
 function tryPlayBGM() {
-  // 瀏覽器限制：必須要有互動才能播放聲音
-  // 此函式綁定在 Body onclick，點第一下就會播放
   if (xmasAudio.paused && !isGameRunning) {
     xmasAudio.play().catch(e => console.log("等待使用者互動以播放音樂"));
   }
@@ -621,7 +629,6 @@ let leftCooldown = 0;
 let rightCooldown = 0;
 let floatingTexts = []; 
 
-// Sparring Logic
 let sparringConfig = {
     totalRounds: 1, secondsPerRound: 60, restTime: 60,
     currentRound: 1, timeLeft: 0, 
@@ -637,7 +644,6 @@ let dodgeCombo = 0;
 let lockedTarget = null; 
 let lockedDuckY = null;
 
-// DOM
 const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
@@ -668,8 +674,6 @@ function selectMode(mode, element) {
     element.classList.add('selected');
     startBtn.style.display = 'none';
     wizardContainer.style.display = 'none';
-    
-    // 🎵 使用者互動了，嘗試播放音樂
     tryPlayBGM();
 
     if (mode === 'sparring') {
@@ -703,12 +707,10 @@ async function initGame() {
     isGameRunning = false;
     startBtn.innerText = "啟動中...";
     
-    // 🎵 遊戲開始，淡出聖誕音樂，改用戰鬥音效
     fadeOutXmasBGM();
     await initAudio(); 
 
     if (selectedMode === 'sparring') {
-        // 從 Select 讀取數值
         let rounds = parseInt(document.getElementById('input-rounds').value) || 1;
         let mins = parseFloat(document.getElementById('input-minutes').value) || 1;
         let restMins = parseFloat(document.getElementById('input-rest').value) || 1;
@@ -936,20 +938,42 @@ function checkDefense() {
     }
 }
 
+// 🔥🔥🔥 修改：takeDamage 增加震動觸發邏輯 🔥🔥🔥
 function takeDamage() {
-    synthDamage(); 
+    synthDamage(); // 播放音效
+    
+    // 重置 Combo
     dodgeCombo = 0;
     updateComboUI();
+
+    // 1. 原本的紅光閃爍
     damageOverlay.classList.remove('damage-flash');
-    void damageOverlay.offsetWidth;
+    void damageOverlay.offsetWidth; // 觸發重繪 (Reflow)
     damageOverlay.classList.add('damage-flash');
+
+    // ==========================================
+    // 2. 新增：畫面震動與模糊 (Screen Shake & Blur)
+    // ==========================================
+    const gameContainer = document.querySelector('.container');
+    
+    // 先移除以防連擊時 class 還在
+    gameContainer.classList.remove('hit-shock'); 
+    void gameContainer.offsetWidth; // 強制重繪
+    gameContainer.classList.add('hit-shock');
+
+    // 設定定時器，與 CSS 動畫時間 (0.4s) 配合，時間到後移除特效
+    setTimeout(() => {
+        gameContainer.classList.remove('hit-shock');
+    }, 400);
+    // ==========================================
+
+    // 扣分邏輯
     count -= 50; 
     if (count < 0) count = 0;
     countElement.innerText = count;
     spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "HIT! -50", "#ff0000");
 }
 
-// 幾何與繪圖
 function calculateDistance(a, b) { return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)); }
 function calculateAngle(a, b, c) {
     const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
