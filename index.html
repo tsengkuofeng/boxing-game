@@ -102,8 +102,8 @@ video, canvas {
   height: 100dvh; /* 解決 Safari 網址列問題 */
   background: rgba(10, 15, 20, 0.98); z-index: 2000;
   display: none; 
-  flex-direction: column; /* 改為直向 Flex，方便做 Sticky Footer */
-  overflow: hidden; /* 防止整個頁面捲動 */
+  flex-direction: column; 
+  overflow: hidden; 
 }
 .hl-header { 
   display: flex; justify-content: space-between; align-items: center; 
@@ -122,22 +122,13 @@ video, canvas {
 }
 .hl-tab.active { background: #00d2ff; color: #000; border-color: #00d2ff; }
 
-/* 內容區塊改為 Flex，讓中間可以捲動 */
 .hl-content { 
-  display: none; 
-  flex-direction: column; 
-  flex: 1; /* 佔滿剩餘空間 */
-  overflow: hidden; /* 內部捲動 */
-  min-height: 0;
+  display: none; flex-direction: column; flex: 1; overflow: hidden; min-height: 0;
 }
 .hl-content.active { display: flex; }
 
-/* 新增：捲動區域 */
 .hl-scroll-area {
-  flex: 1; /* 佔滿中間 */
-  overflow-y: auto; /* 只有這裡捲動 */
-  padding: 15px;
-  -webkit-overflow-scrolling: touch;
+  flex: 1; overflow-y: auto; padding: 15px; -webkit-overflow-scrolling: touch;
 }
 
 .hl-section-title { font-size: 16px; color: #fff; border-left: 4px solid #fbbf24; padding-left: 10px; margin: 15px 0 10px 0; text-align: left; }
@@ -160,16 +151,11 @@ video, canvas {
   color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px;
 }
 
-/* 新增：固定底部的按鈕區 */
 .hl-actions { 
-  text-align: center; 
-  padding: 15px; 
-  border-top: 1px solid #333; 
-  background: #0a0f14; /* 確保背景不透明 */
-  flex-shrink: 0; /* 不被壓縮 */
-  z-index: 10;
+  text-align: center; padding: 15px; border-top: 1px solid #333; 
+  background: #0a0f14; flex-shrink: 0; z-index: 10;
   box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
-  padding-bottom: max(15px, env(safe-area-inset-bottom)); /* 避開 iPhone 底部橫條 */
+  padding-bottom: max(15px, env(safe-area-inset-bottom)); 
 }
 .hl-hint { color: #888; font-size: 12px; margin-bottom: 10px; margin-top: 0; }
 .hl-action-btn {
@@ -619,6 +605,7 @@ video, canvas {
   <div class="video-container">
     <video id="input_video" playsinline></video>
     <canvas id="output_canvas"></canvas>
+    <canvas id="recording_canvas" style="display:none;"></canvas>
   </div>
 </div>
 
@@ -647,8 +634,16 @@ let currentRecType = null;
 let lastPunchTime = 0;
 let comboCounter = 0;
 
+const recordingCanvasElement = document.getElementById('recording_canvas');
+const recordingCanvasCtx = recordingCanvasElement.getContext('2d');
+
 function ensureRecorder() {
-    const stream = canvasElement.captureStream(30); 
+    // 初始化錄影畫布尺寸
+    recordingCanvasElement.width = canvasElement.width;
+    recordingCanvasElement.height = canvasElement.height;
+
+    // 從錄影畫布截取串流，而非主畫布
+    const stream = recordingCanvasElement.captureStream(30); 
     let options = { mimeType: 'video/webm' };
     if (!MediaRecorder.isTypeSupported('video/webm')) {
         options = { mimeType: 'video/mp4' }; 
@@ -697,7 +692,16 @@ function captureScreenshot(type) {
     setTimeout(() => flash.style.opacity = 0, 50);
     setTimeout(() => flash.remove(), 250);
 
-    const dataUrl = canvasElement.toDataURL('image/jpeg', 0.8);
+    // 建立臨時 Canvas 做水平翻轉
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvasElement.width;
+    tempCanvas.height = canvasElement.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.translate(tempCanvas.width, 0);
+    tempCtx.scale(-1, 1);
+    tempCtx.drawImage(canvasElement, 0, 0);
+
+    const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.8);
     highlights.images.push({
         src: dataUrl,
         type: type,
@@ -1373,8 +1377,9 @@ function onResults(results) {
   if (leftCooldown > 0) leftCooldown--;
   if (rightCooldown > 0) rightCooldown--;
 
+  // 🔥🔥🔥 修改：Combo 錄影保存條件改為 8 拳 🔥🔥🔥
   if (isRecording && currentRecType === 'combo' && Date.now() - lastPunchTime > 2000) {
-      stopRecording(comboCounter >= 2);
+      stopRecording(comboCounter >= 8); 
       comboCounter = 0;
   }
 
@@ -1411,6 +1416,18 @@ function onResults(results) {
     }
   }
   canvasCtx.restore();
+
+  // 🔥🔥🔥 新增：將主畫布內容翻轉繪製到錄影專用畫布 🔥🔥🔥
+  if (recordingCanvasElement.width !== cw || recordingCanvasElement.height !== ch) {
+      recordingCanvasElement.width = cw; recordingCanvasElement.height = ch;
+  }
+  recordingCanvasCtx.save();
+  recordingCanvasCtx.clearRect(0, 0, cw, ch);
+  // 水平翻轉
+  recordingCanvasCtx.translate(cw, 0);
+  recordingCanvasCtx.scale(-1, 1);
+  recordingCanvasCtx.drawImage(canvasElement, 0, 0);
+  recordingCanvasCtx.restore();
 }
 
 function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, validYLimit) {
