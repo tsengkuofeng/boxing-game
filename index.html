@@ -1276,7 +1276,10 @@ function checkDefense() {
         stopRecording(false);
         takeDamage();
     } else {
-        stopRecording(true);
+       setTimeout(() => {
+         stopRecording(true);
+       }, 1500);
+       
         captureScreenshot('dodge');
 
         dodgeCombo++;
