@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>XMAS BOXING CHALLENGE 一起來打拳</title>
 <meta name="description" content="免下載 APP！開啟網頁即可透過鏡頭練習拳擊。支援手機/平板/電腦，快來挑戰極速閃躲與連擊！">
-<meta property="og:title" content="XMAS BOXING CHALLENGE">
-<meta property="og:description" content="免下載！開啟鏡頭即開打。支援快拳練習與真實閃躲對戰，你能堅持幾回合？">
-<meta property="og:type" content="game">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -55,14 +54,11 @@ body {
    ========================================= */
 .container { 
   position: relative; width: 100vw; height: 100vh; 
-  /* 新增：為了讓 filter 模糊消失時有過渡效果 */
   transition: filter 0.2s ease-out;
   transform-origin: center center;
 }
 
-/* 🔥🔥🔥 新增：受傷震動與暈眩特效 🔥🔥🔥
-   當 .hit-shock class 被加到 .container 時觸發
-*/
+/* 受傷特效 */
 @keyframes shake-hard {
   0% { transform: translate(0, 0) rotate(0deg); }
   10% { transform: translate(-15px, -15px) rotate(-1deg); } 
@@ -73,11 +69,8 @@ body {
   70% { transform: translate(5px, 0) rotate(0deg); }
   100% { transform: translate(0, 0) rotate(0deg); }
 }
-
 .hit-shock {
-  /* 劇烈震動 */
   animation: shake-hard 0.4s cubic-bezier(.36,.07,.19,.97) both;
-  /* 視覺模糊 + 去色 (模擬暈眩) + 增加對比 (刺眼感) */
   filter: blur(4px) grayscale(0.8) contrast(1.2);
   will-change: transform, filter;
 }
@@ -86,6 +79,69 @@ video, canvas {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
   object-fit: cover; transform: scaleX(-1); z-index: 0; 
 }
+
+/* --- 隱私權遮罩 --- */
+#privacy-splash {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.95); z-index: 9999;
+  display: flex; justify-content: center; align-items: center;
+  cursor: pointer; animation: fadeIn 0.5s;
+}
+.privacy-content {
+  max-width: 500px; padding: 30px; border: 2px solid #00d2ff;
+  border-radius: 20px; background: rgba(20, 30, 40, 0.9);
+  color: #fff; text-align: center; box-shadow: 0 0 30px rgba(0, 210, 255, 0.3);
+  margin: 20px;
+}
+.privacy-text { font-size: 16px; line-height: 1.6; color: #ccc; }
+.privacy-text h2 { color: #00d2ff; margin-bottom: 20px; }
+
+/* --- 精彩時刻 Modal --- */
+#highlights-modal {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(10, 15, 20, 0.98); z-index: 2000;
+  display: none; flex-direction: column;
+  padding: 20px; box-sizing: border-box; overflow-y: auto;
+}
+.hl-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; }
+.hl-header h2 { margin: 0; color: #fbbf24; font-style: italic; }
+.hl-close-btn { background: none; border: none; color: #fff; font-size: 30px; cursor: pointer; }
+
+.hl-nav { display: flex; gap: 10px; margin: 20px 0; justify-content: center; }
+.hl-tab {
+  padding: 10px 25px; background: #333; border: 1px solid #555; color: #aaa;
+  border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.3s;
+}
+.hl-tab.active { background: #00d2ff; color: #000; border-color: #00d2ff; }
+
+.hl-content { display: none; flex: 1; flex-direction: column; gap: 20px; }
+.hl-content.active { display: flex; }
+
+.hl-section-title { font-size: 18px; color: #fff; border-left: 4px solid #fbbf24; padding-left: 10px; margin-bottom: 10px; text-align: left; }
+.hl-grid { 
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; 
+  max-height: 50vh; overflow-y: auto; padding: 5px;
+}
+.media-card {
+  position: relative; border-radius: 8px; overflow: hidden; border: 2px solid transparent; cursor: pointer;
+  background: #000; aspect-ratio: 4/3;
+}
+.media-card img, .media-card video { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; transition: 0.3s; }
+.media-card:hover img, .media-card:hover video { opacity: 1; }
+.media-card.selected { border-color: #00d2ff; box-shadow: 0 0 10px #00d2ff; }
+.media-card.selected img, .media-card.selected video { opacity: 1; }
+.media-badge {
+  position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.7);
+  color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+}
+.hl-actions { text-align: center; margin-top: 20px; border-top: 1px solid #333; padding-top: 20px; }
+.hl-hint { color: #888; font-size: 12px; margin-bottom: 10px; }
+.hl-action-btn {
+  padding: 15px 40px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; border: none;
+  background: #fff; color: #000; transition: 0.2s;
+}
+.hl-action-btn:hover { transform: scale(1.05); }
+.btn-pdf { background: linear-gradient(135deg, #fbbf24, #d97706); color: #000; }
 
 /* --- 1. 初始選單與導覽精靈 (Wizard) --- */
 #landing-layer {
@@ -335,6 +391,54 @@ video, canvas {
   <source src="https://cdn.pixabay.com/download/audio/2022/11/22/audio_febc508520.mp3" type="audio/mp3">
 </audio>
 
+<div id="privacy-splash">
+  <div class="privacy-content">
+    <h2>🔒 隱私權與安全性聲明</h2>
+    <div class="privacy-text">
+      <p>歡迎來到 <strong>XMAS BOXING CHALLENGE</strong>。</p>
+      <p>為了提供最佳的互動體驗，本遊戲需要存取您的<strong>攝影機</strong>。</p>
+      <ul style="text-align:left; display:inline-block; margin: 10px 0;">
+        <li>✅ <strong>本機運算：</strong> 所有影像辨識皆在您的裝置上即時運算。</li>
+        <li>✅ <strong>資料不外洩：</strong> 我們<strong>沒有</strong>後端伺服器，您的影像絕不會被上傳。</li>
+        <li>✅ <strong>暫存即毀：</strong> 遊戲中的精彩截圖與錄影僅暫存於記憶體，關閉網頁即永久刪除。</li>
+      </ul>
+      <p style="color:#fbbf24; font-weight:bold;">點擊任意處同意並開始遊戲</p>
+    </div>
+  </div>
+</div>
+
+<div id="highlights-modal">
+  <div class="hl-header">
+    <h2>BATTLE HIGHLIGHTS</h2>
+    <button class="hl-close-btn" onclick="closeHighlights()">×</button>
+  </div>
+  
+  <div class="hl-nav">
+    <button class="hl-tab active" onclick="switchHighlightTab('video')">🎬 影片瞬間</button>
+    <button class="hl-tab" onclick="switchHighlightTab('image')">📸 圖片與報表</button>
+  </div>
+
+  <div id="hl-content-video" class="hl-content active">
+    <div class="hl-section-title">連擊快拳 (Combos)</div>
+    <div id="video-grid-combo" class="hl-grid"></div>
+    <div class="hl-section-title">極限閃躲 (Dodges)</div>
+    <div id="video-grid-dodge" class="hl-grid"></div>
+    <div class="hl-actions">
+      <p class="hl-hint">點選影片可預覽，選取後下載</p>
+      <button class="hl-action-btn" onclick="downloadSelectedVideos()">下載選取的影片</button>
+    </div>
+  </div>
+
+  <div id="hl-content-image" class="hl-content">
+    <div class="hl-section-title">精彩截圖</div>
+    <div id="image-grid" class="hl-grid"></div>
+    <div class="hl-actions">
+      <p class="hl-hint">選取喜歡的照片，將連同戰績表生成 PDF</p>
+      <button class="hl-action-btn btn-pdf" onclick="generateBattleReport()">📄 輸出 PDF 戰報</button>
+    </div>
+  </div>
+</div>
+
 <div class="scene-background">
   <div class="night-sky"><div class="moon"></div></div>
   <div class="snowflake" style="left: 5%; width: 5px; height: 5px; animation-duration: 4s;"></div>
@@ -463,7 +567,10 @@ video, canvas {
   <div id="result-layer">
     <h1>BATTLE REPORT</h1>
     <div id="score-details" class="score-table"></div>
-    <button class="mode-box" onclick="location.reload()">再玩一次</button>
+    <div style="display:flex; gap:15px; margin-top:20px;">
+        <button class="mode-box" style="width:auto; background:#fbbf24; color:#000;" onclick="openHighlights()">精彩時刻</button>
+        <button class="mode-box" style="width:auto;" onclick="location.reload()">再玩一次</button>
+    </div>
   </div>
 
   <button id="reset-btn" onclick="resetGame()">↺</button>
@@ -478,6 +585,190 @@ video, canvas {
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <script>
+// =========================================
+//   Privacy & Recorder Setup
+// =========================================
+const privacySplash = document.getElementById('privacy-splash');
+privacySplash.addEventListener('click', () => {
+    privacySplash.style.opacity = '0';
+    setTimeout(() => { privacySplash.style.display = 'none'; }, 500);
+    tryPlayBGM();
+});
+
+const highlights = {
+    videos: [], // { blob, type: 'combo'|'dodge', time }
+    images: []  // { src, type, time }
+};
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+let currentRecType = null;
+let lastPunchTime = 0;
+let comboCounter = 0;
+
+function ensureRecorder() {
+    const stream = canvasElement.captureStream(30); 
+    let options = { mimeType: 'video/webm' };
+    if (!MediaRecorder.isTypeSupported('video/webm')) {
+        options = { mimeType: 'video/mp4' }; 
+    }
+    try {
+        mediaRecorder = new MediaRecorder(stream, options);
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) recordedChunks.push(event.data);
+        };
+        mediaRecorder.onstop = saveRecording;
+    } catch (e) {
+        console.error("Recorder init failed:", e);
+    }
+}
+
+function startRecording(type) {
+    if (isRecording || !mediaRecorder) return;
+    recordedChunks = [];
+    currentRecType = type;
+    mediaRecorder.start();
+    isRecording = true;
+}
+
+function stopRecording(save = true) {
+    if (!isRecording || !mediaRecorder) return;
+    mediaRecorder.shouldSave = save; 
+    mediaRecorder.stop();
+    isRecording = false;
+}
+
+function saveRecording() {
+    if (!mediaRecorder.shouldSave) return;
+    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    highlights.videos.push({
+        url: url,
+        type: currentRecType,
+        time: new Date().toLocaleTimeString()
+    });
+}
+
+function captureScreenshot(type) {
+    const flash = document.createElement('div');
+    flash.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:9999;opacity:0.8;transition:opacity 0.2s;';
+    document.body.appendChild(flash);
+    setTimeout(() => flash.style.opacity = 0, 50);
+    setTimeout(() => flash.remove(), 250);
+
+    const dataUrl = canvasElement.toDataURL('image/jpeg', 0.8);
+    highlights.images.push({
+        src: dataUrl,
+        type: type,
+        time: new Date().toLocaleTimeString()
+    });
+}
+
+// UI Functions for Highlights
+function openHighlights() {
+    document.getElementById('result-layer').style.display = 'none';
+    document.getElementById('highlights-modal').style.display = 'flex';
+    switchHighlightTab('video');
+}
+function closeHighlights() {
+    document.getElementById('highlights-modal').style.display = 'none';
+    document.getElementById('result-layer').style.display = 'flex';
+}
+function switchHighlightTab(tab) {
+    document.querySelectorAll('.hl-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.hl-content').forEach(c => c.classList.remove('active'));
+    
+    if (tab === 'video') {
+        document.querySelector('.hl-tab:first-child').classList.add('active');
+        document.getElementById('hl-content-video').classList.add('active');
+        const gridCombo = document.getElementById('video-grid-combo');
+        const gridDodge = document.getElementById('video-grid-dodge');
+        gridCombo.innerHTML = ''; gridDodge.innerHTML = '';
+        highlights.videos.forEach((vid, idx) => {
+            const el = createMediaCard(vid, idx, 'video');
+            if (vid.type === 'combo') gridCombo.appendChild(el);
+            else gridDodge.appendChild(el);
+        });
+    } else {
+        document.querySelector('.hl-tab:last-child').classList.add('active');
+        document.getElementById('hl-content-image').classList.add('active');
+        const grid = document.getElementById('image-grid');
+        grid.innerHTML = '';
+        highlights.images.forEach((img, idx) => {
+            grid.appendChild(createMediaCard(img, idx, 'image'));
+        });
+    }
+}
+function createMediaCard(item, idx, type) {
+    const div = document.createElement('div');
+    div.className = 'media-card';
+    div.dataset.index = idx;
+    div.onclick = () => {
+        div.classList.toggle('selected');
+        if (type === 'video') {
+           const v = div.querySelector('video');
+           if (v.paused) v.play(); else v.pause();
+        }
+    };
+    if (type === 'video') {
+        const v = document.createElement('video');
+        v.src = item.url; v.muted = true; v.loop = true;
+        div.appendChild(v);
+    } else {
+        const img = document.createElement('img');
+        img.src = item.src;
+        div.appendChild(img);
+    }
+    const badge = document.createElement('div');
+    badge.className = 'media-badge';
+    badge.innerText = item.time;
+    div.appendChild(badge);
+    return div;
+}
+function downloadSelectedVideos() {
+    const selected = document.querySelectorAll('#hl-content-video .media-card.selected');
+    if (selected.length === 0) { alert("請先選取影片！"); return; }
+    selected.forEach(card => {
+        const idx = card.dataset.index;
+        const vid = highlights.videos[idx];
+        const a = document.createElement('a');
+        a.href = vid.url;
+        a.download = `boxing_video_${vid.type}_${Date.now()}.webm`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    });
+}
+function generateBattleReport() {
+    const selected = document.querySelectorAll('#hl-content-image .media-card.selected');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(22);
+    doc.text("XMAS BOXING CHALLENGE - BATTLE REPORT", 105, 20, { align: "center" });
+    doc.setFontSize(14);
+    doc.text(`Total Score: ${count}`, 20, 40);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, 40);
+
+    const tableBody = roundScores.map((s, i) => [`Round ${i+1}`, s]);
+    tableBody.push(['Total', count]);
+    doc.autoTable({
+        startY: 50, head: [['Round', 'Score']], body: tableBody,
+        theme: 'grid', headStyles: { fillColor: [251, 191, 36] }
+    });
+
+    let currentY = doc.lastAutoTable.finalY + 20;
+    if (selected.length > 0) {
+        doc.text("Highlights Snapshots:", 20, currentY);
+        currentY += 10;
+        selected.forEach((card) => {
+            const idx = card.dataset.index;
+            const imgData = highlights.images[idx].src;
+            if (currentY > 250) { doc.addPage(); currentY = 20; }
+            doc.addImage(imgData, 'JPEG', 25, currentY, 160, 120);
+            currentY += 130;
+        });
+    }
+    doc.save("Battle_Report.pdf");
+}
+
 // =========================================
 //   Audio Engine
 // =========================================
@@ -732,6 +1023,11 @@ async function initGame() {
         comboPanel.style.display = 'none';
     }
 
+    // 重置高光時刻
+    highlights.videos = [];
+    highlights.images = [];
+    ensureRecorder();
+
     landingLayer.style.opacity = 0;
     setTimeout(() => { 
         landingLayer.style.display = 'none'; 
@@ -753,6 +1049,9 @@ function resetGame() {
     dodgeCombo = 0; updateComboUI();
     leftStage = "down"; rightStage = "down";
     roundScores = [];
+    isRecording = false;
+    highlights.videos = [];
+    highlights.images = [];
 }
 
 function updateTimerDisplay() {
@@ -817,6 +1116,7 @@ function endRest() {
 function endGame() {
     isGameRunning = false;
     stopBGM(); 
+    stopRecording(false);
     clearInterval(gameTimerInterval);
     roundScores.push(count);
     resultLayer.style.display = 'flex';
@@ -856,6 +1156,10 @@ function scheduleNextAttack() {
 
 function launchAttack() {
     activeAttackType = Math.random() > 0.5 ? 'STRAIGHT' : 'HOOK';
+    
+    // 🔥 敵人開始攻擊，開始錄影
+    startRecording('dodge');
+
     enemyState = 'WARNING';
     synthWarning();
 
@@ -927,8 +1231,14 @@ function checkDefense() {
     }
 
     if (isHit) {
+        // 🔥 被打中，錄影不保存
+        stopRecording(false);
         takeDamage();
     } else {
+        // 🔥 閃避成功，保存錄影 & 截圖
+        stopRecording(true);
+        captureScreenshot('dodge');
+
         dodgeCombo++;
         updateComboUI();
         let bonus = dodgeCombo * 20;
@@ -938,36 +1248,24 @@ function checkDefense() {
     }
 }
 
-// 🔥🔥🔥 修改：takeDamage 增加震動觸發邏輯 🔥🔥🔥
 function takeDamage() {
-    synthDamage(); // 播放音效
-    
-    // 重置 Combo
+    synthDamage();
     dodgeCombo = 0;
     updateComboUI();
 
-    // 1. 原本的紅光閃爍
     damageOverlay.classList.remove('damage-flash');
-    void damageOverlay.offsetWidth; // 觸發重繪 (Reflow)
+    void damageOverlay.offsetWidth;
     damageOverlay.classList.add('damage-flash');
 
-    // ==========================================
-    // 2. 新增：畫面震動與模糊 (Screen Shake & Blur)
-    // ==========================================
     const gameContainer = document.querySelector('.container');
-    
-    // 先移除以防連擊時 class 還在
     gameContainer.classList.remove('hit-shock'); 
-    void gameContainer.offsetWidth; // 強制重繪
+    void gameContainer.offsetWidth; 
     gameContainer.classList.add('hit-shock');
 
-    // 設定定時器，與 CSS 動畫時間 (0.4s) 配合，時間到後移除特效
     setTimeout(() => {
         gameContainer.classList.remove('hit-shock');
     }, 400);
-    // ==========================================
 
-    // 扣分邏輯
     count -= 50; 
     if (count < 0) count = 0;
     countElement.innerText = count;
@@ -1039,6 +1337,13 @@ function onResults(results) {
   if (leftCooldown > 0) leftCooldown--;
   if (rightCooldown > 0) rightCooldown--;
 
+  // 監測 Combo 錄影逾時 (如果太久沒出下一拳，停止錄影)
+  if (isRecording && currentRecType === 'combo' && Date.now() - lastPunchTime > 2000) {
+      // 只有當 comboCounter >= 2 才保存，否則太短沒意義
+      stopRecording(comboCounter >= 2);
+      comboCounter = 0;
+  }
+
   if (results.poseLandmarks) {
     const lm = results.poseLandmarks;
     latestLandmarks = lm;
@@ -1092,6 +1397,27 @@ function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldow
     }
   }
   else if (currentStage === "punch") {
+    // --- 擊中與錄影邏輯 ---
+    const now = Date.now();
+    
+    // 如果是 Sparring 模式，處理錄影
+    if (selectedMode === 'sparring') {
+        if (now - lastPunchTime < 1500) {
+            comboCounter++;
+        } else {
+            // 新的一波連擊開始
+            comboCounter = 1; 
+            // 如果當下沒在錄影(例如沒在閃躲)，開始錄影
+            if (!isRecording) startRecording('combo');
+        }
+        lastPunchTime = now;
+        
+        // 連擊 >= 4 截圖
+        if (comboCounter >= 4) {
+            if (comboCounter % 4 === 0) captureScreenshot('combo');
+        }
+    }
+
     count++;
     countElement.innerText = count;
     const sb = document.querySelector('.score-board');
