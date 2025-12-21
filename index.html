@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>XMAS BOXING CHALLENGE 一起來打拳</title>
 <meta name="description" content="免下載 APP！開啟網頁即可透過鏡頭練習拳擊。支援手機/平板/電腦，快來挑戰極速閃躲與連擊！">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -96,31 +96,56 @@ video, canvas {
 .privacy-text { font-size: 16px; line-height: 1.6; color: #ccc; }
 .privacy-text h2 { color: #00d2ff; margin-bottom: 20px; }
 
-/* --- 精彩時刻 Modal --- */
+/* --- 精彩時刻 Modal (手機優化版) --- */
 #highlights-modal {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  height: 100dvh; /* 解決 Safari 網址列問題 */
   background: rgba(10, 15, 20, 0.98); z-index: 2000;
-  display: none; flex-direction: column;
-  padding: 20px; box-sizing: border-box; overflow-y: auto;
+  display: none; 
+  flex-direction: column; /* 改為直向 Flex，方便做 Sticky Footer */
+  overflow: hidden; /* 防止整個頁面捲動 */
 }
-.hl-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; }
-.hl-header h2 { margin: 0; color: #fbbf24; font-style: italic; }
-.hl-close-btn { background: none; border: none; color: #fff; font-size: 30px; cursor: pointer; }
+.hl-header { 
+  display: flex; justify-content: space-between; align-items: center; 
+  border-bottom: 1px solid #333; padding: 15px; flex-shrink: 0; 
+}
+.hl-header h2 { margin: 0; color: #fbbf24; font-style: italic; font-size: 20px; }
+.hl-close-btn { background: none; border: none; color: #fff; font-size: 30px; cursor: pointer; padding: 0 10px; }
 
-.hl-nav { display: flex; gap: 10px; margin: 20px 0; justify-content: center; }
+.hl-nav { 
+  display: flex; gap: 10px; padding: 10px; justify-content: center; flex-shrink: 0;
+  background: rgba(255,255,255,0.05);
+}
 .hl-tab {
-  padding: 10px 25px; background: #333; border: 1px solid #555; color: #aaa;
-  border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.3s;
+  padding: 8px 20px; background: #333; border: 1px solid #555; color: #aaa;
+  border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.3s; font-size: 14px;
 }
 .hl-tab.active { background: #00d2ff; color: #000; border-color: #00d2ff; }
 
-.hl-content { display: none; flex: 1; flex-direction: column; gap: 20px; }
+/* 內容區塊改為 Flex，讓中間可以捲動 */
+.hl-content { 
+  display: none; 
+  flex-direction: column; 
+  flex: 1; /* 佔滿剩餘空間 */
+  overflow: hidden; /* 內部捲動 */
+  min-height: 0;
+}
 .hl-content.active { display: flex; }
 
-.hl-section-title { font-size: 18px; color: #fff; border-left: 4px solid #fbbf24; padding-left: 10px; margin-bottom: 10px; text-align: left; }
+/* 新增：捲動區域 */
+.hl-scroll-area {
+  flex: 1; /* 佔滿中間 */
+  overflow-y: auto; /* 只有這裡捲動 */
+  padding: 15px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hl-section-title { font-size: 16px; color: #fff; border-left: 4px solid #fbbf24; padding-left: 10px; margin: 15px 0 10px 0; text-align: left; }
+.hl-section-title:first-child { margin-top: 0; }
+
 .hl-grid { 
   display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; 
-  max-height: 50vh; overflow-y: auto; padding: 5px;
+  padding-bottom: 20px;
 }
 .media-card {
   position: relative; border-radius: 8px; overflow: hidden; border: 2px solid transparent; cursor: pointer;
@@ -134,13 +159,25 @@ video, canvas {
   position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.7);
   color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px;
 }
-.hl-actions { text-align: center; margin-top: 20px; border-top: 1px solid #333; padding-top: 20px; }
-.hl-hint { color: #888; font-size: 12px; margin-bottom: 10px; }
+
+/* 新增：固定底部的按鈕區 */
+.hl-actions { 
+  text-align: center; 
+  padding: 15px; 
+  border-top: 1px solid #333; 
+  background: #0a0f14; /* 確保背景不透明 */
+  flex-shrink: 0; /* 不被壓縮 */
+  z-index: 10;
+  box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+  padding-bottom: max(15px, env(safe-area-inset-bottom)); /* 避開 iPhone 底部橫條 */
+}
+.hl-hint { color: #888; font-size: 12px; margin-bottom: 10px; margin-top: 0; }
 .hl-action-btn {
-  padding: 15px 40px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; border: none;
+  width: 100%; max-width: 300px;
+  padding: 15px 0; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; border: none;
   background: #fff; color: #000; transition: 0.2s;
 }
-.hl-action-btn:hover { transform: scale(1.05); }
+.hl-action-btn:hover { transform: scale(1.02); }
 .btn-pdf { background: linear-gradient(135deg, #fbbf24, #d97706); color: #000; }
 
 /* --- 1. 初始選單與導覽精靈 (Wizard) --- */
@@ -395,7 +432,7 @@ video, canvas {
   <div class="privacy-content">
     <h2>🔒 隱私權與安全性聲明</h2>
     <div class="privacy-text">
-      <p>歡迎來到 <strong>XMAS BOXING CHALLENGE</strong>。</p>
+      <p>歡迎來到<br><strong>XMAS BOXING CHALLENGE</strong>。</p>
       <p>為了提供最佳的互動體驗，本遊戲需要存取您的<strong>攝影機</strong>。</p>
       <ul style="text-align:left; display:inline-block; margin: 10px 0;">
         <li>✅ <strong>本機運算：</strong> 所有影像辨識皆在您的裝置上即時運算。</li>
@@ -419,10 +456,12 @@ video, canvas {
   </div>
 
   <div id="hl-content-video" class="hl-content active">
-    <div class="hl-section-title">連擊快拳 (Combos)</div>
-    <div id="video-grid-combo" class="hl-grid"></div>
-    <div class="hl-section-title">極限閃躲 (Dodges)</div>
-    <div id="video-grid-dodge" class="hl-grid"></div>
+    <div class="hl-scroll-area">
+      <div class="hl-section-title">連擊快拳 (Combos)</div>
+      <div id="video-grid-combo" class="hl-grid"></div>
+      <div class="hl-section-title">極限閃躲 (Dodges)</div>
+      <div id="video-grid-dodge" class="hl-grid"></div>
+    </div>
     <div class="hl-actions">
       <p class="hl-hint">點選影片可預覽，選取後下載</p>
       <button class="hl-action-btn" onclick="downloadSelectedVideos()">下載選取的影片</button>
@@ -430,8 +469,10 @@ video, canvas {
   </div>
 
   <div id="hl-content-image" class="hl-content">
-    <div class="hl-section-title">精彩截圖</div>
-    <div id="image-grid" class="hl-grid"></div>
+    <div class="hl-scroll-area">
+      <div class="hl-section-title">精彩截圖</div>
+      <div id="image-grid" class="hl-grid"></div>
+    </div>
     <div class="hl-actions">
       <p class="hl-hint">選取喜歡的照片，將連同戰績表生成 PDF</p>
       <button class="hl-action-btn btn-pdf" onclick="generateBattleReport()">📄 輸出 PDF 戰報</button>
@@ -1023,7 +1064,6 @@ async function initGame() {
         comboPanel.style.display = 'none';
     }
 
-    // 重置高光時刻
     highlights.videos = [];
     highlights.images = [];
     ensureRecorder();
@@ -1156,8 +1196,6 @@ function scheduleNextAttack() {
 
 function launchAttack() {
     activeAttackType = Math.random() > 0.5 ? 'STRAIGHT' : 'HOOK';
-    
-    // 🔥 敵人開始攻擊，開始錄影
     startRecording('dodge');
 
     enemyState = 'WARNING';
@@ -1231,11 +1269,9 @@ function checkDefense() {
     }
 
     if (isHit) {
-        // 🔥 被打中，錄影不保存
         stopRecording(false);
         takeDamage();
     } else {
-        // 🔥 閃避成功，保存錄影 & 截圖
         stopRecording(true);
         captureScreenshot('dodge');
 
@@ -1337,9 +1373,7 @@ function onResults(results) {
   if (leftCooldown > 0) leftCooldown--;
   if (rightCooldown > 0) rightCooldown--;
 
-  // 監測 Combo 錄影逾時 (如果太久沒出下一拳，停止錄影)
   if (isRecording && currentRecType === 'combo' && Date.now() - lastPunchTime > 2000) {
-      // 只有當 comboCounter >= 2 才保存，否則太短沒意義
       stopRecording(comboCounter >= 2);
       comboCounter = 0;
   }
@@ -1397,22 +1431,15 @@ function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldow
     }
   }
   else if (currentStage === "punch") {
-    // --- 擊中與錄影邏輯 ---
     const now = Date.now();
-    
-    // 如果是 Sparring 模式，處理錄影
     if (selectedMode === 'sparring') {
         if (now - lastPunchTime < 1500) {
             comboCounter++;
         } else {
-            // 新的一波連擊開始
             comboCounter = 1; 
-            // 如果當下沒在錄影(例如沒在閃躲)，開始錄影
             if (!isRecording) startRecording('combo');
         }
         lastPunchTime = now;
-        
-        // 連擊 >= 4 截圖
         if (comboCounter >= 4) {
             if (comboCounter % 4 === 0) captureScreenshot('combo');
         }
