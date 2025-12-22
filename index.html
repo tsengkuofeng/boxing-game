@@ -1380,9 +1380,9 @@ function onResults(results) {
   if (leftCooldown > 0) leftCooldown--;
   if (rightCooldown > 0) rightCooldown--;
 
-  // 🔥🔥🔥 修改：Combo 錄影保存條件改為 8 拳 🔥🔥🔥
+  // 🔥🔥🔥 修改：Combo 錄影保存條件改為 4 拳 🔥🔥🔥
   if (isRecording && currentRecType === 'combo' && Date.now() - lastPunchTime > 2000) {
-      stopRecording(comboCounter >= 8); 
+      stopRecording(comboCounter >= 4); 
       comboCounter = 0;
   }
 
