@@ -1396,7 +1396,7 @@ function onResults(results) {
   }
 
   // ============================================
-  //  修正版：限制電腦版的大小 (Clamped Sizes)
+  //  修正版：限制電腦版的大小 + 紅線閃爍
   // ============================================
   if (enemyState === 'WARNING') {
       const w = canvasElement.width;
@@ -1427,7 +1427,7 @@ function onResults(results) {
           canvasCtx.shadowBlur = 0;
       }
 
-      // --- 2. 繪製下潛紅線 (Hook / Duck) ---
+      // --- 2. 繪製下潛紅線 (Hook / Duck) - 加上閃爍效果 ---
       if (activeAttackType === 'HOOK' && lockedDuckY !== null) {
           const dy = lockedDuckY * h;
 
@@ -1437,21 +1437,28 @@ function onResults(results) {
           const startX = (w - lineLength) / 2;
           const endX = startX + lineLength;
 
+          // 🔥🔥🔥 新增：閃爍效果邏輯 🔥🔥🔥
+          const now = Date.now();
+          // 利用 Sine 波計算閃爍強度 (0.3 ~ 1.0)
+          const flash = 0.3 + 0.7 * Math.abs(Math.sin(now / 150));
+
           canvasCtx.beginPath();
           canvasCtx.moveTo(startX, dy);
           canvasCtx.lineTo(endX, dy);
 
           let gradient = canvasCtx.createLinearGradient(startX, 0, endX, 0);
-          gradient.addColorStop(0, "rgba(255, 0, 0, 0)");
-          gradient.addColorStop(0.2, "rgba(255, 0, 0, 0.6)");
-          gradient.addColorStop(0.5, "rgba(255, 255, 255, 0.9)");
-          gradient.addColorStop(0.8, "rgba(255, 0, 0, 0.6)");
-          gradient.addColorStop(1, "rgba(255, 0, 0, 0)");
+          gradient.addColorStop(0, `rgba(255, 0, 0, 0)`);
+          gradient.addColorStop(0.2, `rgba(255, 0, 0, ${0.6 * flash})`);
+          gradient.addColorStop(0.5, `rgba(255, 255, 255, ${0.9 * flash})`); // 中間亮白閃爍
+          gradient.addColorStop(0.8, `rgba(255, 0, 0, ${0.6 * flash})`);
+          gradient.addColorStop(1, `rgba(255, 0, 0, 0)`);
           
           canvasCtx.lineWidth = Math.min(h * 0.04, 20); 
 
           canvasCtx.strokeStyle = gradient;
-          canvasCtx.shadowBlur = 30;
+          
+          // 陰影也跟著閃爍
+          canvasCtx.shadowBlur = 30 * flash;
           canvasCtx.shadowColor = "red";
           
           canvasCtx.stroke();
