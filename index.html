@@ -314,38 +314,12 @@ video, canvas {
 .attack-hook { color: #ffff00; }
 @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-/* --- 5. 視覺特效層 --- */
+/* --- 5. 視覺特效層 (舊 CSS 元素保留，但主要繪圖已移至 Canvas) --- */
 #visual-cues-layer {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     z-index: 55; pointer-events: none;
 }
-#slip-indicator {
-    position: absolute;
-    width: 120px; height: 120px;
-    background: rgba(255, 0, 0, 0.2);
-    border: 5px solid rgba(255, 0, 0, 0.8);
-    border-radius: 50%;
-    transform: translate(-50%, -50%); 
-    display: none;
-    box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
-}
-#duck-indicator {
-    position: absolute;
-    left: 0; width: 100%; height: 15px;
-    background: linear-gradient(to bottom, 
-        rgba(255, 0, 0, 0.6) 0%, 
-        rgba(255, 255, 255, 0.9) 40%, 
-        rgba(255, 255, 255, 0.9) 60%, 
-        rgba(255, 0, 0, 0.6) 100%);
-    box-shadow: 0 0 20px #ff0000, 0 0 10px #ff3333;
-    display: none;
-    transform: translateY(-50%);
-    animation: laser-pulse 0.08s infinite alternate;
-}
-@keyframes laser-pulse {
-    0% { opacity: 0.7; box-shadow: 0 0 15px #ff0000; height: 12px; }
-    100% { opacity: 1; box-shadow: 0 0 35px #ff0000, 0 0 60px #ff0000; height: 18px; }
-}
+#slip-indicator, #duck-indicator { display: none; } /* 隱藏舊的 CSS 指示器 */
 
 /* --- 6. 受傷與結算 --- */
 #damage-overlay {
@@ -405,7 +379,6 @@ video, canvas {
   .score-board { padding: 8px 20px; }
   #count { font-size: 50px; }
   .attack-msg { font-size: 50px; }
-  #slip-indicator { width: 100px; height: 100px; border-width: 4px; }
   .score-table { width: 90%; }
 }
 </style>
@@ -582,9 +555,7 @@ video, canvas {
   </div>
 
   <div id="visual-cues-layer">
-      <div id="slip-indicator"></div>
-      <div id="duck-indicator"></div>
-  </div>
+      </div>
 
   <div id="rest-overlay">
     <div class="rest-title">REST</div>
@@ -1221,9 +1192,7 @@ function launchAttack() {
         attackText.className = "attack-msg attack-straight";
         if (latestLandmarks && latestLandmarks[0]) {
             lockedTarget = { x: latestLandmarks[0].x, y: latestLandmarks[0].y };
-            slipIndicator.style.left = (1 - lockedTarget.x) * 100 + '%';
-            slipIndicator.style.top = lockedTarget.y * 100 + '%';
-            slipIndicator.style.display = 'block';
+            // Canvas 繪圖會在 onResults 中處理，這裡只需設定狀態
         }
     } else {
         attackText.innerText = "HOOK! DUCK!";
@@ -1231,8 +1200,7 @@ function launchAttack() {
         if (latestLandmarks && latestLandmarks[11] && latestLandmarks[12]) {
             let currentShoulderY = (latestLandmarks[11].y + latestLandmarks[12].y) / 2;
             lockedDuckY = currentShoulderY - 0.05; 
-            duckIndicator.style.top = lockedDuckY * 100 + '%';
-            duckIndicator.style.display = 'block';
+            // Canvas 繪圖會在 onResults 中處理
         }
     }
 
@@ -1245,8 +1213,7 @@ function launchAttack() {
         checkDefense();
         setTimeout(() => {
             enemyLayer.style.display = 'none';
-            slipIndicator.style.display = 'none';
-            duckIndicator.style.display = 'none';
+            // 清除鎖定目標，onResults 會自動停止繪製
             lockedTarget = null;
             lockedDuckY = null;
             enemyState = 'IDLE';
@@ -1427,22 +1394,22 @@ function onResults(results) {
       }
     }
   }
-   // ============================================
-  //  新增：將攻擊提示直接畫在 Canvas 上 (為了讓錄影錄得到)
+
   // ============================================
- // 只有在敵人發動攻擊狀態 (WARNING) 才繪製
+  //  修正版：限制電腦版的大小 (Clamped Sizes)
+  // ============================================
   if (enemyState === 'WARNING') {
       const w = canvasElement.width;
       const h = canvasElement.height;
+      const isDesktop = w > 800;
 
-      // 1. 繪製閃避紅圈 (Straight / Slip)
+      // --- 1. 繪製閃避紅圈 (Straight / Slip) ---
       if (activeAttackType === 'STRAIGHT' && lockedTarget) {
           const tx = lockedTarget.x * w;
           const ty = lockedTarget.y * h;
           
-          // 🔥 修改這裡：改用畫面寬度的 10% 作為半徑 (大約等於直徑佔 20%)
-          // 原本是 const radius = 60;
-          const radius = w * 0.1; 
+          // 限制最大半徑 60px
+          const radius = Math.min(w * 0.12, 60); 
 
           canvasCtx.beginPath();
           canvasCtx.arc(tx, ty, radius, 0, 2 * Math.PI);
@@ -1450,8 +1417,7 @@ function onResults(results) {
           canvasCtx.fillStyle = "rgba(255, 0, 0, 0.2)";
           canvasCtx.fill();
           
-          // 🔥 修改這裡：邊框粗細也隨畫面縮放 (例如寬度的 0.8%)
-          canvasCtx.lineWidth = w * 0.008; 
+          canvasCtx.lineWidth = isDesktop ? 5 : w * 0.01; 
           canvasCtx.strokeStyle = "rgba(255, 0, 0, 0.8)";
           canvasCtx.stroke();
           
@@ -1461,21 +1427,28 @@ function onResults(results) {
           canvasCtx.shadowBlur = 0;
       }
 
-      // 2. 繪製下潛紅線 (Hook / Duck)
+      // --- 2. 繪製下潛紅線 (Hook / Duck) ---
       if (activeAttackType === 'HOOK' && lockedDuckY !== null) {
           const dy = lockedDuckY * h;
 
-          canvasCtx.beginPath();
-          canvasCtx.moveTo(0, dy);
-          canvasCtx.lineTo(w, dy);
+          // 限制線條最大長度 800px 並置中
+          const maxLineLength = 800;
+          const lineLength = Math.min(w, maxLineLength);
+          const startX = (w - lineLength) / 2;
+          const endX = startX + lineLength;
 
-          let gradient = canvasCtx.createLinearGradient(0, 0, w, 0);
-          gradient.addColorStop(0, "rgba(255, 0, 0, 0.6)");
+          canvasCtx.beginPath();
+          canvasCtx.moveTo(startX, dy);
+          canvasCtx.lineTo(endX, dy);
+
+          let gradient = canvasCtx.createLinearGradient(startX, 0, endX, 0);
+          gradient.addColorStop(0, "rgba(255, 0, 0, 0)");
+          gradient.addColorStop(0.2, "rgba(255, 0, 0, 0.6)");
           gradient.addColorStop(0.5, "rgba(255, 255, 255, 0.9)");
-          gradient.addColorStop(1, "rgba(255, 0, 0, 0.6)");
+          gradient.addColorStop(0.8, "rgba(255, 0, 0, 0.6)");
+          gradient.addColorStop(1, "rgba(255, 0, 0, 0)");
           
-          // 🔥 修改這裡：線條粗細改用畫面高度的 4% (原本是 15px)
-          canvasCtx.lineWidth = h * 0.04; 
+          canvasCtx.lineWidth = Math.min(h * 0.04, 20); 
 
           canvasCtx.strokeStyle = gradient;
           canvasCtx.shadowBlur = 30;
