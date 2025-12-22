@@ -378,6 +378,7 @@ video, canvas {
 .round-score { font-weight: 700; font-family: monospace; font-size: 18px; }
 
 #reset-btn {
+  display：none;
   position: absolute; top: 20px; right: 20px; z-index: 999;
   background: rgba(255, 255, 255, 0.2); color: #fff; 
   border: 1px solid rgba(255,255,255,0.4); 
@@ -1076,7 +1077,9 @@ async function initGame() {
     setTimeout(() => { 
         landingLayer.style.display = 'none'; 
         gameHud.style.display = 'block';
-        resetBtn.style.display = 'flex'; 
+        if (selectedMode === 'speed') {
+            resetBtn.style.display = 'flex'; 
+        }
         setTimeout(() => gameHud.style.opacity = 1, 50);
         isGameRunning = true;
         if (selectedMode === 'sparring') startSparringLoop(); 
