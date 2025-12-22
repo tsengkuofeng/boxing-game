@@ -378,14 +378,15 @@ video, canvas {
 .round-score { font-weight: 700; font-family: monospace; font-size: 18px; }
 
 #reset-btn {
+  /* 預設隱藏，只有在 JS 判斷為快拳模式時才顯示 */
   display: none;
   position: absolute; top: 20px; right: 20px; z-index: 999;
   background: rgba(255, 255, 255, 0.2); color: #fff; 
   border: 1px solid rgba(255,255,255,0.4); 
   width: 50px; height: 50px; border-radius: 50%;
   font-size: 24px; font-weight: 700; 
-  cursor: pointer; display: none; backdrop-filter: blur(5px);
-  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; backdrop-filter: blur(5px);
+  align-items: center; justify-content: center;
 }
 #reset-btn:hover { background: rgba(255, 255, 255, 0.35); }
 
@@ -1077,9 +1078,14 @@ async function initGame() {
     setTimeout(() => { 
         landingLayer.style.display = 'none'; 
         gameHud.style.display = 'block';
+        
+        // 修正邏輯：只有在快拳模式才顯示 Reset 按鈕
         if (selectedMode === 'speed') {
             resetBtn.style.display = 'flex'; 
+        } else {
+            resetBtn.style.display = 'none';
         }
+
         setTimeout(() => gameHud.style.opacity = 1, 50);
         isGameRunning = true;
         if (selectedMode === 'sparring') startSparringLoop(); 
