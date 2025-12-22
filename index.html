@@ -1418,6 +1418,64 @@ function onResults(results) {
       }
     }
   }
+   // ============================================
+  //  新增：將攻擊提示直接畫在 Canvas 上 (為了讓錄影錄得到)
+  // ============================================
+  
+  // 只有在敵人發動攻擊狀態 (WARNING) 才繪製
+  if (enemyState === 'WARNING') {
+      const w = canvasElement.width;
+      const h = canvasElement.height;
+
+      // 1. 繪製閃避紅圈 (Straight / Slip)
+      if (activeAttackType === 'STRAIGHT' && lockedTarget) {
+          const tx = lockedTarget.x * w;
+          const ty = lockedTarget.y * h;
+          const radius = 60; // 圈圈大小
+
+          canvasCtx.beginPath();
+          canvasCtx.arc(tx, ty, radius, 0, 2 * Math.PI);
+          
+          // 設定樣式：半透明紅底 + 紅框
+          canvasCtx.fillStyle = "rgba(255, 0, 0, 0.2)";
+          canvasCtx.fill();
+          canvasCtx.lineWidth = 5;
+          canvasCtx.strokeStyle = "rgba(255, 0, 0, 0.8)";
+          canvasCtx.stroke();
+          
+          // 加一點發光效果
+          canvasCtx.shadowBlur = 20;
+          canvasCtx.shadowColor = "red";
+          canvasCtx.stroke();
+          canvasCtx.shadowBlur = 0; // 畫完後關閉發光，避免影響其他繪圖
+      }
+
+      // 2. 繪製下潛紅線 (Hook / Duck)
+      if (activeAttackType === 'HOOK' && lockedDuckY !== null) {
+          const dy = lockedDuckY * h;
+
+          canvasCtx.beginPath();
+          canvasCtx.moveTo(0, dy);
+          canvasCtx.lineTo(w, dy);
+
+          // 設定樣式：漸層紅線
+          let gradient = canvasCtx.createLinearGradient(0, 0, w, 0);
+          gradient.addColorStop(0, "rgba(255, 0, 0, 0.6)");
+          gradient.addColorStop(0.5, "rgba(255, 255, 255, 0.9)"); // 中間亮一點
+          gradient.addColorStop(1, "rgba(255, 0, 0, 0.6)");
+          
+          canvasCtx.lineWidth = 15; // 線條粗細
+          canvasCtx.strokeStyle = gradient;
+          
+          // 發光效果
+          canvasCtx.shadowBlur = 30;
+          canvasCtx.shadowColor = "red";
+          
+          canvasCtx.stroke();
+          canvasCtx.shadowBlur = 0;
+      }
+  }
+  // ============================================
   canvasCtx.restore();
 
   // 🔥🔥🔥 新增：將主畫布內容翻轉繪製到錄影專用畫布 🔥🔥🔥
