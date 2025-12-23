@@ -361,10 +361,6 @@ video, canvas {
   <source src="https://cdn.pixabay.com/download/audio/2022/11/22/audio_febc508520.mp3" type="audio/mp3">
 </audio>
 
-<audio id="rest-bgm" loop>
-  <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mp3">
-</audio>
-
 <div id="privacy-splash">
   <div class="privacy-content">
     <h2>🔒 隱私權與安全性聲明</h2>
@@ -374,6 +370,7 @@ video, canvas {
       <ul style="text-align:left; display:inline-block; margin: 10px 0;">
         <li>✅ <strong>本機運算：</strong> 所有影像辨識皆在您的裝置上即時運算。</li>
         <li>✅ <strong>資料不外洩：</strong> 我們<strong>沒有</strong>後端伺服器，您的影像絕不會被上傳。</li>
+        <li>✅ <strong>暫存即毀：</strong> 遊戲中的精彩截圖與錄影僅暫存於記憶體，關閉網頁即永久刪除。</li>
       </ul>
       <p style="color:#fbbf24; font-weight:bold;">點擊任意處開始遊戲</p>
     </div>
@@ -579,11 +576,8 @@ const recordingCanvasCtx = recordingCanvasElement.getContext('2d');
 // 下載功能
 function startRecording(type) {
     if (isRecording) return;
-    
-    // 初始化錄影畫布尺寸
     recordingCanvasElement.width = canvasElement.width;
     recordingCanvasElement.height = canvasElement.height;
-    
     const stream = recordingCanvasElement.captureStream(30);
     
     let mimeType = 'video/webm;codecs=vp9';
@@ -751,52 +745,39 @@ function generateBattleReport() {
 // =========================================
 let audioCtx = null;
 let punchBuffer = null; 
-let fadeInterval = null; // 控制淡入淡出的 Interval
+let fadeInterval = null; 
 
 const xmasAudio = document.getElementById('xmas-bgm');
-const restAudio = document.getElementById('rest-bgm');
-xmasAudio.volume = 0.4;
-restAudio.volume = 0; // 初始靜音
+xmasAudio.volume = 0.5; // 初始/選單音量
 
 function tryInitAudio() {
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   // 只在第一次點擊時嘗試播放背景音樂
-  if (xmasAudio.paused && gameState !== 'PLAYING') {
+  if (xmasAudio.paused) {
       xmasAudio.play().catch(e => console.log("Auto-play blocked"));
   }
 }
 
-// 修正後的 BGM 切換邏輯
+// 修正後的 BGM 切換邏輯 (單一音軌控制音量)
 function switchBGM(mode) {
     if (fadeInterval) clearInterval(fadeInterval);
     
-    // 確保目標音頻正在播放
-    if (mode === 'REST') {
-        if (restAudio.paused) restAudio.play();
-        if (xmasAudio.paused) xmasAudio.play(); // 保持播放以便淡出
-    } else {
-        if (xmasAudio.paused) xmasAudio.play();
-        if (restAudio.paused) restAudio.play(); // 保持播放以便淡出
-    }
+    // 確保音樂正在播放
+    if (xmasAudio.paused) xmasAudio.play().catch(e => console.log("Play failed", e));
 
-    let step = 0;
+    let targetVol = 0.5; // 預設 MENU 音量
+    if (mode === 'FIGHT') targetVol = 0.2;      // 戰鬥：壓低音量
+    else if (mode === 'REST') targetVol = 0.6;  // 休息：提高音量
+
     fadeInterval = setInterval(() => {
-        step++;
-        if (mode === 'REST') {
-            // Battle Fade Out, Rest Fade In
-            if (xmasAudio.volume > 0.05) xmasAudio.volume = Math.max(0, xmasAudio.volume - 0.05);
-            if (restAudio.volume < 0.5) restAudio.volume = Math.min(0.5, restAudio.volume + 0.05);
+        let current = xmasAudio.volume;
+        if (Math.abs(current - targetVol) < 0.05) {
+            xmasAudio.volume = targetVol;
+            clearInterval(fadeInterval);
+        } else if (current < targetVol) {
+            xmasAudio.volume = Math.min(1, current + 0.05);
         } else {
-            // Rest Fade Out, Battle Fade In
-            if (restAudio.volume > 0.05) restAudio.volume = Math.max(0, restAudio.volume - 0.05);
-            if (xmasAudio.volume < 0.4) xmasAudio.volume = Math.min(0.4, xmasAudio.volume + 0.05);
-        }
-
-        // 停止 Interval
-        if (step > 20) { 
-            clearInterval(fadeInterval); 
-            if (mode === 'REST') xmasAudio.pause();
-            else restAudio.pause();
+            xmasAudio.volume = Math.max(0, current - 0.05);
         }
     }, 100);
 }
@@ -1057,6 +1038,7 @@ function beginGameCountdown() {
 function startGameActual() {
     gameState = 'PLAYING';
     gameHud.style.display = 'block';
+    switchBGM('FIGHT'); // 開始戰鬥，壓低音量
     
     if (selectedMode === 'sparring') {
         let rounds = parseInt(document.getElementById('input-rounds').value) || 1;
@@ -1113,18 +1095,18 @@ function startSparringLoop() {
 function startRest() {
     roundScores.push(count); sparringConfig.state = 'REST'; sparringConfig.timeLeft = sparringConfig.restTime;
     restOverlay.style.display = 'flex'; 
-    switchBGM('REST'); // 切換至休息音樂
+    switchBGM('REST'); // 提高音量
 }
 function endRest() {
     restOverlay.style.display = 'none'; count = 0; countElement.innerText = count; dodgeCombo = 0; updateComboUI();
     sparringConfig.state = 'FIGHT'; sparringConfig.currentRound++;
     let mins = parseFloat(document.getElementById('input-minutes').value) || 1;
     sparringConfig.timeLeft = mins * 60; updateTimerDisplay(); 
-    switchBGM('FIGHT'); // 切換回戰鬥音樂
+    switchBGM('FIGHT'); // 降低音量
     scheduleNextAttack(); 
 }
 function endGame() {
-    gameState = 'RESULT'; stopRecording(false); clearInterval(gameTimerInterval);
+    gameState = 'RESULT'; switchBGM('MENU'); stopRecording(false); clearInterval(gameTimerInterval);
     roundScores.push(count); resultLayer.style.display = 'flex';
     let html = ''; let total = 0;
     roundScores.forEach((score, index) => {
@@ -1143,6 +1125,7 @@ function scheduleNextAttack() {
 }
 function launchAttack() {
     activeAttackType = Math.random() > 0.5 ? 'STRAIGHT' : 'HOOK';
+    // 錄影開始移到這裡，但特效繪製會在 onResults 處理完再存入
     startRecording('dodge'); enemyState = 'WARNING'; synthWarning(); enemyLayer.style.display = 'block';
     
     if (activeAttackType === 'STRAIGHT') {
@@ -1274,19 +1257,16 @@ function onResults(results) {
       const lm = results.poseLandmarks;
       latestLandmarks = lm;
       
-      // 1. 如果在校正模式，只執行校正
       if (gameState === 'CALIBRATION') {
           updateCalibration(lm);
           canvasCtx.restore();
           return;
       }
-      // 2. 如果在倒數，不跑遊戲邏輯
       if (gameState === 'COUNTDOWN') {
           canvasCtx.restore();
           return;
       }
 
-      // 3. 遊戲進行中
       const skeletonColor = '#00ff00';
       const pairs = [[11,13], [13,15], [12,14], [14,16], [11,12]];
       pairs.forEach(p => { if(lm[p[0]] && lm[p[1]]) drawLine(canvasCtx, lm[p[0]], lm[p[1]], skeletonColor); });
@@ -1325,8 +1305,8 @@ function onResults(results) {
   if (leftCooldown > 0) leftCooldown--; if (rightCooldown > 0) rightCooldown--;
 
   // ============================================
-  //   敵方攻擊特效 (移動到錄影之前)
-  //   解決錄影沒有紅點的問題
+  //   🔥 敵方攻擊特效 (錄影前繪製)
+  //   這樣錄影才會包含紅點與紅線
   // ============================================
   if (enemyState === 'WARNING') {
       if (activeAttackType === 'STRAIGHT' && lockedTarget) {
@@ -1345,19 +1325,16 @@ function onResults(results) {
   }
 
   // ============================================
-  //   錄影畫面更新 (鏡像處理)
-  //   在所有特效畫完後，將主 Canvas 複製到錄影用 Canvas
+  //   🔥 錄影畫面更新 (所有特效繪製完畢後)
   // ============================================
   if (isRecording) {
       if (recordingCanvasElement.width !== cw) { recordingCanvasElement.width = cw; recordingCanvasElement.height = ch; }
       recordingCanvasCtx.clearRect(0, 0, cw, ch);
       
-      // 這裡需要做水平翻轉，因為 recorded stream 不會繼承 CSS transform
+      // 水平翻轉並複製「已經畫好特效的主畫布」
       recordingCanvasCtx.save(); 
       recordingCanvasCtx.translate(cw, 0); 
       recordingCanvasCtx.scale(-1, 1);
-      
-      // 直接畫入已經帶有紅點特效的 canvas
       recordingCanvasCtx.drawImage(canvasElement, 0, 0, cw, ch); 
       recordingCanvasCtx.restore();
 
