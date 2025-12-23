@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>XMAS BOXING CHALLENGE - 完美音樂校正版</title>
+<title>XMAS BOXING CHALLENGE - 完美錄影版</title>
 <meta name="description" content="免下載 APP！開啟網頁即可透過鏡頭練習拳擊。支援校正引導、自動錄影與精彩回顧。">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -579,8 +579,11 @@ const recordingCanvasCtx = recordingCanvasElement.getContext('2d');
 // 下載功能
 function startRecording(type) {
     if (isRecording) return;
+    
+    // 初始化錄影畫布尺寸
     recordingCanvasElement.width = canvasElement.width;
     recordingCanvasElement.height = canvasElement.height;
+    
     const stream = recordingCanvasElement.captureStream(30);
     
     let mimeType = 'video/webm;codecs=vp9';
@@ -627,6 +630,8 @@ function captureScreenshot(type) {
     tempCanvas.width = canvasElement.width;
     tempCanvas.height = canvasElement.height;
     const tempCtx = tempCanvas.getContext('2d');
+    
+    // 鏡像處理，保持看到的和截圖一樣
     tempCtx.translate(tempCanvas.width, 0); tempCtx.scale(-1, 1);
     tempCtx.drawImage(canvasElement, 0, 0);
 
@@ -746,51 +751,54 @@ function generateBattleReport() {
 // =========================================
 let audioCtx = null;
 let punchBuffer = null; 
-let isPlayingRhythm = false; // 用於節奏音效，非 BGM
-let tempo = 130; 
-let nextNoteTime = 0.0;
-let scheduleAheadTime = 0.1;
-let current16thNote = 0;
+let fadeInterval = null; // 控制淡入淡出的 Interval
 
 const xmasAudio = document.getElementById('xmas-bgm');
 const restAudio = document.getElementById('rest-bgm');
 xmasAudio.volume = 0.4;
-restAudio.volume = 0.5;
+restAudio.volume = 0; // 初始靜音
 
 function tryInitAudio() {
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  if (xmasAudio.paused) {
+  // 只在第一次點擊時嘗試播放背景音樂
+  if (xmasAudio.paused && gameState !== 'PLAYING') {
       xmasAudio.play().catch(e => console.log("Auto-play blocked"));
   }
 }
 
+// 修正後的 BGM 切換邏輯
 function switchBGM(mode) {
-    // 簡單的淡入淡出邏輯
-    const fadeOut = (audio) => {
-        let vol = audio.volume;
-        const interval = setInterval(() => {
-            if (vol > 0.05) { vol -= 0.05; audio.volume = vol; }
-            else { audio.pause(); clearInterval(interval); }
-        }, 50);
-    };
-    const fadeIn = (audio, targetVol) => {
-        audio.currentTime = 0;
-        audio.volume = 0;
-        audio.play();
-        let vol = 0;
-        const interval = setInterval(() => {
-            if (vol < targetVol) { vol += 0.05; audio.volume = vol; }
-            else { clearInterval(interval); }
-        }, 50);
-    };
-
+    if (fadeInterval) clearInterval(fadeInterval);
+    
+    // 確保目標音頻正在播放
     if (mode === 'REST') {
-        fadeOut(xmasAudio);
-        fadeIn(restAudio, 0.5);
-    } else if (mode === 'FIGHT') {
-        fadeOut(restAudio);
-        fadeIn(xmasAudio, 0.4);
+        if (restAudio.paused) restAudio.play();
+        if (xmasAudio.paused) xmasAudio.play(); // 保持播放以便淡出
+    } else {
+        if (xmasAudio.paused) xmasAudio.play();
+        if (restAudio.paused) restAudio.play(); // 保持播放以便淡出
     }
+
+    let step = 0;
+    fadeInterval = setInterval(() => {
+        step++;
+        if (mode === 'REST') {
+            // Battle Fade Out, Rest Fade In
+            if (xmasAudio.volume > 0.05) xmasAudio.volume = Math.max(0, xmasAudio.volume - 0.05);
+            if (restAudio.volume < 0.5) restAudio.volume = Math.min(0.5, restAudio.volume + 0.05);
+        } else {
+            // Rest Fade Out, Battle Fade In
+            if (restAudio.volume > 0.05) restAudio.volume = Math.max(0, restAudio.volume - 0.05);
+            if (xmasAudio.volume < 0.4) xmasAudio.volume = Math.min(0.4, xmasAudio.volume + 0.05);
+        }
+
+        // 停止 Interval
+        if (step > 20) { 
+            clearInterval(fadeInterval); 
+            if (mode === 'REST') xmasAudio.pause();
+            else restAudio.pause();
+        }
+    }, 100);
 }
 
 async function initSFX() {
@@ -836,25 +844,6 @@ function synthDamage() {
     osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, t); osc.frequency.exponentialRampToValueAtTime(10, t + 0.3);
     gain.gain.setValueAtTime(0.5, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
     osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.3);
-}
-// 額外的節奏音效 (可選)
-function scheduleNote(beatNumber, time) {
-    if (!audioCtx) return;
-    // 這裡可以加入額外的節拍器聲音，如果需要的話
-}
-function startRhythm() {
-    if (isPlayingRhythm || !audioCtx) return;
-    isPlayingRhythm = true; current16thNote = 0; nextNoteTime = audioCtx.currentTime; timerWorker();
-}
-function stopRhythm() { isPlayingRhythm = false; }
-function timerWorker() {
-    if (!isPlayingRhythm) return;
-    const secondsPerBeat = 60.0 / tempo; const secondsPer16th = secondsPerBeat / 4; 
-    while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
-        scheduleNote(current16thNote, nextNoteTime);
-        nextNoteTime += secondsPer16th; current16thNote = (current16thNote + 1) % 16;
-    }
-    setTimeout(timerWorker, 25);
 }
 
 // =========================================
@@ -963,9 +952,6 @@ function updateCalibration(lm) {
 
     const shoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
     
-    // ============================================
-    //  修正：架勢目標位置 (下巴兩側)
-    // ============================================
     // 目標 Y：鼻子與肩膀的中間點 (約等於下巴/嘴巴高度)
     const midShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
     const targetY = nose.y + (midShoulderY - nose.y) * 0.6; 
@@ -1008,7 +994,6 @@ function updateCalibration(lm) {
         // 位置正確，檢查手勢 (判斷手腕是否接近下巴目標點)
         calibBox.classList.add('good');
         
-        // 增加一點判定寬容度
         const distL = Math.hypot(leftWrist.x - targetLX, leftWrist.y - targetY);
         const distR = Math.hypot(rightWrist.x - targetRX, rightWrist.y - targetY);
         const inPos = (distL < 0.15 && distR < 0.15);
@@ -1090,7 +1075,6 @@ function startGameActual() {
         resetBtn.style.display = 'flex';
         sparringInfo.style.display = 'none'; comboPanel.style.display = 'none';
     }
-    // startRhythm(); // 如果需要額外的節拍器
 }
 
 function resetGame() {
@@ -1140,7 +1124,7 @@ function endRest() {
     scheduleNextAttack(); 
 }
 function endGame() {
-    gameState = 'RESULT'; stopRhythm(); stopRecording(false); clearInterval(gameTimerInterval);
+    gameState = 'RESULT'; stopRecording(false); clearInterval(gameTimerInterval);
     roundScores.push(count); resultLayer.style.display = 'flex';
     let html = ''; let total = 0;
     roundScores.forEach((score, index) => {
@@ -1290,7 +1274,7 @@ function onResults(results) {
       const lm = results.poseLandmarks;
       latestLandmarks = lm;
       
-      // 1. 如果在校正模式，只執行校正，不跑遊戲邏輯
+      // 1. 如果在校正模式，只執行校正
       if (gameState === 'CALIBRATION') {
           updateCalibration(lm);
           canvasCtx.restore();
@@ -1340,18 +1324,10 @@ function onResults(results) {
   }
   if (leftCooldown > 0) leftCooldown--; if (rightCooldown > 0) rightCooldown--;
 
-  // 錄影畫面更新 (保持鏡像)
-  if (isRecording) {
-      if (recordingCanvasElement.width !== cw) { recordingCanvasElement.width = cw; recordingCanvasElement.height = ch; }
-      recordingCanvasCtx.clearRect(0, 0, cw, ch);
-      recordingCanvasCtx.save(); recordingCanvasCtx.translate(cw, 0); recordingCanvasCtx.scale(-1, 1);
-      recordingCanvasCtx.drawImage(canvasElement, 0, 0, cw, ch); recordingCanvasCtx.restore();
-      if (currentRecType === 'combo' && Date.now() - lastPunchTime > 2000) {
-          stopRecording(comboCounter >= 4); comboCounter = 0;
-      }
-  }
-  
-  // 敵方特效
+  // ============================================
+  //   敵方攻擊特效 (移動到錄影之前)
+  //   解決錄影沒有紅點的問題
+  // ============================================
   if (enemyState === 'WARNING') {
       if (activeAttackType === 'STRAIGHT' && lockedTarget) {
           const tx = lockedTarget.x * cw; const ty = lockedTarget.y * ch;
@@ -1367,6 +1343,29 @@ function onResults(results) {
           canvasCtx.strokeStyle = gradient; canvasCtx.lineWidth = Math.min(ch * 0.04, 20); canvasCtx.stroke();
       }
   }
+
+  // ============================================
+  //   錄影畫面更新 (鏡像處理)
+  //   在所有特效畫完後，將主 Canvas 複製到錄影用 Canvas
+  // ============================================
+  if (isRecording) {
+      if (recordingCanvasElement.width !== cw) { recordingCanvasElement.width = cw; recordingCanvasElement.height = ch; }
+      recordingCanvasCtx.clearRect(0, 0, cw, ch);
+      
+      // 這裡需要做水平翻轉，因為 recorded stream 不會繼承 CSS transform
+      recordingCanvasCtx.save(); 
+      recordingCanvasCtx.translate(cw, 0); 
+      recordingCanvasCtx.scale(-1, 1);
+      
+      // 直接畫入已經帶有紅點特效的 canvas
+      recordingCanvasCtx.drawImage(canvasElement, 0, 0, cw, ch); 
+      recordingCanvasCtx.restore();
+
+      if (currentRecType === 'combo' && Date.now() - lastPunchTime > 2000) {
+          stopRecording(comboCounter >= 4); comboCounter = 0;
+      }
+  }
+  
   canvasCtx.restore();
 }
 </script>
