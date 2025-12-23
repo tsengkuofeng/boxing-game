@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>XMAS BOXING CHALLENGE 一起來打拳</title>
+<title>XMAS BOXING CHALLENGE - 錄影修正版</title>
 <meta name="description" content="免下載 APP！開啟網頁即可透過鏡頭練習拳擊。支援手機/平板/電腦，快來挑戰極速閃躲與連擊！">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -99,10 +99,10 @@ video, canvas {
 .privacy-text { font-size: 16px; line-height: 1.6; color: #ccc; }
 .privacy-text h2 { color: #00d2ff; margin-bottom: 20px; }
 
-/* --- 精彩時刻 Modal (手機優化版) --- */
+/* --- 精彩時刻 Modal --- */
 #highlights-modal {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  height: 100dvh; /* 解決 Safari 網址列問題 */
+  height: 100dvh; 
   background: rgba(10, 15, 20, 0.98); z-index: 2000;
   display: none; 
   flex-direction: column; 
@@ -317,12 +317,12 @@ video, canvas {
 .attack-hook { color: #ffff00; }
 @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-/* --- 5. 視覺特效層 (舊 CSS 元素保留，但主要繪圖已移至 Canvas) --- */
+/* --- 5. 視覺特效層 --- */
 #visual-cues-layer {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     z-index: 55; pointer-events: none;
 }
-#slip-indicator, #duck-indicator { display: none; } /* 隱藏舊的 CSS 指示器 */
+#slip-indicator, #duck-indicator { display: none; }
 
 /* --- 6. 受傷與結算 --- */
 #damage-overlay {
@@ -355,7 +355,6 @@ video, canvas {
 .round-score { font-weight: 700; font-family: monospace; font-size: 18px; }
 
 #reset-btn {
-  /* 預設隱藏，只有在 JS 判斷為快拳模式時才顯示 */
   display: none;
   position: absolute; top: 20px; right: 20px; z-index: 999;
   background: rgba(255, 255, 255, 0.2); color: #fff; 
@@ -557,8 +556,7 @@ video, canvas {
     <div id="attack-text" class="attack-msg"></div>
   </div>
 
-  <div id="visual-cues-layer">
-      </div>
+  <div id="visual-cues-layer"></div>
 
   <div id="rest-overlay">
     <div class="rest-title">REST</div>
@@ -590,7 +588,7 @@ video, canvas {
 
 <script>
 // =========================================
-//   Privacy & Recorder Setup (改用 MP4 Muxer)
+//   Privacy & Recorder Setup (修正版)
 // =========================================
 const privacySplash = document.getElementById('privacy-splash');
 privacySplash.addEventListener('click', () => {
@@ -616,53 +614,65 @@ let recordingStartTime = 0;
 const recordingCanvasElement = document.getElementById('recording_canvas');
 const recordingCanvasCtx = recordingCanvasElement.getContext('2d');
 
-// 開始錄影：初始化 MP4 Muxer 和 VideoEncoder
+// 🔥 修正 1：開始錄影時強制偶數解析度
 async function startRecording(type) {
     if (isRecording) return;
     
-    // 初始化畫布尺寸
-    recordingCanvasElement.width = canvasElement.width;
-    recordingCanvasElement.height = canvasElement.height;
+    // H.264 編碼器嚴格要求寬高必須是偶數，否則會報錯
+    let w = canvasElement.width;
+    let h = canvasElement.height;
+    if (w % 2 !== 0) w -= 1;
+    if (h % 2 !== 0) h -= 1;
+
+    // 初始化畫布尺寸 (設為偶數)
+    recordingCanvasElement.width = w;
+    recordingCanvasElement.height = h;
 
     isRecording = true;
     currentRecType = type;
     recordingStartTime = performance.now();
 
-    // 1. 設定 MP4 Muxer
-    muxer = new Mp4Muxer.Muxer({
-        target: new Mp4Muxer.ArrayBufferTarget(),
-        video: {
-            codec: 'avc', // 使用 H.264，這對 iPhone/Line 相容性最重要
-            width: canvasElement.width,
-            height: canvasElement.height
-        },
-        fastStart: 'in-memory'
-    });
+    console.log(`[REC] 開始錄影: ${type} (解析度: ${w}x${h})`); 
 
-    // 2. 設定 VideoEncoder
-    videoEncoder = new VideoEncoder({
-        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-        error: (e) => console.error("Encoding error:", e)
-    });
+    try {
+        // 1. 設定 MP4 Muxer
+        muxer = new Mp4Muxer.Muxer({
+            target: new Mp4Muxer.ArrayBufferTarget(),
+            video: {
+                codec: 'avc', 
+                width: w,
+                height: h
+            },
+            fastStart: 'in-memory'
+        });
 
-    // 3. 配置編碼參數
-    videoEncoder.configure({
-        codec: 'avc1.42001f', // H.264 Baseline Profile
-        width: canvasElement.width,
-        height: canvasElement.height,
-        bitrate: 2_500_000, // 2.5 Mbps
-        framerate: 30
-    });
+        // 2. 設定 VideoEncoder
+        videoEncoder = new VideoEncoder({
+            output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+            error: (e) => console.error("[REC] Encoding error:", e)
+        });
+
+        // 3. 配置編碼參數
+        videoEncoder.configure({
+            codec: 'avc1.42001f', 
+            width: w,
+            height: h,
+            bitrate: 2_500_000, 
+            framerate: 30
+        });
+    } catch (e) {
+        console.error("[REC] 初始化失敗:", e);
+        isRecording = false;
+    }
 }
 
 // 停止錄影並儲存
 async function stopRecording(save = true) {
     if (!isRecording || !videoEncoder || !muxer) return;
     
-    isRecording = false; // 停止寫入 flag
+    isRecording = false; 
 
     try {
-        // 等待所有幀編碼完成
         await videoEncoder.flush();
         muxer.finalize();
 
@@ -682,7 +692,6 @@ async function stopRecording(save = true) {
         console.error("Stop recording failed:", e);
     }
 
-    // 清理
     videoEncoder = null;
     muxer = null;
 }
@@ -694,7 +703,6 @@ function captureScreenshot(type) {
     setTimeout(() => flash.style.opacity = 0, 50);
     setTimeout(() => flash.remove(), 250);
 
-    // 建立臨時 Canvas 做水平翻轉
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = canvasElement.width;
     tempCanvas.height = canvasElement.height;
@@ -780,7 +788,6 @@ function downloadSelectedVideos() {
         const vid = highlights.videos[idx];
         const a = document.createElement('a');
         a.href = vid.url;
-        // 修改下載格式為 .mp4
         a.download = `boxing_video_${vid.type}_${Date.now()}.mp4`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
     });
@@ -1004,8 +1011,6 @@ const comboPanel = document.getElementById('combo-panel');
 const comboCountEl = document.getElementById('combo-count');
 const restOverlay = document.getElementById('rest-overlay');
 const restTimerEl = document.getElementById('rest-timer');
-const slipIndicator = document.getElementById('slip-indicator');
-const duckIndicator = document.getElementById('duck-indicator');
 
 function selectMode(mode, element) {
     selectedMode = mode;
@@ -1074,14 +1079,11 @@ async function initGame() {
     highlights.videos = [];
     highlights.images = [];
     
-    // 移除舊的 ensureRecorder 呼叫
-
     landingLayer.style.opacity = 0;
     setTimeout(() => { 
         landingLayer.style.display = 'none'; 
         gameHud.style.display = 'block';
         
-        // 修正邏輯：只有在快拳模式才顯示 Reset 按鈕
         if (selectedMode === 'speed') {
             resetBtn.style.display = 'flex'; 
         } else {
@@ -1223,7 +1225,6 @@ function launchAttack() {
         attackText.className = "attack-msg attack-straight";
         if (latestLandmarks && latestLandmarks[0]) {
             lockedTarget = { x: latestLandmarks[0].x, y: latestLandmarks[0].y };
-            // Canvas 繪圖會在 onResults 中處理，這裡只需設定狀態
         }
     } else {
         attackText.innerText = "HOOK! DUCK!";
@@ -1231,7 +1232,6 @@ function launchAttack() {
         if (latestLandmarks && latestLandmarks[11] && latestLandmarks[12]) {
             let currentShoulderY = (latestLandmarks[11].y + latestLandmarks[12].y) / 2;
             lockedDuckY = currentShoulderY - 0.05; 
-            // Canvas 繪圖會在 onResults 中處理
         }
     }
 
@@ -1244,7 +1244,6 @@ function launchAttack() {
         checkDefense();
         setTimeout(() => {
             enemyLayer.style.display = 'none';
-            // 清除鎖定目標，onResults 會自動停止繪製
             lockedTarget = null;
             lockedDuckY = null;
             enemyState = 'IDLE';
@@ -1387,9 +1386,9 @@ function onResults(results) {
   if (leftCooldown > 0) leftCooldown--;
   if (rightCooldown > 0) rightCooldown--;
 
-  // 🔥🔥🔥 修改：Combo 錄影保存條件改為 4 拳 🔥🔥🔥
+  // 🔥 修正 2：Combo 錄影保存條件放寬為 2 拳就存
   if (isRecording && currentRecType === 'combo' && Date.now() - lastPunchTime > 2000) {
-      stopRecording(comboCounter >= 4); 
+      stopRecording(comboCounter >= 2); 
       comboCounter = 0;
   }
 
@@ -1426,103 +1425,71 @@ function onResults(results) {
     }
   }
 
-  // ============================================
-  //  修正版：限制電腦版的大小 + 紅線閃爍
-  // ============================================
   if (enemyState === 'WARNING') {
       const w = canvasElement.width;
       const h = canvasElement.height;
       const isDesktop = w > 800;
 
-      // --- 1. 繪製閃避紅圈 (Straight / Slip) ---
       if (activeAttackType === 'STRAIGHT' && lockedTarget) {
           const tx = lockedTarget.x * w;
           const ty = lockedTarget.y * h;
-          
           const radius = Math.min(w * 0.06, 40); 
-
           canvasCtx.beginPath();
           canvasCtx.arc(tx, ty, radius, 0, 2 * Math.PI);
-          
-          canvasCtx.fillStyle = "rgba(255, 0, 0, 0.2)";
-          canvasCtx.fill();
-          
+          canvasCtx.fillStyle = "rgba(255, 0, 0, 0.2)"; canvasCtx.fill();
           canvasCtx.lineWidth = isDesktop ? 5 : w * 0.01; 
-          canvasCtx.strokeStyle = "rgba(255, 0, 0, 0.8)";
-          canvasCtx.stroke();
-          
-          canvasCtx.shadowBlur = 20;
-          canvasCtx.shadowColor = "red";
-          canvasCtx.stroke();
-          canvasCtx.shadowBlur = 0;
+          canvasCtx.strokeStyle = "rgba(255, 0, 0, 0.8)"; canvasCtx.stroke();
+          canvasCtx.shadowBlur = 20; canvasCtx.shadowColor = "red"; canvasCtx.stroke(); canvasCtx.shadowBlur = 0;
       }
-
-      // --- 2. 繪製下潛紅線 (Hook / Duck) - 加上閃爍效果 ---
       if (activeAttackType === 'HOOK' && lockedDuckY !== null) {
           const dy = lockedDuckY * h;
-
           const maxLineLength = 800;
           const lineLength = Math.min(w, maxLineLength);
           const startX = (w - lineLength) / 2;
           const endX = startX + lineLength;
-
           const now = Date.now();
           const flash = 0.3 + 0.7 * Math.abs(Math.sin(now / 150));
-
-          canvasCtx.beginPath();
-          canvasCtx.moveTo(startX, dy);
-          canvasCtx.lineTo(endX, dy);
-
+          canvasCtx.beginPath(); canvasCtx.moveTo(startX, dy); canvasCtx.lineTo(endX, dy);
           let gradient = canvasCtx.createLinearGradient(startX, 0, endX, 0);
           gradient.addColorStop(0, `rgba(255, 0, 0, 0)`);
           gradient.addColorStop(0.2, `rgba(255, 0, 0, ${0.6 * flash})`);
           gradient.addColorStop(0.5, `rgba(255, 255, 255, ${0.9 * flash})`);
           gradient.addColorStop(0.8, `rgba(255, 0, 0, ${0.6 * flash})`);
           gradient.addColorStop(1, `rgba(255, 0, 0, 0)`);
-          
           canvasCtx.lineWidth = Math.min(h * 0.04, 20); 
-
           canvasCtx.strokeStyle = gradient;
-          
-          canvasCtx.shadowBlur = 30 * flash;
-          canvasCtx.shadowColor = "red";
-          
-          canvasCtx.stroke();
-          canvasCtx.shadowBlur = 0;
+          canvasCtx.shadowBlur = 30 * flash; canvasCtx.shadowColor = "red"; canvasCtx.stroke(); canvasCtx.shadowBlur = 0;
       }
   }
   canvasCtx.restore();
 
-  // 🔥🔥🔥 新增：將主畫布內容翻轉繪製到錄影專用畫布 🔥🔥🔥
-  if (recordingCanvasElement.width !== cw || recordingCanvasElement.height !== ch) {
-      recordingCanvasElement.width = cw; recordingCanvasElement.height = ch;
-  }
-  recordingCanvasCtx.save();
-  recordingCanvasCtx.clearRect(0, 0, cw, ch);
-  // 水平翻轉
-  recordingCanvasCtx.translate(cw, 0);
-  recordingCanvasCtx.scale(-1, 1);
-  recordingCanvasCtx.drawImage(canvasElement, 0, 0);
-  recordingCanvasCtx.restore();
-
-  // 🔥🔥🔥 新增：MP4 編碼邏輯 (請加在 onResults 函式的最後面) 🔥🔥🔥
+  // 🔥 修正 3：錄影專用畫布同步與編碼 (使用 startRecording 設定的偶數寬高)
   if (isRecording && videoEncoder && videoEncoder.state === "configured") {
-      // 計算時間戳 (微秒)
-      const now = performance.now();
-      const timestamp = (now - recordingStartTime) * 1000;
-      
-      // 從 recordingCanvas 建立 VideoFrame
-      const frame = new VideoFrame(recordingCanvasElement, { 
-          timestamp: timestamp,
-          duration: 33333 // 假設 30fps
-      });
-      
-      // 送去編碼 (每30幀強迫產生一個關鍵幀，讓拉動進度條更順)
-      const isKeyFrame = (Math.floor(timestamp / 33333) % 30 === 0);
-      videoEncoder.encode(frame, { keyFrame: isKeyFrame });
-      
-      // 必須手動關閉 frame 以釋放記憶體
-      frame.close();
+      // 確保畫布尺寸正確才繪製 (防止當機)
+      if (recordingCanvasElement.width !== videoEncoder.encodeQueueSize && recordingCanvasElement.width > 0) {
+          recordingCanvasCtx.save();
+          recordingCanvasCtx.clearRect(0, 0, recordingCanvasElement.width, recordingCanvasElement.height);
+          
+          recordingCanvasCtx.translate(recordingCanvasElement.width, 0);
+          recordingCanvasCtx.scale(-1, 1);
+          
+          // 使用 drawImage 自動縮放，將來源畫布畫到偶數尺寸的錄影畫布上
+          recordingCanvasCtx.drawImage(canvasElement, 0, 0, recordingCanvasElement.width, recordingCanvasElement.height);
+          recordingCanvasCtx.restore();
+
+          const now = performance.now();
+          const timestamp = (now - recordingStartTime) * 1000;
+          
+          const frame = new VideoFrame(recordingCanvasElement, { 
+              timestamp: timestamp,
+              duration: 33333 
+          });
+          
+          const isKeyFrame = (Math.floor(timestamp / 33333) % 30 === 0);
+          videoEncoder.encode(frame, { keyFrame: isKeyFrame });
+          
+          frame.close();
+      }
   }
 }
 
@@ -1549,6 +1516,7 @@ function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldow
         if (now - lastPunchTime < 1500) {
             comboCounter++;
         } else {
+            // 第一拳若未錄影，開始錄影
             comboCounter = 1; 
             if (!isRecording) startRecording('combo');
         }
