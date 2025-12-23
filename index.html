@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>XMAS BOXING CHALLENGE - 專業校正版</title>
+<title>XMAS BOXING CHALLENGE - 完美音樂校正版</title>
 <meta name="description" content="免下載 APP！開啟網頁即可透過鏡頭練習拳擊。支援校正引導、自動錄影與精彩回顧。">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -355,10 +355,14 @@ video, canvas {
 }
 </style>
 </head>
-<body onclick="tryPlayBGM()">
+<body onclick="tryInitAudio()">
 
 <audio id="xmas-bgm" loop>
   <source src="https://cdn.pixabay.com/download/audio/2022/11/22/audio_febc508520.mp3" type="audio/mp3">
+</audio>
+
+<audio id="rest-bgm" loop>
+  <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mp3">
 </audio>
 
 <div id="privacy-splash">
@@ -558,7 +562,6 @@ const privacySplash = document.getElementById('privacy-splash');
 privacySplash.addEventListener('click', () => {
     privacySplash.style.opacity = '0';
     setTimeout(() => { privacySplash.style.display = 'none'; }, 500);
-    tryPlayBGM();
 });
 
 const highlights = { videos: [], images: [] };
@@ -739,32 +742,61 @@ function generateBattleReport() {
 }
 
 // =========================================
-//   Audio Engine
+//   Audio Engine (Background & SFX)
 // =========================================
 let audioCtx = null;
 let punchBuffer = null; 
-let isPlayingBGM = false;
+let isPlayingRhythm = false; // 用於節奏音效，非 BGM
 let tempo = 130; 
 let nextNoteTime = 0.0;
 let scheduleAheadTime = 0.1;
 let current16thNote = 0;
-let xmasAudio = document.getElementById('xmas-bgm');
-xmasAudio.volume = 0.4; 
 
-function tryPlayBGM() {
-  if (xmasAudio.paused && gameState === 'PLAYING') {
-    xmasAudio.play().catch(e => console.log("Music Wait"));
+const xmasAudio = document.getElementById('xmas-bgm');
+const restAudio = document.getElementById('rest-bgm');
+xmasAudio.volume = 0.4;
+restAudio.volume = 0.5;
+
+function tryInitAudio() {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (xmasAudio.paused) {
+      xmasAudio.play().catch(e => console.log("Auto-play blocked"));
   }
 }
-function fadeOutXmasBGM() {
-    let fadeInterval = setInterval(() => {
-        if (xmasAudio.volume > 0.05) xmasAudio.volume -= 0.05;
-        else { xmasAudio.pause(); clearInterval(fadeInterval); }
-    }, 100);
+
+function switchBGM(mode) {
+    // 簡單的淡入淡出邏輯
+    const fadeOut = (audio) => {
+        let vol = audio.volume;
+        const interval = setInterval(() => {
+            if (vol > 0.05) { vol -= 0.05; audio.volume = vol; }
+            else { audio.pause(); clearInterval(interval); }
+        }, 50);
+    };
+    const fadeIn = (audio, targetVol) => {
+        audio.currentTime = 0;
+        audio.volume = 0;
+        audio.play();
+        let vol = 0;
+        const interval = setInterval(() => {
+            if (vol < targetVol) { vol += 0.05; audio.volume = vol; }
+            else { clearInterval(interval); }
+        }, 50);
+    };
+
+    if (mode === 'REST') {
+        fadeOut(xmasAudio);
+        fadeIn(restAudio, 0.5);
+    } else if (mode === 'FIGHT') {
+        fadeOut(restAudio);
+        fadeIn(xmasAudio, 0.4);
+    }
 }
-async function initAudio() {
+
+async function initSFX() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') await audioCtx.resume();
+    // 嘗試加載打擊音效，若沒有則使用合成器
     try {
         const response = await fetch('punch.mp3'); 
         if (response.ok) {
@@ -774,11 +806,20 @@ async function initAudio() {
     } catch (e) { }
 }
 function playPunchSound(type) {
-    if (!punchBuffer || !audioCtx) return;
-    const source = audioCtx.createBufferSource();
-    source.buffer = punchBuffer;
-    source.playbackRate.value = (type === 'heavy') ? 0.9 : 1.1;
-    source.connect(audioCtx.destination); source.start(0);
+    if (!audioCtx) return;
+    if (punchBuffer) {
+        const source = audioCtx.createBufferSource();
+        source.buffer = punchBuffer;
+        source.playbackRate.value = (type === 'heavy') ? 0.9 : 1.1;
+        source.connect(audioCtx.destination); source.start(0);
+    } else {
+        // Fallback Synth Punch
+        const t = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.1);
+        gain.gain.setValueAtTime(0.5, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.1);
+    }
 }
 function synthWarning() {
     if (!audioCtx) return;
@@ -796,37 +837,18 @@ function synthDamage() {
     gain.gain.setValueAtTime(0.5, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
     osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.3);
 }
+// 額外的節奏音效 (可選)
 function scheduleNote(beatNumber, time) {
     if (!audioCtx) return;
-    if (beatNumber % 4 === 0) {
-        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-        osc.frequency.setValueAtTime(150, time); osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
-        gain.gain.setValueAtTime(0.8, time); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
-        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(time); osc.stop(time + 0.5);
-    }
-    if (beatNumber % 8 === 4) {
-        const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < audioCtx.sampleRate * 0.1; i++) output[i] = Math.random() * 2 - 1;
-        const noise = audioCtx.createBufferSource(); noise.buffer = noiseBuffer;
-        const noiseFilter = audioCtx.createBiquadFilter(); noiseFilter.type = 'highpass'; noiseFilter.frequency.value = 1000;
-        const noiseGain = audioCtx.createGain(); noiseGain.gain.setValueAtTime(0.6, time); noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
-        noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(audioCtx.destination); noise.start(time);
-    }
-    if (beatNumber % 2 === 0) {
-        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-        osc.type = 'square'; osc.frequency.setValueAtTime(8000, time);
-        gain.gain.setValueAtTime(0.1, time); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
-        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(time); osc.stop(time + 0.05);
-    }
+    // 這裡可以加入額外的節拍器聲音，如果需要的話
 }
-function startBGM() {
-    if (isPlayingBGM || !audioCtx) return;
-    isPlayingBGM = true; current16thNote = 0; nextNoteTime = audioCtx.currentTime; timerWorker();
+function startRhythm() {
+    if (isPlayingRhythm || !audioCtx) return;
+    isPlayingRhythm = true; current16thNote = 0; nextNoteTime = audioCtx.currentTime; timerWorker();
 }
-function stopBGM() { isPlayingBGM = false; }
+function stopRhythm() { isPlayingRhythm = false; }
 function timerWorker() {
-    if (!isPlayingBGM) return;
+    if (!isPlayingRhythm) return;
     const secondsPerBeat = 60.0 / tempo; const secondsPer16th = secondsPerBeat / 4; 
     while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
         scheduleNote(current16thNote, nextNoteTime);
@@ -886,7 +908,9 @@ function selectMode(mode, element) {
     document.querySelectorAll('.mode-box').forEach(el => el.classList.remove('selected'));
     element.classList.add('selected');
     startBtn.style.display = 'none'; wizardContainer.style.display = 'none';
-    tryPlayBGM();
+    
+    // 確保點擊模式時音樂也在播放
+    if (xmasAudio.paused) xmasAudio.play();
 
     if (mode === 'sparring') {
         wizardContainer.style.display = 'block'; showStep(1);
@@ -912,7 +936,7 @@ function finishSetup() {
 
 // 啟動校正模式
 async function startCalibration() {
-    fadeOutXmasBGM(); await initAudio();
+    await initSFX();
     landingLayer.style.display = 'none';
     calibLayer.style.display = 'flex';
     calibLine.style.display = 'block';
@@ -938,12 +962,17 @@ function updateCalibration(lm) {
     if (!nose || !leftShoulder || !rightShoulder) return;
 
     const shoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
-    const canvasW = canvasElement.width; const canvasH = canvasElement.height;
     
-    // 更新目標點位置 (肩膀前上方)
-    const targetY = (leftShoulder.y + rightShoulder.y) / 2 - 0.15;
-    const targetLX = leftShoulder.x + 0.05; 
-    const targetRX = rightShoulder.x - 0.05;
+    // ============================================
+    //  修正：架勢目標位置 (下巴兩側)
+    // ============================================
+    // 目標 Y：鼻子與肩膀的中間點 (約等於下巴/嘴巴高度)
+    const midShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+    const targetY = nose.y + (midShoulderY - nose.y) * 0.6; 
+    
+    // 目標 X：肩膀內縮一點點
+    const targetLX = leftShoulder.x + 0.02; 
+    const targetRX = rightShoulder.x - 0.02;
     
     // 渲染目標點
     calibTargetL.style.display = 'flex'; calibTargetR.style.display = 'flex';
@@ -976,8 +1005,10 @@ function updateCalibration(lm) {
         calibHint.innerText = "請調整鏡頭角度，讓頭部低於紅線";
         calibrationHoldTimer = 0;
     } else {
-        // 位置正確，檢查手勢
+        // 位置正確，檢查手勢 (判斷手腕是否接近下巴目標點)
         calibBox.classList.add('good');
+        
+        // 增加一點判定寬容度
         const distL = Math.hypot(leftWrist.x - targetLX, leftWrist.y - targetY);
         const distR = Math.hypot(rightWrist.x - targetRX, rightWrist.y - targetY);
         const inPos = (distL < 0.15 && distR < 0.15);
@@ -988,7 +1019,6 @@ function updateCalibration(lm) {
             calibTargetL.classList.add('active'); calibTargetR.classList.add('active');
             calibrationHoldTimer++;
             
-            // 畫出進度環 (可選)
             const progress = Math.min(calibrationHoldTimer / CALIBRATION_HOLD_TARGET, 1);
             calibMsg.innerText = `READY... ${Math.ceil((1-progress)*3)}`;
             
@@ -996,8 +1026,8 @@ function updateCalibration(lm) {
                 beginGameCountdown();
             }
         } else {
-            calibMsg.innerText = "舉起雙手 (GUARDS UP)"; calibMsg.style.color = "#fff";
-            calibHint.innerText = "將手腕對準綠色圈圈";
+            calibMsg.innerText = "護住下巴 (GUARDS UP)"; calibMsg.style.color = "#fff";
+            calibHint.innerText = "雙手握拳，放在綠色圈圈位置";
             calibrationHoldTimer = 0;
         }
     }
@@ -1060,7 +1090,7 @@ function startGameActual() {
         resetBtn.style.display = 'flex';
         sparringInfo.style.display = 'none'; comboPanel.style.display = 'none';
     }
-    startBGM();
+    // startRhythm(); // 如果需要額外的節拍器
 }
 
 function resetGame() {
@@ -1098,16 +1128,19 @@ function startSparringLoop() {
 
 function startRest() {
     roundScores.push(count); sparringConfig.state = 'REST'; sparringConfig.timeLeft = sparringConfig.restTime;
-    restOverlay.style.display = 'flex'; stopBGM(); 
+    restOverlay.style.display = 'flex'; 
+    switchBGM('REST'); // 切換至休息音樂
 }
 function endRest() {
     restOverlay.style.display = 'none'; count = 0; countElement.innerText = count; dodgeCombo = 0; updateComboUI();
     sparringConfig.state = 'FIGHT'; sparringConfig.currentRound++;
     let mins = parseFloat(document.getElementById('input-minutes').value) || 1;
-    sparringConfig.timeLeft = mins * 60; updateTimerDisplay(); startBGM(); scheduleNextAttack(); 
+    sparringConfig.timeLeft = mins * 60; updateTimerDisplay(); 
+    switchBGM('FIGHT'); // 切換回戰鬥音樂
+    scheduleNextAttack(); 
 }
 function endGame() {
-    gameState = 'RESULT'; stopBGM(); stopRecording(false); clearInterval(gameTimerInterval);
+    gameState = 'RESULT'; stopRhythm(); stopRecording(false); clearInterval(gameTimerInterval);
     roundScores.push(count); resultLayer.style.display = 'flex';
     let html = ''; let total = 0;
     roundScores.forEach((score, index) => {
