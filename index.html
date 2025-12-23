@@ -139,6 +139,8 @@ video, canvas {
 .media-card {
   position: relative; border-radius: 8px; overflow: hidden; border: 2px solid transparent; cursor: pointer;
   background: #000; aspect-ratio: 4/3;
+  transition: transform 0.2s, border-color 0.2s;
+  touch-action: pan-y; /* 允許垂直滾動，但防止縮放 */
 }
 .media-card img, .media-card video { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; transition: 0.3s; }
 .media-card:hover img, .media-card:hover video { opacity: 1; }
@@ -146,7 +148,7 @@ video, canvas {
 .media-card.selected img, .media-card.selected video { opacity: 1; }
 .media-badge {
   position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.7);
-  color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px;
+  color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; pointer-events: none;
 }
 
 .hl-actions { 
@@ -404,7 +406,7 @@ video, canvas {
       <div id="video-grid-dodge" class="hl-grid"></div>
     </div>
     <div class="hl-actions">
-      <p class="hl-hint">點選影片可預覽，選取後下載 (MP4/WebM)</p>
+      <p id="hl-hint-text" class="hl-hint">手機：長按預覽 / 輕點選取 | 電腦：雙擊預覽 / 單點選取</p>
       <button class="hl-action-btn" onclick="downloadSelectedVideos()">下載選取的影片</button>
     </div>
   </div>
@@ -691,7 +693,9 @@ function captureScreenshot(type) {
     });
 }
 
-// UI Functions for Highlights
+// =========================================
+//   [更新版] Highlights UI & Interactions
+// =========================================
 function openHighlights() {
     document.getElementById('result-layer').style.display = 'none';
     document.getElementById('highlights-modal').style.display = 'flex';
@@ -704,13 +708,17 @@ function closeHighlights() {
 function switchHighlightTab(tab) {
     document.querySelectorAll('.hl-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.hl-content').forEach(c => c.classList.remove('active'));
-    
+    const hintText = document.getElementById('hl-hint-text');
+
     if (tab === 'video') {
         document.querySelector('.hl-tab:first-child').classList.add('active');
         document.getElementById('hl-content-video').classList.add('active');
+        hintText.innerText = "手機：長按預覽 / 輕點選取 | 電腦：雙擊預覽 / 單點選取";
+        
         const gridCombo = document.getElementById('video-grid-combo');
         const gridDodge = document.getElementById('video-grid-dodge');
         gridCombo.innerHTML = ''; gridDodge.innerHTML = '';
+        
         highlights.videos.forEach((vid, idx) => {
             const el = createMediaCard(vid, idx, 'video');
             if (vid.type === 'combo') gridCombo.appendChild(el);
@@ -719,6 +727,8 @@ function switchHighlightTab(tab) {
     } else {
         document.querySelector('.hl-tab:last-child').classList.add('active');
         document.getElementById('hl-content-image').classList.add('active');
+        hintText.innerText = "輕點選取照片，將連同戰績表生成 PDF";
+        
         const grid = document.getElementById('image-grid');
         grid.innerHTML = '';
         highlights.images.forEach((img, idx) => {
@@ -726,17 +736,14 @@ function switchHighlightTab(tab) {
         });
     }
 }
+
+// [更新版] 建立媒體卡片 (包含手機長按/點擊 與 電腦雙擊/單點 邏輯)
 function createMediaCard(item, idx, type) {
     const div = document.createElement('div');
     div.className = 'media-card';
     div.dataset.index = idx;
-    div.onclick = () => {
-        div.classList.toggle('selected');
-        if (type === 'video') {
-           const v = div.querySelector('video');
-           if (v.paused) v.play(); else v.pause();
-        }
-    };
+
+    // 1. 建立內容 (Video 或 Img)
     if (type === 'video') {
         const v = document.createElement('video');
         v.src = item.url; v.muted = true; v.loop = true;
@@ -746,10 +753,80 @@ function createMediaCard(item, idx, type) {
         img.src = item.src;
         div.appendChild(img);
     }
+    
+    // 時間標記
     const badge = document.createElement('div');
     badge.className = 'media-badge';
     badge.innerText = item.time;
     div.appendChild(badge);
+
+    // ===================================
+    //  互動邏輯: 分離 Touch (Mobile) 與 Mouse (PC)
+    // ===================================
+    let pressTimer;
+    let isLongPress = false;
+    let startX, startY;
+
+    // --- Mobile/Tablet Logic ---
+    div.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isLongPress = false;
+        
+        // 設定長按計時器 (600ms)
+        pressTimer = setTimeout(() => {
+            // 長按觸發：預覽影片
+            isLongPress = true;
+            if (type === 'video') {
+                const v = div.querySelector('video');
+                if (v.paused) v.play(); else v.pause();
+                // 給予視覺回饋 (縮放)
+                div.style.transform = "scale(1.05)";
+                div.style.zIndex = "10";
+                setTimeout(() => { div.style.transform = ""; div.style.zIndex = ""; }, 300);
+            }
+        }, 600);
+    }, { passive: true });
+
+    div.addEventListener('touchmove', (e) => {
+        // 如果手指移動超過 10px (例如在捲動畫面)，取消長按判定
+        if (Math.abs(e.touches[0].clientX - startX) > 10 || 
+            Math.abs(e.touches[0].clientY - startY) > 10) {
+            clearTimeout(pressTimer);
+        }
+    }, { passive: true });
+
+    div.addEventListener('touchend', (e) => {
+        clearTimeout(pressTimer);
+        if (isLongPress) {
+            // 如果觸發了長按，阻止後續的 click 事件 (避免誤觸選取)
+            if(e.cancelable) e.preventDefault();
+        }
+    });
+
+    // --- Desktop & Mobile Tap Logic ---
+    // 'click' 事件在手機上代表短按 (Tap)，在電腦上代表左鍵單擊
+    div.addEventListener('click', (e) => {
+        // 簡單的選取/取消選取
+        div.classList.toggle('selected');
+    });
+
+    // --- Desktop Double Click Logic ---
+    // 電腦版雙擊預覽
+    div.addEventListener('dblclick', (e) => {
+        if (type === 'video') {
+            const v = div.querySelector('video');
+            if (v.paused) v.play(); else v.pause();
+        }
+    });
+
+    // 手機長按時禁用右鍵選單
+    div.oncontextmenu = function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+    };
+
     return div;
 }
 
