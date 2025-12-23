@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>XMAS BOXING CHALLENGE - 完美錄影版</title>
-<meta name="description" content="免下載 APP！開啟網頁即可透過鏡頭練習拳擊。支援手機/平板/電腦，快來挑戰極速閃躲與連擊！">
+<title>XMAS BOXING CHALLENGE - 專業校正版</title>
+<meta name="description" content="免下載 APP！開啟網頁即可透過鏡頭練習拳擊。支援校正引導、自動錄影與精彩回顧。">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
@@ -44,9 +45,6 @@ body {
 }
 @keyframes fall {
   0% { top: -10%; transform: translateX(0); opacity: 0; }
-  20% { opacity: 1; transform: translateX(-10px); }
-  50% { transform: translateX(10px); }
-  80% { opacity: 0.8; transform: translateX(-10px); }
   100% { top: 110%; transform: translateX(20px); opacity: 0; }
 }
 
@@ -59,24 +57,80 @@ body {
 /* 受傷震動特效 */
 @keyframes shake-hard {
   0% { transform: translate(0, 0) rotate(0deg); }
-  10% { transform: translate(-15px, -15px) rotate(-1deg); } 
-  20% { transform: translate(15px, 15px) rotate(1deg); }    
-  30% { transform: translate(-15px, 15px) rotate(0deg); }   
-  40% { transform: translate(15px, -15px) rotate(1deg); }   
-  50% { transform: translate(-5px, 0) rotate(-1deg); }      
-  70% { transform: translate(5px, 0) rotate(0deg); }
+  25% { transform: translate(-10px, 10px) rotate(-1deg); }    
+  75% { transform: translate(10px, -10px) rotate(1deg); }   
   100% { transform: translate(0, 0) rotate(0deg); }
 }
 .hit-shock {
   animation: shake-hard 0.4s cubic-bezier(.36,.07,.19,.97) both;
   filter: blur(4px) grayscale(0.8) contrast(1.2);
-  will-change: transform, filter;
 }
 
 video, canvas { 
   position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
   object-fit: cover; transform: scaleX(-1); z-index: 0; 
 }
+
+/* --- 校正引導層 (Calibration Layer) --- */
+#calibration-layer {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 200; display: none; /* 初始隱藏 */
+    flex-direction: column; justify-content: center; align-items: center;
+    background: rgba(0, 20, 40, 0.3);
+}
+
+/* 虛線人型框 */
+.calib-guide-box {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 300px; height: 500px;
+    border: 4px dashed rgba(0, 210, 255, 0.3); border-radius: 100px 100px 0 0;
+    transition: all 0.3s; pointer-events: none;
+}
+.calib-guide-box.good { border-color: #00ff00; border-style: solid; box-shadow: 0 0 30px #00ff00; }
+
+/* 狀態訊息 */
+.calib-status {
+    position: absolute; top: 15%; width: 100%; text-align: center;
+    font-size: 24px; font-weight: 900; color: #fff;
+    text-shadow: 0 0 10px #000;
+}
+.calib-sub-status {
+    position: absolute; bottom: 15%; width: 80%; text-align: center;
+    font-size: 16px; color: #ccc; background: rgba(0,0,0,0.6);
+    padding: 10px; border-radius: 10px;
+}
+.calib-headroom-line {
+    position: absolute; top: 15%; left: 0; width: 100%; height: 2px;
+    background: rgba(255, 0, 0, 0.5); display: none;
+}
+.calib-headroom-text {
+    position: absolute; top: 12%; right: 10px; color: rgba(255,0,0,0.8); font-size: 12px; font-weight: bold;
+    display: none;
+}
+
+/* 架勢目標圈 */
+.calib-target {
+    position: absolute; width: 80px; height: 80px;
+    border-radius: 50%; border: 4px solid #fff;
+    transform: translate(-50%, -50%);
+    display: none; justify-content: center; align-items: center;
+    box-shadow: 0 0 20px rgba(255,255,255,0.5);
+}
+.calib-target.active { border-color: #00ff00; background: rgba(0,255,0,0.2); }
+.calib-target::after { content: "HAND"; font-size: 12px; font-weight: bold; }
+
+/* 倒數遮罩 */
+#countdown-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 300; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);
+    display: none; justify-content: center; align-items: center;
+}
+.countdown-number {
+    font-size: 150px; font-weight: 900; color: #fbbf24;
+    animation: popIn 0.8s infinite;
+}
+@keyframes popIn { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+
 
 /* --- 隱私權遮罩 --- */
 #privacy-splash {
@@ -88,20 +142,16 @@ video, canvas {
 .privacy-content {
   max-width: 500px; padding: 30px; border: 2px solid #00d2ff;
   border-radius: 20px; background: rgba(20, 30, 40, 0.9);
-  color: #fff; text-align: center; box-shadow: 0 0 30px rgba(0, 210, 255, 0.3);
-  margin: 20px;
+  color: #fff; text-align: center; box-shadow: 0 0 30px rgba(0, 210, 255, 0.3); margin: 20px;
 }
 .privacy-text { font-size: 16px; line-height: 1.6; color: #ccc; }
 .privacy-text h2 { color: #00d2ff; margin-bottom: 20px; }
 
 /* --- 精彩時刻 Modal --- */
 #highlights-modal {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  height: 100dvh; 
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
   background: rgba(10, 15, 20, 0.98); z-index: 2000;
-  display: none; 
-  flex-direction: column; 
-  overflow: hidden; 
+  display: none; flex-direction: column; overflow: hidden; 
 }
 .hl-header { 
   display: flex; justify-content: space-between; align-items: center; 
@@ -109,7 +159,6 @@ video, canvas {
 }
 .hl-header h2 { margin: 0; color: #fbbf24; font-style: italic; font-size: 20px; }
 .hl-close-btn { background: none; border: none; color: #fff; font-size: 30px; cursor: pointer; padding: 0 10px; }
-
 .hl-nav { 
   display: flex; gap: 10px; padding: 10px; justify-content: center; flex-shrink: 0;
   background: rgba(255,255,255,0.05);
@@ -119,28 +168,15 @@ video, canvas {
   border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.3s; font-size: 14px;
 }
 .hl-tab.active { background: #00d2ff; color: #000; border-color: #00d2ff; }
-
-.hl-content { 
-  display: none; flex-direction: column; flex: 1; overflow: hidden; min-height: 0;
-}
+.hl-content { display: none; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
 .hl-content.active { display: flex; }
-
-.hl-scroll-area {
-  flex: 1; overflow-y: auto; padding: 15px; -webkit-overflow-scrolling: touch;
-}
-
+.hl-scroll-area { flex: 1; overflow-y: auto; padding: 15px; -webkit-overflow-scrolling: touch; }
 .hl-section-title { font-size: 16px; color: #fff; border-left: 4px solid #fbbf24; padding-left: 10px; margin: 15px 0 10px 0; text-align: left; }
 .hl-section-title:first-child { margin-top: 0; }
-
-.hl-grid { 
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; 
-  padding-bottom: 20px;
-}
+.hl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding-bottom: 20px; }
 .media-card {
   position: relative; border-radius: 8px; overflow: hidden; border: 2px solid transparent; cursor: pointer;
-  background: #000; aspect-ratio: 4/3;
-  transition: transform 0.2s, border-color 0.2s;
-  touch-action: pan-y; /* 允許垂直滾動，但防止縮放 */
+  background: #000; aspect-ratio: 4/3; transition: transform 0.2s, border-color 0.2s; touch-action: pan-y;
 }
 .media-card img, .media-card video { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; transition: 0.3s; }
 .media-card:hover img, .media-card:hover video { opacity: 1; }
@@ -150,63 +186,50 @@ video, canvas {
   position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.7);
   color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; pointer-events: none;
 }
-
 .hl-actions { 
-  text-align: center; padding: 15px; border-top: 1px solid #333; 
-  background: #0a0f14; flex-shrink: 0; z-index: 10;
-  box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
-  padding-bottom: max(15px, env(safe-area-inset-bottom)); 
+  text-align: center; padding: 15px; border-top: 1px solid #333; background: #0a0f14; flex-shrink: 0; z-index: 10;
+  box-shadow: 0 -5px 20px rgba(0,0,0,0.5); padding-bottom: max(15px, env(safe-area-inset-bottom)); 
 }
 .hl-hint { color: #888; font-size: 12px; margin-bottom: 10px; margin-top: 0; }
 .hl-action-btn {
-  width: 100%; max-width: 300px;
-  padding: 15px 0; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; border: none;
+  width: 100%; max-width: 300px; padding: 15px 0; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; border: none;
   background: #fff; color: #000; transition: 0.2s;
 }
 .hl-action-btn:hover { transform: scale(1.02); }
 .btn-pdf { background: linear-gradient(135deg, #fbbf24, #d97706); color: #000; }
 
-/* --- 1. 初始選單與導覽精靈 --- */
+/* --- 1. 初始選單 --- */
 #landing-layer {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  z-index: 100;
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
-  background: rgba(0, 0, 0, 0.35); 
-  backdrop-filter: blur(3px);
-  transition: opacity 0.5s ease;
+  background: rgba(0, 0, 0, 0.35); backdrop-filter: blur(3px); transition: opacity 0.5s ease;
 }
 .landing-title {
   font-size: 36px; font-weight: 900; color: #00d2ff;
   text-shadow: 0 0 20px rgba(0, 210, 255, 0.9), 2px 2px 5px rgba(0,0,0,0.8);
-  margin-bottom: 20px; letter-spacing: 2px;
-  text-transform: uppercase; line-height: 1.2;
+  margin-bottom: 20px; letter-spacing: 2px; text-transform: uppercase; line-height: 1.2;
 }
 .mode-container { display: flex; gap: 20px; margin-bottom: 20px; }
 .mode-box {
   background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.5);
-  padding: 20px; border-radius: 15px; cursor: pointer; width: 140px;
-  transition: all 0.3s;
-  backdrop-filter: blur(5px);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  padding: 20px; border-radius: 15px; cursor: pointer; width: 140px; transition: all 0.3s;
+  backdrop-filter: blur(5px); box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 .mode-box:hover, .mode-box.selected {
-  background: rgba(0, 210, 255, 0.3); border-color: #00d2ff;
-  transform: translateY(-5px); box-shadow: 0 0 20px rgba(0,210,255,0.6);
+  background: rgba(0, 210, 255, 0.3); border-color: #00d2ff; transform: translateY(-5px); box-shadow: 0 0 20px rgba(0,210,255,0.6);
 }
 .mode-box h3 { margin: 0 0 5px 0; font-size: 18px; color: #fff; text-shadow: 1px 1px 2px black; }
 .mode-box p { margin: 0; font-size: 12px; color: #eee; text-shadow: 1px 1px 2px black; }
 
 #wizard-container {
   display: none; background: rgba(0,0,0,0.85); padding: 25px; border-radius: 15px;
-  border: 1px solid #555; width: 85%; max-width: 320px;
-  margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  border: 1px solid #555; width: 85%; max-width: 320px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 .wizard-step { display: none; flex-direction: column; gap: 20px; }
 .wizard-step.active { display: flex; animation: fadeIn 0.3s; }
 .step-title { font-size: 18px; font-weight: 700; color: #fbbf24; margin-bottom: 5px; }
 .setting-row { display: flex; flex-direction: column; gap: 8px; text-align: left; }
 .setting-row label { font-size: 14px; font-weight: bold; color: #ddd; letter-spacing: 1px; }
-
 .setup-select {
   appearance: none; -webkit-appearance: none;
   background-color: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.3);
@@ -215,41 +238,31 @@ video, canvas {
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
   background-repeat: no-repeat; background-position: right 10px center; background-size: 20px;
 }
-.setup-select:focus { outline: none; border-color: #00d2ff; background-color: rgba(0,0,0,0.5); }
-.setup-select option { background-color: #333; color: #fff; }
-
 .diff-btn {
   padding: 12px; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: #fff;
   border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Montserrat'; transition: 0.2s;
 }
 .diff-btn.selected { background: #fbbf24; color: #000; border-color: #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
-
 .nav-btn {
-  padding: 12px 0; background: #334155; color: #fff; border: none; 
-  border-radius: 8px; margin-top: 5px; font-weight: bold; cursor: pointer; font-size: 16px;
+  padding: 12px 0; background: #334155; color: #fff; border: none; border-radius: 8px; margin-top: 5px; font-weight: bold; cursor: pointer; font-size: 16px;
 }
-.nav-btn:active { transform: scale(0.98); }
-
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 #start-btn { 
-  display: none; 
-  padding: 20px 40px; font-size: 22px; font-weight: 800; font-family: 'Montserrat', sans-serif;
+  display: none; padding: 20px 40px; font-size: 22px; font-weight: 800; font-family: 'Montserrat', sans-serif;
   color: #fff; background: linear-gradient(135deg, #ef4444, #b91c1c);
-  border: 2px solid #fff; border-radius: 50px; cursor: pointer; 
-  box-shadow: 0 0 30px rgba(239, 68, 68, 0.8); transition: all 0.3s; margin-top: 10px;
+  border: 2px solid #fff; border-radius: 50px; cursor: pointer; box-shadow: 0 0 30px rgba(239, 68, 68, 0.8); transition: all 0.3s; margin-top: 10px;
 }
 #start-btn:active { transform: scale(0.95); }
 
-/* --- 2. 遊戲 HUD --- */
+/* --- HUD & Game UI --- */
 #game-hud {
   position: absolute; top: 85px; right: 20px; z-index: 50;
   display: none; text-align: right; pointer-events: none; 
 }
 .score-board { 
   background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px);
-  padding: 10px 25px; border-radius: 24px; 
-  border: 1px solid rgba(255, 255, 255, 0.15); 
+  padding: 10px 25px; border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.15); 
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   display: inline-block; text-align: center; margin-bottom: 10px;
 }
@@ -259,59 +272,37 @@ video, canvas {
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
 }
 .count-label { font-size: 12px; color: #94a3b8; letter-spacing: 3px; font-weight: 700; margin-bottom: 5px; }
-
 #sparring-info {
   display: none; background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 15px;
-  color: #fff; font-weight: bold; margin-top: 10px;
-  display: flex; flex-direction: column; align-items: center;
+  color: #fff; font-weight: bold; margin-top: 10px; flex-direction: column; align-items: center;
 }
 #timer { font-size: 32px; color: #fbbf24; font-family: monospace; }
 #round-display { font-size: 14px; color: #aaa; letter-spacing: 2px; }
 
-/* --- 3. Combo 系統 --- */
 #combo-panel {
-  position: absolute; top: 150px; left: 20px; z-index: 50;
-  display: none; text-align: left; pointer-events: none;
+  position: absolute; top: 150px; left: 20px; z-index: 50; display: none; text-align: left; pointer-events: none;
 }
-.combo-label { 
-  font-size: 14px; color: #ccc; font-weight: 800; letter-spacing: 2px; margin-bottom: -5px; 
-  text-shadow: 1px 1px 2px black;
-}
-#combo-count {
-  font-size: 80px; font-weight: 900; font-style: italic; color: #fff; line-height: 1; transition: transform 0.1s;
-}
+.combo-label { font-size: 14px; color: #ccc; font-weight: 800; letter-spacing: 2px; margin-bottom: -5px; text-shadow: 1px 1px 2px black; }
+#combo-count { font-size: 80px; font-weight: 900; font-style: italic; color: #fff; line-height: 1; transition: transform 0.1s; }
 .combo-normal { color: #fff; }
 .combo-burn { color: #ff9900 !important; text-shadow: 0 0 10px #ff4500; animation: burnPulse 1s infinite alternate; }
 .combo-max { color: #ff0000 !important; text-shadow: 0 0 15px #ff0000; animation: shake 0.2s infinite; }
 @keyframes burnPulse { from { opacity: 0.8; transform: scale(1); } to { opacity: 1; transform: scale(1.1); } }
 @keyframes shake { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, -1px); } }
 
-/* --- 4. 敵方攻擊提示 (文字) --- */
 #enemy-attack-layer {
   position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
   z-index: 60; pointer-events: none; display: none;
 }
-.attack-msg {
-  font-size: 80px; font-weight: 900; text-transform: uppercase;
-  text-shadow: 0 0 20px #000; animation: blink 0.2s infinite;
-}
+.attack-msg { font-size: 80px; font-weight: 900; text-transform: uppercase; text-shadow: 0 0 20px #000; animation: blink 0.2s infinite; }
 .attack-straight { color: #ff3333; }
 .attack-hook { color: #ffff00; }
 @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-/* --- 5. 視覺特效層 --- */
-#visual-cues-layer {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    z-index: 55; pointer-events: none;
-}
-#slip-indicator, #duck-indicator { display: none; }
-
-/* --- 6. 受傷與結算 --- */
 #damage-overlay {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   background: radial-gradient(circle, rgba(255,0,0,0) 50%, rgba(255,0,0,0.8) 100%);
-  z-index: 80; pointer-events: none; opacity: 0;
-  transition: opacity 0.1s;
+  z-index: 80; pointer-events: none; opacity: 0; transition: opacity 0.1s;
 }
 .damage-flash { animation: flashRed 0.3s; }
 @keyframes flashRed { 0% { opacity: 0.8; } 100% { opacity: 0; } }
@@ -319,11 +310,9 @@ video, canvas {
 #result-layer {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 110; background: rgba(0,0,0,0.9);
-  display: none; flex-direction: column; justify-content: center; align-items: center;
-  color: #fff;
+  display: none; flex-direction: column; justify-content: center; align-items: center; color: #fff;
 }
 #result-layer h1 { margin: 0 0 20px 0; font-size: 50px; color: #fbbf24; }
-
 .score-table {
   background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; border: 1px solid #555;
   width: 80%; max-width: 400px; margin-bottom: 30px;
@@ -362,6 +351,7 @@ video, canvas {
   #count { font-size: 50px; }
   .attack-msg { font-size: 50px; }
   .score-table { width: 90%; }
+  .calib-guide-box { width: 60%; height: 50%; }
 }
 </style>
 </head>
@@ -380,7 +370,6 @@ video, canvas {
       <ul style="text-align:left; display:inline-block; margin: 10px 0;">
         <li>✅ <strong>本機運算：</strong> 所有影像辨識皆在您的裝置上即時運算。</li>
         <li>✅ <strong>資料不外洩：</strong> 我們<strong>沒有</strong>後端伺服器，您的影像絕不會被上傳。</li>
-        <li>✅ <strong>暫存即毀：</strong> 遊戲中的精彩截圖與錄影僅暫存於記憶體，關閉網頁即永久刪除。</li>
       </ul>
       <p style="color:#fbbf24; font-weight:bold;">點擊任意處開始遊戲</p>
     </div>
@@ -392,12 +381,10 @@ video, canvas {
     <h2>BATTLE HIGHLIGHTS</h2>
     <button class="hl-close-btn" onclick="closeHighlights()">×</button>
   </div>
-  
   <div class="hl-nav">
     <button class="hl-tab active" onclick="switchHighlightTab('video')">🎬 影片瞬間</button>
     <button class="hl-tab" onclick="switchHighlightTab('image')">📸 圖片與報表</button>
   </div>
-
   <div id="hl-content-video" class="hl-content active">
     <div class="hl-scroll-area">
       <div class="hl-section-title">連擊快拳 (Combos)</div>
@@ -410,7 +397,6 @@ video, canvas {
       <button class="hl-action-btn" onclick="downloadSelectedVideos()">下載選取的影片</button>
     </div>
   </div>
-
   <div id="hl-content-image" class="hl-content">
     <div class="hl-scroll-area">
       <div class="hl-section-title">精彩截圖</div>
@@ -428,21 +414,30 @@ video, canvas {
   <div class="snowflake" style="left: 5%; width: 5px; height: 5px; animation-duration: 4s;"></div>
   <div class="snowflake" style="left: 15%; width: 8px; height: 8px; animation-duration: 6s; animation-delay: 1s;"></div>
   <div class="snowflake" style="left: 25%; width: 4px; height: 4px; animation-duration: 3.5s; animation-delay: 2s;"></div>
-  <div class="snowflake" style="left: 35%; width: 7px; height: 7px; animation-duration: 5s;"></div>
-  <div class="snowflake" style="left: 45%; width: 5px; height: 5px; animation-duration: 4.5s; animation-delay: 0.5s;"></div>
-  <div class="snowflake" style="left: 55%; width: 9px; height: 9px; animation-duration: 7s; animation-delay: 1.5s;"></div>
-  <div class="snowflake" style="left: 65%; width: 6px; height: 6px; animation-duration: 4s;"></div>
+  <div class="snowflake" style="left: 50%; width: 7px; height: 7px; animation-duration: 5s;"></div>
   <div class="snowflake" style="left: 75%; width: 4px; height: 4px; animation-duration: 3.8s; animation-delay: 2.5s;"></div>
-  <div class="snowflake" style="left: 85%; width: 8px; height: 8px; animation-duration: 5.5s;"></div>
-  <div class="snowflake" style="left: 95%; width: 5px; height: 5px; animation-duration: 4.2s; animation-delay: 1s;"></div>
   <div class="snow-ground"></div>
 </div>
 
 <div class="container">
   
+  <div id="calibration-layer">
+    <div class="calib-headroom-line"></div>
+    <div class="calib-headroom-text">頭部請保持在此線下方</div>
+    <div id="calib-box" class="calib-guide-box"></div>
+    <div id="calib-msg" class="calib-status">偵測玩家中...</div>
+    <div id="calib-hint" class="calib-sub-status">請確保全身入鏡，手機建議直立放置</div>
+    
+    <div id="target-l" class="calib-target">L</div>
+    <div id="target-r" class="calib-target">R</div>
+  </div>
+
+  <div id="countdown-overlay">
+    <div id="countdown-number" class="countdown-number">3</div>
+  </div>
+
   <div id="landing-layer">
     <div class="landing-title">XMAS BOXING<br>CHALLENGE</div>
-    
     <div class="mode-container">
       <div class="mode-box" onclick="selectMode('speed', this)">
         <h3>快拳練習</h3>
@@ -453,7 +448,6 @@ video, canvas {
         <p>閃躲反擊</p>
       </div>
     </div>
-
     <div id="wizard-container">
       <div id="step-1" class="wizard-step active">
         <div class="step-title">STEP 1/3: 回合設定</div>
@@ -463,57 +457,41 @@ video, canvas {
             <option value="1">1 回合</option>
             <option value="2">2 回合</option>
             <option value="3" selected>3 回合 (標準)</option>
-            <option value="4">4 回合</option>
             <option value="5">5 回合</option>
-            <option value="6">6 回合</option>
-            <option value="8">8 回合</option>
-            <option value="10">10 回合</option>
-            <option value="12">12 回合</option>
           </select>
         </div>
         <div class="setting-row">
-          <label>每回合長度 (Duration)</label>
+          <label>每回合長度</label>
           <select id="input-minutes" class="setup-select">
-            <option value="0.5">30秒 (0.5分)</option>
+            <option value="0.5">30秒</option>
             <option value="1.0" selected>1分鐘 (標準)</option>
-            <option value="1.5">1分30秒 (1.5分)</option>
             <option value="2.0">2分鐘</option>
-            <option value="2.5">2分30秒 (2.5分)</option>
-            <option value="3.0">3分鐘 (職業)</option>
           </select>
         </div>
         <button class="nav-btn" onclick="nextStep(2)">下一步</button>
       </div>
-
       <div id="step-2" class="wizard-step">
         <div class="step-title">STEP 2/3: 休息設定</div>
         <div class="setting-row">
           <label>休息時間 (Rest)</label>
           <select id="input-rest" class="setup-select">
-            <option value="0.5">30秒 (快速)</option>
+            <option value="0.5">30秒</option>
             <option value="1.0" selected>1分鐘 (標準)</option>
-            <option value="1.5">1分30秒</option>
-            <option value="2.0">2分鐘</option>
-            <option value="3.0">3分鐘</option>
-            <option value="4.0">4分鐘</option>
-            <option value="5.0">5分鐘 (完全恢復)</option>
           </select>
         </div>
         <button class="nav-btn" onclick="nextStep(3)">下一步</button>
       </div>
-
       <div id="step-3" class="wizard-step">
         <div class="step-title">STEP 3/3: 難易度</div>
         <div style="display:flex; flex-direction:column; gap:10px;">
-          <button class="diff-btn" onclick="setDifficulty('EASY', this)">簡單 (反應時間長)</button>
-          <button class="diff-btn" onclick="setDifficulty('NORMAL', this)">普通 (標準)</button>
-          <button class="diff-btn selected" onclick="setDifficulty('HARD', this)">困難 (反應時間短)</button>
+          <button class="diff-btn" onclick="setDifficulty('EASY', this)">簡單 (反應慢)</button>
+          <button class="diff-btn selected" onclick="setDifficulty('NORMAL', this)">普通 (標準)</button>
+          <button class="diff-btn" onclick="setDifficulty('HARD', this)">困難 (反應快)</button>
         </div>
         <button class="nav-btn" style="background:#059669;" onclick="finishSetup()">完成設定</button>
       </div>
     </div>
-
-    <button id="start-btn" onclick="initGame()">FIGHT!</button>
+    <button id="start-btn" onclick="startCalibration()">準備完成 (START)</button>
   </div>
 
   <div id="game-hud">
@@ -535,8 +513,6 @@ video, canvas {
   <div id="enemy-attack-layer">
     <div id="attack-text" class="attack-msg"></div>
   </div>
-
-  <div id="visual-cues-layer"></div>
 
   <div id="rest-overlay">
     <div class="rest-title">REST</div>
@@ -568,7 +544,15 @@ video, canvas {
 
 <script>
 // =========================================
-//   Privacy & Recorder Setup (修正版)
+//   Game States & Calibration
+// =========================================
+let gameState = 'SETUP'; // SETUP, CALIBRATION, PLAYING, RESULT
+let calibrationHoldTimer = 0;
+const CALIBRATION_HOLD_TARGET = 45; // 約 1.5 秒
+let calibrationCamera = null;
+
+// =========================================
+//   Privacy & UI Setup
 // =========================================
 const privacySplash = document.getElementById('privacy-splash');
 privacySplash.addEventListener('click', () => {
@@ -577,97 +561,56 @@ privacySplash.addEventListener('click', () => {
     tryPlayBGM();
 });
 
-const highlights = {
-    videos: [], 
-    images: []  
-};
+const highlights = { videos: [], images: [] };
 
-// =========================================
-//   [修正版] 錄影核心邏輯 (使用 MediaRecorder)
-// =========================================
+// 媒體錄製相關
 let mediaRecorder = null;
 let recordedChunks = [];
 let isRecording = false;
 let currentRecType = null;
-let recordingStartTime = 0;
 let lastPunchTime = 0;
 let comboCounter = 0;
-
-// 為了確保錄影方向正確（不鏡像），我們繼續使用 recording_canvas
 const recordingCanvasElement = document.getElementById('recording_canvas');
 const recordingCanvasCtx = recordingCanvasElement.getContext('2d');
 
+// 下載功能
 function startRecording(type) {
     if (isRecording) return;
-    
-    // 1. 設定畫布尺寸 (與主畫布同步)
     recordingCanvasElement.width = canvasElement.width;
     recordingCanvasElement.height = canvasElement.height;
-
-    // 2. 建立串流 (30FPS)
-    // 注意：這裡擷取的是我們手動繪製的 recording_canvas，確保畫面已翻轉
     const stream = recordingCanvasElement.captureStream(30);
-
-    // 3. 偵測瀏覽器支援的格式 (優先 MP4，其次 WebM)
+    
     let mimeType = 'video/webm;codecs=vp9';
-    if (MediaRecorder.isTypeSupported('video/mp4')) {
-        mimeType = 'video/mp4'; // Safari / iOS 支援
-    } else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264')) {
-        mimeType = 'video/webm;codecs=h264'; // Chrome 支援
-    }
+    if (MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
+    else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264')) mimeType = 'video/webm;codecs=h264';
 
     try {
         mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
     } catch (e) {
-        console.error("建立 MediaRecorder 失敗，嘗試使用預設設定", e);
-        mediaRecorder = new MediaRecorder(stream); // Fallback
+        mediaRecorder = new MediaRecorder(stream);
     }
 
     isRecording = true;
     currentRecType = type;
-    recordedChunks = []; // 清空舊資料
-
+    recordedChunks = [];
     mediaRecorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-            recordedChunks.push(event.data);
-        }
+        if (event.data && event.data.size > 0) recordedChunks.push(event.data);
     };
-
     mediaRecorder.start();
-    console.log(`[REC] 開始錄影: ${type} (格式: ${mediaRecorder.mimeType})`);
 }
 
 function stopRecording(save = true) {
     if (!isRecording || !mediaRecorder) return;
-    
-    // 定義停止後的處理
     mediaRecorder.onstop = () => {
         if (save && recordedChunks.length > 0) {
             const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
             const url = URL.createObjectURL(blob);
-            
-            // 判斷副檔名
-            let ext = 'webm';
-            if (mediaRecorder.mimeType.includes('mp4')) ext = 'mp4';
-
-            highlights.videos.push({
-                url: url,
-                type: currentRecType,
-                ext: ext, // 紀錄副檔名
-                time: new Date().toLocaleTimeString()
-            });
-            console.log(`[REC] 影片已儲存 (${recordedChunks.length} chunks)`);
-        } else {
-            console.log("[REC] 影片已捨棄");
+            let ext = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
+            highlights.videos.push({ url: url, type: currentRecType, ext: ext, time: new Date().toLocaleTimeString() });
         }
-        isRecording = false;
-        mediaRecorder = null;
+        isRecording = false; mediaRecorder = null;
     };
-
-    // 停止錄影
-    if (mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
-    }
+    if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
 }
 
 function captureScreenshot(type) {
@@ -681,21 +624,13 @@ function captureScreenshot(type) {
     tempCanvas.width = canvasElement.width;
     tempCanvas.height = canvasElement.height;
     const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.translate(tempCanvas.width, 0);
-    tempCtx.scale(-1, 1);
+    tempCtx.translate(tempCanvas.width, 0); tempCtx.scale(-1, 1);
     tempCtx.drawImage(canvasElement, 0, 0);
 
-    const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.8);
-    highlights.images.push({
-        src: dataUrl,
-        type: type,
-        time: new Date().toLocaleTimeString()
-    });
+    highlights.images.push({ src: tempCanvas.toDataURL('image/jpeg', 0.8), type: type, time: new Date().toLocaleTimeString() });
 }
 
-// =========================================
-//   [更新版] Highlights UI & Interactions
-// =========================================
+// Highlights UI
 function openHighlights() {
     document.getElementById('result-layer').style.display = 'none';
     document.getElementById('highlights-modal').style.display = 'flex';
@@ -714,11 +649,9 @@ function switchHighlightTab(tab) {
         document.querySelector('.hl-tab:first-child').classList.add('active');
         document.getElementById('hl-content-video').classList.add('active');
         hintText.innerText = "手機：長按預覽 / 輕點選取 | 電腦：雙擊預覽 / 單點選取";
-        
         const gridCombo = document.getElementById('video-grid-combo');
         const gridDodge = document.getElementById('video-grid-dodge');
         gridCombo.innerHTML = ''; gridDodge.innerHTML = '';
-        
         highlights.videos.forEach((vid, idx) => {
             const el = createMediaCard(vid, idx, 'video');
             if (vid.type === 'combo') gridCombo.appendChild(el);
@@ -728,7 +661,6 @@ function switchHighlightTab(tab) {
         document.querySelector('.hl-tab:last-child').classList.add('active');
         document.getElementById('hl-content-image').classList.add('active');
         hintText.innerText = "輕點選取照片，將連同戰績表生成 PDF";
-        
         const grid = document.getElementById('image-grid');
         grid.innerHTML = '';
         highlights.images.forEach((img, idx) => {
@@ -737,114 +669,50 @@ function switchHighlightTab(tab) {
     }
 }
 
-// [更新版] 建立媒體卡片 (包含手機長按/點擊 與 電腦雙擊/單點 邏輯)
 function createMediaCard(item, idx, type) {
     const div = document.createElement('div');
-    div.className = 'media-card';
-    div.dataset.index = idx;
-
-    // 1. 建立內容 (Video 或 Img)
+    div.className = 'media-card'; div.dataset.index = idx;
     if (type === 'video') {
-        const v = document.createElement('video');
-        v.src = item.url; v.muted = true; v.loop = true;
-        div.appendChild(v);
+        const v = document.createElement('video'); v.src = item.url; v.muted = true; v.loop = true; div.appendChild(v);
     } else {
-        const img = document.createElement('img');
-        img.src = item.src;
-        div.appendChild(img);
+        const img = document.createElement('img'); img.src = item.src; div.appendChild(img);
     }
-    
-    // 時間標記
-    const badge = document.createElement('div');
-    badge.className = 'media-badge';
-    badge.innerText = item.time;
-    div.appendChild(badge);
+    const badge = document.createElement('div'); badge.className = 'media-badge'; badge.innerText = item.time; div.appendChild(badge);
 
-    // ===================================
-    //  互動邏輯: 分離 Touch (Mobile) 與 Mouse (PC)
-    // ===================================
-    let pressTimer;
-    let isLongPress = false;
-    let startX, startY;
-
-    // --- Mobile/Tablet Logic ---
+    let pressTimer; let isLongPress = false; let startX, startY;
     div.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        isLongPress = false;
-        
-        // 設定長按計時器 (600ms)
+        startX = e.touches[0].clientX; startY = e.touches[0].clientY; isLongPress = false;
         pressTimer = setTimeout(() => {
-            // 長按觸發：預覽影片
             isLongPress = true;
             if (type === 'video') {
                 const v = div.querySelector('video');
                 if (v.paused) v.play(); else v.pause();
-                // 給予視覺回饋 (縮放)
-                div.style.transform = "scale(1.05)";
-                div.style.zIndex = "10";
+                div.style.transform = "scale(1.05)"; div.style.zIndex = "10";
                 setTimeout(() => { div.style.transform = ""; div.style.zIndex = ""; }, 300);
             }
         }, 600);
     }, { passive: true });
-
     div.addEventListener('touchmove', (e) => {
-        // 如果手指移動超過 10px (例如在捲動畫面)，取消長按判定
-        if (Math.abs(e.touches[0].clientX - startX) > 10 || 
-            Math.abs(e.touches[0].clientY - startY) > 10) {
-            clearTimeout(pressTimer);
-        }
+        if (Math.abs(e.touches[0].clientX - startX) > 10 || Math.abs(e.touches[0].clientY - startY) > 10) clearTimeout(pressTimer);
     }, { passive: true });
-
     div.addEventListener('touchend', (e) => {
         clearTimeout(pressTimer);
-        if (isLongPress) {
-            // 如果觸發了長按，阻止後續的 click 事件 (避免誤觸選取)
-            if(e.cancelable) e.preventDefault();
-        }
+        if (isLongPress && e.cancelable) e.preventDefault();
     });
-
-    // --- Desktop & Mobile Tap Logic ---
-    // 'click' 事件在手機上代表短按 (Tap)，在電腦上代表左鍵單擊
-    div.addEventListener('click', (e) => {
-        // 簡單的選取/取消選取
-        div.classList.toggle('selected');
-    });
-
-    // --- Desktop Double Click Logic ---
-    // 電腦版雙擊預覽
-    div.addEventListener('dblclick', (e) => {
-        if (type === 'video') {
-            const v = div.querySelector('video');
-            if (v.paused) v.play(); else v.pause();
-        }
-    });
-
-    // 手機長按時禁用右鍵選單
-    div.oncontextmenu = function(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        return false;
-    };
-
+    div.addEventListener('click', () => { div.classList.toggle('selected'); });
+    div.addEventListener('dblclick', () => { if (type === 'video') { const v = div.querySelector('video'); if (v.paused) v.play(); else v.pause(); } });
+    div.oncontextmenu = function(e) { e.preventDefault(); e.stopPropagation(); return false; };
     return div;
 }
 
-// [修正版] 下載功能
 function downloadSelectedVideos() {
     const selected = document.querySelectorAll('#hl-content-video .media-card.selected');
     if (selected.length === 0) { alert("請先選取影片！"); return; }
-    
     selected.forEach(card => {
-        const idx = card.dataset.index;
-        const vid = highlights.videos[idx];
+        const vid = highlights.videos[card.dataset.index];
         const a = document.createElement('a');
-        a.href = vid.url;
-        // 使用正確的副檔名 (mp4 或 webm)
-        a.download = `boxing_${vid.type}_${Date.now()}.${vid.ext || 'webm'}`;
-        document.body.appendChild(a); 
-        a.click(); 
-        document.body.removeChild(a);
+        a.href = vid.url; a.download = `boxing_${vid.type}_${Date.now()}.${vid.ext || 'webm'}`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
     });
 }
 
@@ -852,28 +720,18 @@ function generateBattleReport() {
     const selected = document.querySelectorAll('#hl-content-image .media-card.selected');
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    doc.setFontSize(22);
-    doc.text("XMAS BOXING CHALLENGE - BATTLE REPORT", 105, 20, { align: "center" });
-    doc.setFontSize(14);
-    doc.text(`Total Score: ${count}`, 20, 40);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, 40);
-
+    doc.setFontSize(22); doc.text("XMAS BOXING CHALLENGE", 105, 20, { align: "center" });
+    doc.setFontSize(14); doc.text(`Total Score: ${count}`, 20, 40); doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, 40);
     const tableBody = roundScores.map((s, i) => [`Round ${i+1}`, s]);
     tableBody.push(['Total', count]);
-    doc.autoTable({
-        startY: 50, head: [['Round', 'Score']], body: tableBody,
-        theme: 'grid', headStyles: { fillColor: [251, 191, 36] }
-    });
-
+    doc.autoTable({ startY: 50, head: [['Round', 'Score']], body: tableBody, theme: 'grid' });
     let currentY = doc.lastAutoTable.finalY + 20;
     if (selected.length > 0) {
-        doc.text("Highlights Snapshots:", 20, currentY);
-        currentY += 10;
+        doc.text("Highlights:", 20, currentY); currentY += 10;
         selected.forEach((card) => {
             const idx = card.dataset.index;
-            const imgData = highlights.images[idx].src;
             if (currentY > 250) { doc.addPage(); currentY = 20; }
-            doc.addImage(imgData, 'JPEG', 25, currentY, 160, 120);
+            doc.addImage(highlights.images[idx].src, 'JPEG', 25, currentY, 160, 120);
             currentY += 130;
         });
     }
@@ -890,161 +748,106 @@ let tempo = 130;
 let nextNoteTime = 0.0;
 let scheduleAheadTime = 0.1;
 let current16thNote = 0;
-
 let xmasAudio = document.getElementById('xmas-bgm');
 xmasAudio.volume = 0.4; 
 
 function tryPlayBGM() {
-  if (xmasAudio.paused && !isGameRunning) {
-    xmasAudio.play().catch(e => console.log("等待使用者互動以播放音樂"));
+  if (xmasAudio.paused && gameState === 'PLAYING') {
+    xmasAudio.play().catch(e => console.log("Music Wait"));
   }
 }
-
 function fadeOutXmasBGM() {
     let fadeInterval = setInterval(() => {
-        if (xmasAudio.volume > 0.05) {
-            xmasAudio.volume -= 0.05;
-        } else {
-            xmasAudio.pause();
-            clearInterval(fadeInterval);
-        }
+        if (xmasAudio.volume > 0.05) xmasAudio.volume -= 0.05;
+        else { xmasAudio.pause(); clearInterval(fadeInterval); }
     }, 100);
 }
-
 async function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') await audioCtx.resume();
     try {
-        const response = await fetch('punch.mp3'); // 需自行準備音效或移除錯誤處理
-        if (!response.ok) throw new Error("punch.mp3 not found");
-        const arrayBuffer = await response.arrayBuffer();
-        punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    } catch (e) { console.warn("Audio Load Error:", e); }
+        const response = await fetch('punch.mp3'); 
+        if (response.ok) {
+           const arrayBuffer = await response.arrayBuffer();
+           punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        }
+    } catch (e) { }
 }
-
 function playPunchSound(type) {
     if (!punchBuffer || !audioCtx) return;
     const source = audioCtx.createBufferSource();
     source.buffer = punchBuffer;
     source.playbackRate.value = (type === 'heavy') ? 0.9 : 1.1;
-    source.connect(audioCtx.destination);
-    source.start(0);
+    source.connect(audioCtx.destination); source.start(0);
 }
-
 function synthWarning() {
     if (!audioCtx) return;
     const t = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(800, t);
-    osc.frequency.linearRampToValueAtTime(600, t + 0.1);
-    gain.gain.setValueAtTime(0.1, t);
-    gain.gain.linearRampToValueAtTime(0, t + 0.3);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(t); osc.stop(t + 0.3);
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.type = 'square'; osc.frequency.setValueAtTime(800, t); osc.frequency.linearRampToValueAtTime(600, t + 0.1);
+    gain.gain.setValueAtTime(0.1, t); gain.gain.linearRampToValueAtTime(0, t + 0.3);
+    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.3);
 }
-
 function synthDamage() {
     if (!audioCtx) return;
     const t = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(100, t);
-    osc.frequency.exponentialRampToValueAtTime(10, t + 0.3);
-    gain.gain.setValueAtTime(0.5, t);
-    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(t); osc.stop(t + 0.3);
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, t); osc.frequency.exponentialRampToValueAtTime(10, t + 0.3);
+    gain.gain.setValueAtTime(0.5, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.3);
 }
-
 function scheduleNote(beatNumber, time) {
     if (!audioCtx) return;
     if (beatNumber % 4 === 0) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.frequency.setValueAtTime(150, time);
-        osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
-        gain.gain.setValueAtTime(0.8, time);
-        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(time); osc.stop(time + 0.5);
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(150, time); osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
+        gain.gain.setValueAtTime(0.8, time); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(time); osc.stop(time + 0.5);
     }
     if (beatNumber % 8 === 4) {
         const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
         const output = noiseBuffer.getChannelData(0);
         for (let i = 0; i < audioCtx.sampleRate * 0.1; i++) output[i] = Math.random() * 2 - 1;
-        const noise = audioCtx.createBufferSource();
-        noise.buffer = noiseBuffer;
-        const noiseFilter = audioCtx.createBiquadFilter();
-        noiseFilter.type = 'highpass';
-        noiseFilter.frequency.value = 1000;
-        const noiseGain = audioCtx.createGain();
-        noiseGain.gain.setValueAtTime(0.6, time);
-        noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
-        noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(audioCtx.destination);
-        noise.start(time);
+        const noise = audioCtx.createBufferSource(); noise.buffer = noiseBuffer;
+        const noiseFilter = audioCtx.createBiquadFilter(); noiseFilter.type = 'highpass'; noiseFilter.frequency.value = 1000;
+        const noiseGain = audioCtx.createGain(); noiseGain.gain.setValueAtTime(0.6, time); noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+        noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(audioCtx.destination); noise.start(time);
     }
     if (beatNumber % 2 === 0) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(8000, time);
-        gain.gain.setValueAtTime(0.1, time);
-        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(time); osc.stop(time + 0.05);
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.type = 'square'; osc.frequency.setValueAtTime(8000, time);
+        gain.gain.setValueAtTime(0.1, time); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(time); osc.stop(time + 0.05);
     }
 }
-
 function startBGM() {
     if (isPlayingBGM || !audioCtx) return;
-    isPlayingBGM = true;
-    current16thNote = 0;
-    nextNoteTime = audioCtx.currentTime;
-    timerWorker();
+    isPlayingBGM = true; current16thNote = 0; nextNoteTime = audioCtx.currentTime; timerWorker();
 }
 function stopBGM() { isPlayingBGM = false; }
 function timerWorker() {
     if (!isPlayingBGM) return;
-    const secondsPerBeat = 60.0 / tempo;
-    const secondsPer16th = secondsPerBeat / 4; 
+    const secondsPerBeat = 60.0 / tempo; const secondsPer16th = secondsPerBeat / 4; 
     while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
         scheduleNote(current16thNote, nextNoteTime);
-        nextNoteTime += secondsPer16th;
-        current16thNote = (current16thNote + 1) % 16;
+        nextNoteTime += secondsPer16th; current16thNote = (current16thNote + 1) % 16;
     }
     setTimeout(timerWorker, 25);
 }
 
 // =========================================
-//   Game Logic
+//   Game Logic & Calibration
 // =========================================
 let selectedMode = null; 
-let isGameRunning = false;
 let count = 0;
 let roundScores = [];
-let leftStage = "down"; 
-let rightStage = "down";
-let leftCooldown = 0;
-let rightCooldown = 0;
+let leftStage = "down"; rightStage = "down";
+let leftCooldown = 0; rightCooldown = 0;
 let floatingTexts = []; 
-
-let sparringConfig = {
-    totalRounds: 1, secondsPerRound: 60, restTime: 60,
-    currentRound: 1, timeLeft: 0, 
-    difficulty: 'HARD', 
-    state: 'READY' 
-};
+let sparringConfig = { totalRounds: 1, secondsPerRound: 60, restTime: 60, currentRound: 1, timeLeft: 0, difficulty: 'HARD', state: 'READY' };
 let gameTimerInterval = null;
-let enemyState = 'IDLE'; 
-let activeAttackType = null;
-let latestLandmarks = null;
-let dodgeCombo = 0;
-
-let lockedTarget = null; 
-let lockedDuckY = null;
+let enemyState = 'IDLE'; activeAttackType = null; latestLandmarks = null; dodgeCombo = 0;
+let lockedTarget = null; lockedDuckY = null;
 
 const videoElement = document.getElementById('input_video');
 const canvasElement = document.getElementById('output_canvas');
@@ -1068,20 +871,27 @@ const comboCountEl = document.getElementById('combo-count');
 const restOverlay = document.getElementById('rest-overlay');
 const restTimerEl = document.getElementById('rest-timer');
 
+// Calibration Elements
+const calibLayer = document.getElementById('calibration-layer');
+const calibBox = document.getElementById('calib-box');
+const calibMsg = document.getElementById('calib-msg');
+const calibHint = document.getElementById('calib-hint');
+const calibTargetL = document.getElementById('target-l');
+const calibTargetR = document.getElementById('target-r');
+const calibLine = document.querySelector('.calib-headroom-line');
+const calibText = document.querySelector('.calib-headroom-text');
+
 function selectMode(mode, element) {
     selectedMode = mode;
     document.querySelectorAll('.mode-box').forEach(el => el.classList.remove('selected'));
     element.classList.add('selected');
-    startBtn.style.display = 'none';
-    wizardContainer.style.display = 'none';
+    startBtn.style.display = 'none'; wizardContainer.style.display = 'none';
     tryPlayBGM();
 
     if (mode === 'sparring') {
-        wizardContainer.style.display = 'block';
-        showStep(1);
+        wizardContainer.style.display = 'block'; showStep(1);
     } else {
-        startBtn.innerText = "快拳練習 START";
-        startBtn.style.display = 'block';
+        startBtn.innerText = "快拳練習 START"; startBtn.style.display = 'block';
     }
 }
 
@@ -1090,81 +900,173 @@ function showStep(stepNum) {
     document.getElementById(`step-${stepNum}`).classList.add('active');
 }
 function nextStep(targetStep) { showStep(targetStep); }
-
 function setDifficulty(diff, btn) {
     sparringConfig.difficulty = diff;
     document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
 }
-
 function finishSetup() {
     wizardContainer.style.display = 'none';
-    startBtn.innerText = "準備開戰 (START)";
-    startBtn.style.display = 'block';
+    startBtn.innerText = "準備完成 (START)"; startBtn.style.display = 'block';
 }
 
-async function initGame() {
-    isGameRunning = false;
-    startBtn.innerText = "啟動中...";
+// 啟動校正模式
+async function startCalibration() {
+    fadeOutXmasBGM(); await initAudio();
+    landingLayer.style.display = 'none';
+    calibLayer.style.display = 'flex';
+    calibLine.style.display = 'block';
+    calibText.style.display = 'block';
     
-    fadeOutXmasBGM();
-    await initAudio(); 
+    gameState = 'CALIBRATION';
+    calibrationHoldTimer = 0;
 
+    const camera = new Camera(videoElement, {
+        onFrame: async () => { await pose.send({image: videoElement}); },
+        width: 640, height: 480
+    });
+    calibrationCamera = camera;
+    camera.start();
+}
+
+// 校正邏輯 (每幀執行)
+function updateCalibration(lm) {
+    const nose = lm[0];
+    const leftShoulder = lm[11]; const rightShoulder = lm[12];
+    const leftWrist = lm[15]; const rightWrist = lm[16];
+    
+    if (!nose || !leftShoulder || !rightShoulder) return;
+
+    const shoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
+    const canvasW = canvasElement.width; const canvasH = canvasElement.height;
+    
+    // 更新目標點位置 (肩膀前上方)
+    const targetY = (leftShoulder.y + rightShoulder.y) / 2 - 0.15;
+    const targetLX = leftShoulder.x + 0.05; 
+    const targetRX = rightShoulder.x - 0.05;
+    
+    // 渲染目標點
+    calibTargetL.style.display = 'flex'; calibTargetR.style.display = 'flex';
+    calibTargetL.style.top = (targetY * 100) + '%'; calibTargetL.style.left = ((1-targetLX) * 100) + '%';
+    calibTargetR.style.top = (targetY * 100) + '%'; calibTargetR.style.left = ((1-targetRX) * 100) + '%';
+
+    let status = "WAIT"; // WAIT, NEAR, FAR, HEAD_HIGH, READY
+
+    // 1. 距離判定
+    if (shoulderWidth > 0.45) status = "NEAR";
+    else if (shoulderWidth < 0.15) status = "FAR";
+    
+    // 2. 頭部空間判定
+    if (nose.y < 0.15 && status === "WAIT") status = "HEAD_HIGH";
+
+    // 3. 狀態顯示
+    calibBox.classList.remove('good');
+    calibTargetL.classList.remove('active'); calibTargetR.classList.remove('active');
+    
+    if (status === "NEAR") {
+        calibMsg.innerText = "太近了！"; calibMsg.style.color = "#ff3333";
+        calibHint.innerText = "請後退一點，直到肩膀進入框線";
+        calibrationHoldTimer = 0;
+    } else if (status === "FAR") {
+        calibMsg.innerText = "太遠了！"; calibMsg.style.color = "#ff3333";
+        calibHint.innerText = "請靠近一點";
+        calibrationHoldTimer = 0;
+    } else if (status === "HEAD_HIGH") {
+        calibMsg.innerText = "頭部太高！"; calibMsg.style.color = "#ffff00";
+        calibHint.innerText = "請調整鏡頭角度，讓頭部低於紅線";
+        calibrationHoldTimer = 0;
+    } else {
+        // 位置正確，檢查手勢
+        calibBox.classList.add('good');
+        const distL = Math.hypot(leftWrist.x - targetLX, leftWrist.y - targetY);
+        const distR = Math.hypot(rightWrist.x - targetRX, rightWrist.y - targetY);
+        const inPos = (distL < 0.15 && distR < 0.15);
+
+        if (inPos) {
+            calibMsg.innerText = "保持姿勢..."; calibMsg.style.color = "#00ff00";
+            calibHint.innerText = "HOLD POSE TO START";
+            calibTargetL.classList.add('active'); calibTargetR.classList.add('active');
+            calibrationHoldTimer++;
+            
+            // 畫出進度環 (可選)
+            const progress = Math.min(calibrationHoldTimer / CALIBRATION_HOLD_TARGET, 1);
+            calibMsg.innerText = `READY... ${Math.ceil((1-progress)*3)}`;
+            
+            if (calibrationHoldTimer >= CALIBRATION_HOLD_TARGET) {
+                beginGameCountdown();
+            }
+        } else {
+            calibMsg.innerText = "舉起雙手 (GUARDS UP)"; calibMsg.style.color = "#fff";
+            calibHint.innerText = "將手腕對準綠色圈圈";
+            calibrationHoldTimer = 0;
+        }
+    }
+}
+
+function beginGameCountdown() {
+    if (gameState !== 'CALIBRATION') return;
+    gameState = 'COUNTDOWN';
+    calibLayer.style.display = 'none';
+    const cdOverlay = document.getElementById('countdown-overlay');
+    const cdNum = document.getElementById('countdown-number');
+    cdOverlay.style.display = 'flex';
+    
+    let n = 3;
+    cdNum.innerText = n;
+    
+    // 播放音效 (可選)
+    if(audioCtx) { 
+        const osc = audioCtx.createOscillator(); osc.frequency.value = 400; 
+        osc.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.1);
+    }
+
+    let iv = setInterval(() => {
+        n--;
+        if (n > 0) {
+            cdNum.innerText = n;
+            cdNum.style.animation = 'none';
+            void cdNum.offsetWidth;
+            cdNum.style.animation = 'popIn 0.8s infinite';
+            if(audioCtx) { 
+                 const osc = audioCtx.createOscillator(); osc.frequency.value = 400; 
+                 osc.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.1);
+            }
+        } else {
+            clearInterval(iv);
+            cdOverlay.style.display = 'none';
+            startGameActual();
+        }
+    }, 1000);
+}
+
+function startGameActual() {
+    gameState = 'PLAYING';
+    gameHud.style.display = 'block';
+    
     if (selectedMode === 'sparring') {
         let rounds = parseInt(document.getElementById('input-rounds').value) || 1;
         let mins = parseFloat(document.getElementById('input-minutes').value) || 1;
         let restMins = parseFloat(document.getElementById('input-rest').value) || 1;
-        
         sparringConfig.totalRounds = rounds;
         sparringConfig.secondsPerRound = mins * 60;
         sparringConfig.restTime = restMins * 60;
         sparringConfig.currentRound = 1;
         sparringConfig.timeLeft = sparringConfig.secondsPerRound;
         sparringConfig.state = 'FIGHT';
-        
         roundScores = [];
-        sparringInfo.style.display = 'flex';
-        comboPanel.style.display = 'block';
-        updateTimerDisplay();
-        startBGM(); 
+        sparringInfo.style.display = 'flex'; comboPanel.style.display = 'block';
+        updateTimerDisplay(); startSparringLoop();
     } else {
-        sparringInfo.style.display = 'none';
-        comboPanel.style.display = 'none';
+        resetBtn.style.display = 'flex';
+        sparringInfo.style.display = 'none'; comboPanel.style.display = 'none';
     }
-
-    highlights.videos = [];
-    highlights.images = [];
-    
-    landingLayer.style.opacity = 0;
-    setTimeout(() => { 
-        landingLayer.style.display = 'none'; 
-        gameHud.style.display = 'block';
-        
-        if (selectedMode === 'speed') {
-            resetBtn.style.display = 'flex'; 
-        } else {
-            resetBtn.style.display = 'none';
-        }
-
-        setTimeout(() => gameHud.style.opacity = 1, 50);
-        isGameRunning = true;
-        if (selectedMode === 'sparring') startSparringLoop(); 
-        const camera = new Camera(videoElement, {
-            onFrame: async () => { await pose.send({image: videoElement}); },
-            width: 640, height: 480
-        });
-        camera.start();
-    }, 500);
+    startBGM();
 }
 
 function resetGame() {
-    count = 0; countElement.innerText = count;
-    dodgeCombo = 0; updateComboUI();
+    count = 0; countElement.innerText = count; dodgeCombo = 0; updateComboUI();
     leftStage = "down"; rightStage = "down";
-    roundScores = [];
-    isRecording = false;
-    highlights.videos = [];
-    highlights.images = [];
+    roundScores = []; isRecording = false; highlights.videos = []; highlights.images = [];
 }
 
 function updateTimerDisplay() {
@@ -1177,229 +1079,122 @@ function updateTimerDisplay() {
 function startSparringLoop() {
     if (gameTimerInterval) clearInterval(gameTimerInterval); 
     gameTimerInterval = setInterval(() => {
-        if (!isGameRunning) return;
-        
+        if (gameState !== 'PLAYING') return;
         if (sparringConfig.state === 'FIGHT') {
-            sparringConfig.timeLeft--;
-            updateTimerDisplay();
+            sparringConfig.timeLeft--; updateTimerDisplay();
             if (sparringConfig.timeLeft <= 0) {
-                if (sparringConfig.currentRound < sparringConfig.totalRounds) {
-                    startRest();
-                } else {
-                    endGame();
-                }
+                if (sparringConfig.currentRound < sparringConfig.totalRounds) startRest();
+                else endGame();
             }
         } else if (sparringConfig.state === 'REST') {
              sparringConfig.timeLeft--;
-             let m = Math.floor(sparringConfig.timeLeft / 60);
-             let s = Math.floor(sparringConfig.timeLeft % 60);
+             let m = Math.floor(sparringConfig.timeLeft / 60); let s = Math.floor(sparringConfig.timeLeft % 60);
              restTimerEl.innerText = `${m}:${s < 10 ? '0'+s : s}`;
-             if (sparringConfig.timeLeft <= 0) {
-                 endRest();
-             }
+             if (sparringConfig.timeLeft <= 0) endRest();
         }
     }, 1000);
     scheduleNextAttack();
 }
 
 function startRest() {
-    roundScores.push(count); 
-    sparringConfig.state = 'REST';
-    sparringConfig.timeLeft = sparringConfig.restTime;
-    restOverlay.style.display = 'flex';
-    stopBGM(); 
+    roundScores.push(count); sparringConfig.state = 'REST'; sparringConfig.timeLeft = sparringConfig.restTime;
+    restOverlay.style.display = 'flex'; stopBGM(); 
 }
-
 function endRest() {
-    restOverlay.style.display = 'none';
-    count = 0;
-    countElement.innerText = count;
-    dodgeCombo = 0;
-    updateComboUI();
-
-    sparringConfig.state = 'FIGHT';
-    sparringConfig.currentRound++;
+    restOverlay.style.display = 'none'; count = 0; countElement.innerText = count; dodgeCombo = 0; updateComboUI();
+    sparringConfig.state = 'FIGHT'; sparringConfig.currentRound++;
     let mins = parseFloat(document.getElementById('input-minutes').value) || 1;
-    sparringConfig.timeLeft = mins * 60;
-    updateTimerDisplay();
-    startBGM();
-    scheduleNextAttack(); 
+    sparringConfig.timeLeft = mins * 60; updateTimerDisplay(); startBGM(); scheduleNextAttack(); 
 }
-
 function endGame() {
-    isGameRunning = false;
-    stopBGM(); 
-    stopRecording(false);
-    clearInterval(gameTimerInterval);
-    roundScores.push(count);
-    resultLayer.style.display = 'flex';
-    
-    let html = '';
-    let total = 0;
+    gameState = 'RESULT'; stopBGM(); stopRecording(false); clearInterval(gameTimerInterval);
+    roundScores.push(count); resultLayer.style.display = 'flex';
+    let html = ''; let total = 0;
     roundScores.forEach((score, index) => {
         total += score;
-        html += `
-          <div class="score-row">
-            <span class="round-label">ROUND ${index + 1}</span>
-            <span class="round-score">${score}</span>
-          </div>
-        `;
+        html += `<div class="score-row"><span class="round-label">ROUND ${index + 1}</span><span class="round-score">${score}</span></div>`;
     });
     let avg = roundScores.length > 0 ? Math.round(total / roundScores.length) : 0;
-    html += `
-      <div class="score-row total-row">
-        <span>TOTAL</span>
-        <span>${total}</span>
-      </div>
-      <div class="score-row">
-        <span class="round-label">AVG</span>
-        <span class="round-score">${avg}</span>
-      </div>
-    `;
+    html += `<div class="score-row total-row"><span>TOTAL</span><span>${total}</span></div><div class="score-row"><span class="round-label">AVG</span><span class="round-score">${avg}</span></div>`;
     scoreDetailsEl.innerHTML = html;
 }
 
 function scheduleNextAttack() {
-    if (!isGameRunning || sparringConfig.state !== 'FIGHT') return;
+    if (gameState !== 'PLAYING' || sparringConfig.state !== 'FIGHT') return;
     let delay = Math.random() * 3000 + 2000;
-    setTimeout(() => { 
-        if (isGameRunning && sparringConfig.state === 'FIGHT') launchAttack(); 
-    }, delay);
+    setTimeout(() => { if (gameState === 'PLAYING' && sparringConfig.state === 'FIGHT') launchAttack(); }, delay);
 }
-
-// 🔥 閃躲錄影開始邏輯 (Attack Start)
 function launchAttack() {
     activeAttackType = Math.random() > 0.5 ? 'STRAIGHT' : 'HOOK';
-    
-    // Condition A1: 開始攻擊時開始錄影 (Dodge)
-    startRecording('dodge');
-
-    enemyState = 'WARNING';
-    synthWarning();
-
-    enemyLayer.style.display = 'block';
+    startRecording('dodge'); enemyState = 'WARNING'; synthWarning(); enemyLayer.style.display = 'block';
     
     if (activeAttackType === 'STRAIGHT') {
-        attackText.innerText = "STRAIGHT! SLIP!";
-        attackText.className = "attack-msg attack-straight";
-        if (latestLandmarks && latestLandmarks[0]) {
-            lockedTarget = { x: latestLandmarks[0].x, y: latestLandmarks[0].y };
-        }
+        attackText.innerText = "STRAIGHT! SLIP!"; attackText.className = "attack-msg attack-straight";
+        if (latestLandmarks && latestLandmarks[0]) lockedTarget = { x: latestLandmarks[0].x, y: latestLandmarks[0].y };
     } else {
-        attackText.innerText = "HOOK! DUCK!";
-        attackText.className = "attack-msg attack-hook";
+        attackText.innerText = "HOOK! DUCK!"; attackText.className = "attack-msg attack-hook";
         if (latestLandmarks && latestLandmarks[11] && latestLandmarks[12]) {
             let currentShoulderY = (latestLandmarks[11].y + latestLandmarks[12].y) / 2;
             lockedDuckY = currentShoulderY - 0.05; 
         }
     }
-
-    let reactionTime = 800; 
-    if (sparringConfig.difficulty === 'EASY') reactionTime = 1500;
-    if (sparringConfig.difficulty === 'NORMAL') reactionTime = 1000;
-
+    let reactionTime = (sparringConfig.difficulty === 'EASY') ? 1500 : (sparringConfig.difficulty === 'NORMAL') ? 1000 : 800;
     setTimeout(() => {
-        if (!isGameRunning || sparringConfig.state !== 'FIGHT') return;
+        if (gameState !== 'PLAYING' || sparringConfig.state !== 'FIGHT') return;
         checkDefense();
         setTimeout(() => {
-            enemyLayer.style.display = 'none';
-            lockedTarget = null;
-            lockedDuckY = null;
-            enemyState = 'IDLE';
-            scheduleNextAttack(); 
+            enemyLayer.style.display = 'none'; lockedTarget = null; lockedDuckY = null; enemyState = 'IDLE'; scheduleNextAttack(); 
         }, 500);
     }, reactionTime);
 }
 
 function updateComboUI() {
-    comboCountEl.innerText = dodgeCombo;
-    comboCountEl.className = ""; 
+    comboCountEl.innerText = dodgeCombo; comboCountEl.className = ""; 
     if (dodgeCombo >= 10) comboCountEl.classList.add("combo-max");
     else if (dodgeCombo >= 5) comboCountEl.classList.add("combo-burn");
     else comboCountEl.classList.add("combo-normal");
 }
 
-// 🔥 閃躲判定邏輯 (Dodge Check)
 function checkDefense() {
     if (!latestLandmarks) return; 
-    const lm = latestLandmarks;
-    let nose = lm[0];
-    let isHit = false;
-
+    const lm = latestLandmarks; let nose = lm[0]; let isHit = false;
     if (activeAttackType === 'STRAIGHT') {
         if (lockedTarget && nose) {
             let dist = Math.sqrt(Math.pow(nose.x - lockedTarget.x, 2) + Math.pow(nose.y - lockedTarget.y, 2));
             if (dist < 0.1) isHit = true;
         }
-    } 
-    else if (activeAttackType === 'HOOK') {
-        if (lockedDuckY !== null && nose) {
-            if (nose.y < lockedDuckY) isHit = true; 
-        }
+    } else if (activeAttackType === 'HOOK') {
+        if (lockedDuckY !== null && nose) { if (nose.y < lockedDuckY) isHit = true; }
     }
 
-    if (isHit) {
-        // 失敗：不儲存，直接停止
-        stopRecording(false);
-        takeDamage();
-    } else {
-        // Condition B1: 閃躲成功拍攝照片
-        captureScreenshot('dodge');
-
-        // Condition A1: 延遲 1.5 秒停止錄影，確保錄下閃躲後的動作
-        setTimeout(() => {
-            stopRecording(true); 
-        }, 1500);
-       
-        dodgeCombo++;
-        updateComboUI();
-        let bonus = dodgeCombo * 20;
-        count += (100 + bonus);
-        countElement.innerText = count;
+    if (isHit) { stopRecording(false); takeDamage(); } 
+    else {
+        captureScreenshot('dodge'); setTimeout(() => { stopRecording(true); }, 1500);
+        dodgeCombo++; updateComboUI(); count += (100 + dodgeCombo * 20); countElement.innerText = count;
         spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "DODGE!", "#00ff00");
     }
 }
 
 function takeDamage() {
-    synthDamage();
-    dodgeCombo = 0;
-    updateComboUI();
-
-    damageOverlay.classList.remove('damage-flash');
-    void damageOverlay.offsetWidth;
-    damageOverlay.classList.add('damage-flash');
-
+    synthDamage(); dodgeCombo = 0; updateComboUI();
+    damageOverlay.classList.remove('damage-flash'); void damageOverlay.offsetWidth; damageOverlay.classList.add('damage-flash');
     const gameContainer = document.querySelector('.container');
-    gameContainer.classList.remove('hit-shock'); 
-    void gameContainer.offsetWidth; 
-    gameContainer.classList.add('hit-shock');
-
-    setTimeout(() => {
-        gameContainer.classList.remove('hit-shock');
-    }, 400);
-
-    count -= 50; 
-    if (count < 0) count = 0;
-    countElement.innerText = count;
+    gameContainer.classList.remove('hit-shock'); void gameContainer.offsetWidth; gameContainer.classList.add('hit-shock');
+    setTimeout(() => { gameContainer.classList.remove('hit-shock'); }, 400);
+    count -= 50; if (count < 0) count = 0; countElement.innerText = count;
     spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "HIT! -50", "#ff0000");
 }
 
 function calculateDistance(a, b) { return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)); }
 function calculateAngle(a, b, c) {
     const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
-    let angle = Math.abs(radians * 180.0 / Math.PI);
-    if (angle > 180.0) angle = 360 - angle;
-    return angle;
+    let angle = Math.abs(radians * 180.0 / Math.PI); if (angle > 180.0) angle = 360 - angle; return angle;
 }
 function drawVisualText(ctx, text, visualX, visualY, color) {
-  ctx.save();
-  const internalX = ctx.canvas.width - visualX;
+  ctx.save(); const internalX = ctx.canvas.width - visualX;
   ctx.translate(internalX, visualY); ctx.scale(-1, 1); 
-  ctx.font = `900 40px 'Montserrat', sans-serif`;
-  ctx.fillStyle = color; 
-  ctx.shadowBlur = 0; 
-  ctx.strokeStyle = "white"; ctx.lineWidth = 3; 
-  ctx.strokeText(text, 0, 0); ctx.fillText(text, 0, 0); 
+  ctx.font = `900 40px 'Montserrat', sans-serif`; ctx.fillStyle = color; 
+  ctx.strokeStyle = "white"; ctx.lineWidth = 3; ctx.strokeText(text, 0, 0); ctx.fillText(text, 0, 0); 
   ctx.restore();
 }
 function spawnFloatingText(x, y, text, color, type='standard') {
@@ -1412,9 +1207,7 @@ function drawLine(ctx, a, b, color) {
 }
 function drawDot(ctx, lm, color, radius=5) {
     const x = lm.x * ctx.canvas.width; const y = lm.y * ctx.canvas.height;
-    ctx.beginPath(); ctx.arc(x, y, radius, 0, 2 * Math.PI);
-    ctx.fillStyle = color; ctx.fill(); 
-    ctx.stroke(); 
+    ctx.beginPath(); ctx.arc(x, y, radius, 0, 2 * Math.PI); ctx.fillStyle = color; ctx.fill(); ctx.stroke(); 
 }
 
 const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
@@ -1424,66 +1217,32 @@ pose.onResults(onResults);
 const LEFT_HAND_CONFIG = { triggerRatio: 0.22, resetRatio: 0.28, minPunchAngle: 85, cooldownFrames: 3 };
 const RIGHT_HAND_CONFIG = { triggerRatio: 0.18, resetRatio: 0.24, minPunchAngle: 75, cooldownFrames: 2 };
 
-// 🔥 核心處理函式 (Process Hand) - 包含快拳邏輯
 function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, validYLimit) {
-  if (wrist.y > validYLimit) return currentStage;
-  if (selectedMode === 'sparring' && sparringConfig.state !== 'FIGHT') {
-      return currentStage;
-  }
-
+  if (wrist.y > validYLimit || (selectedMode === 'sparring' && sparringConfig.state !== 'FIGHT')) return currentStage;
   const dist = calculateDistance(shoulder, wrist);
-  let ratio = dist / scale;
-  const armAngle = calculateAngle(shoulder, elbow, wrist);
-  const isArmStraight = armAngle > config.minPunchAngle;
-  let nextStage = currentStage;
+  let ratio = dist / scale; const armAngle = calculateAngle(shoulder, elbow, wrist);
+  const isArmStraight = armAngle > config.minPunchAngle; let nextStage = currentStage;
 
   if (currentStage === "down") {
-    if (ratio > config.triggerRatio && isArmStraight && cooldown === 0) {
-      nextStage = "punch";
-    }
-  }
-  else if (currentStage === "punch") {
+    if (ratio > config.triggerRatio && isArmStraight && cooldown === 0) nextStage = "punch";
+  } else if (currentStage === "punch") {
     const now = Date.now();
     if (selectedMode === 'sparring') {
-        // Condition A2: 連擊錄影邏輯
-        if (now - lastPunchTime < 1500) {
-            comboCounter++;
-        } else {
-            // 超時視為新的一波連擊，從第1拳開始錄影
-            comboCounter = 1; 
-            if (!isRecording) startRecording('combo');
-        }
+        if (now - lastPunchTime < 1500) comboCounter++;
+        else { comboCounter = 1; if (!isRecording) startRecording('combo'); }
         lastPunchTime = now;
-        
-        // Condition B2: 第 4 拳時截圖
-        if (comboCounter === 4) {
-             captureScreenshot('combo');
-        }
+        if (comboCounter === 4) captureScreenshot('combo');
     }
-
-    count++;
-    countElement.innerText = count;
-    
-    // UI 特效
-    const sb = document.querySelector('.score-board');
-    sb.classList.remove('pop-effect'); void sb.offsetWidth; sb.classList.add('pop-effect');
-    
+    count++; countElement.innerText = count;
+    const sb = document.querySelector('.score-board'); sb.classList.remove('pop-effect'); void sb.offsetWidth; sb.classList.add('pop-effect');
     playPunchSound(label === "L" ? 'light' : 'heavy');
-    
-    if (label === "L") leftCooldown = config.cooldownFrames;
-    else rightCooldown = config.cooldownFrames;
-    
-    const hitX = wrist.x * canvasElement.width;
-    const hitY = wrist.y * canvasElement.height;
+    if (label === "L") leftCooldown = config.cooldownFrames; else rightCooldown = config.cooldownFrames;
+    const hitX = wrist.x * canvasElement.width; const hitY = wrist.y * canvasElement.height;
     const color = label === "L" ? "#00d2ff" : "#ff9900"; 
     spawnFloatingText(hitX, hitY, label === "L" ? "JAB!" : "CROSS!", color, label === "L" ? 'PUNCH_L' : 'PUNCH_R');
-    
     nextStage = "retract";
-  }
-  else if (currentStage === "retract") {
-    if (ratio < config.resetRatio) {
-      nextStage = "down"; 
-    }
+  } else if (currentStage === "retract") {
+    if (ratio < config.resetRatio) nextStage = "down"; 
   }
   return nextStage;
 }
@@ -1492,14 +1251,51 @@ function onResults(results) {
   canvasElement.width = videoElement.videoWidth;
   canvasElement.height = videoElement.videoHeight;
   const cw = canvasElement.width; const ch = canvasElement.height;
+  canvasCtx.save(); canvasCtx.clearRect(0, 0, cw, ch); canvasCtx.drawImage(results.image, 0, 0, cw, ch);
 
-  canvasCtx.save();
-  canvasCtx.clearRect(0, 0, cw, ch);
-  canvasCtx.drawImage(results.image, 0, 0, cw, ch);
+  if (results.poseLandmarks) {
+      const lm = results.poseLandmarks;
+      latestLandmarks = lm;
+      
+      // 1. 如果在校正模式，只執行校正，不跑遊戲邏輯
+      if (gameState === 'CALIBRATION') {
+          updateCalibration(lm);
+          canvasCtx.restore();
+          return;
+      }
+      // 2. 如果在倒數，不跑遊戲邏輯
+      if (gameState === 'COUNTDOWN') {
+          canvasCtx.restore();
+          return;
+      }
 
+      // 3. 遊戲進行中
+      const skeletonColor = '#00ff00';
+      const pairs = [[11,13], [13,15], [12,14], [14,16], [11,12]];
+      pairs.forEach(p => { if(lm[p[0]] && lm[p[1]]) drawLine(canvasCtx, lm[p[0]], lm[p[1]], skeletonColor); });
+
+      if (lm[11] && lm[12]) {
+        const shoulderWidth = calculateDistance(lm[11], lm[12]);
+        let solarPlexusY = (lm[11].y + lm[12].y) / 2 + (shoulderWidth * 0.5);
+        const nose = lm[0]; const guardRadius = shoulderWidth * 0.8;
+
+        if (lm[15]) {
+            let dotColor = '#ff0000'; if (nose && calculateDistance(lm[15], nose) < guardRadius) dotColor = '#00ff00';
+            drawDot(canvasCtx, lm[15], dotColor, 8);
+        }
+        if (lm[16]) {
+            let dotColor = '#ff0000'; if (nose && calculateDistance(lm[16], nose) < guardRadius) dotColor = '#00ff00';
+            drawDot(canvasCtx, lm[16], dotColor, 8);
+        }
+
+        if (lm[15] && lm[13] && lm[15].visibility > 0.5) leftStage = processHand(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, solarPlexusY);
+        if (lm[16] && lm[14] && lm[16].visibility > 0.5) rightStage = processHand(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG, solarPlexusY);
+      }
+  }
+
+  // 渲染浮動文字
   for (let i = floatingTexts.length - 1; i >= 0; i--) {
-    let ft = floatingTexts[i];
-    ft.life--; 
+    let ft = floatingTexts[i]; ft.life--; 
     if (ft.type === 'PUNCH_L') { ft.offsetX -= 2; ft.offsetY -= 1; }
     else if (ft.type === 'PUNCH_R') { ft.offsetX += 2; ft.offsetY -= 1; }
     else { ft.offsetY -= 5; }
@@ -1509,110 +1305,36 @@ function onResults(results) {
     canvasCtx.globalAlpha = 1.0;
     if (ft.life <= 0) floatingTexts.splice(i, 1);
   }
+  if (leftCooldown > 0) leftCooldown--; if (rightCooldown > 0) rightCooldown--;
 
-  if (leftCooldown > 0) leftCooldown--;
-  if (rightCooldown > 0) rightCooldown--;
-
-  // 🔥 錄影監控：檢測快拳結束
-  // 如果距離上一拳超過 2 秒，停止錄影
-  if (isRecording && currentRecType === 'combo' && Date.now() - lastPunchTime > 2000) {
-      console.log(`[REC] Combo 結束檢查: 連擊數 ${comboCounter}`);
-      // 關鍵判定：只有 >= 4 拳才儲存(true)，否則丟棄(false)
-      stopRecording(comboCounter >= 4); 
-      comboCounter = 0;
+  // 錄影畫面更新 (保持鏡像)
+  if (isRecording) {
+      if (recordingCanvasElement.width !== cw) { recordingCanvasElement.width = cw; recordingCanvasElement.height = ch; }
+      recordingCanvasCtx.clearRect(0, 0, cw, ch);
+      recordingCanvasCtx.save(); recordingCanvasCtx.translate(cw, 0); recordingCanvasCtx.scale(-1, 1);
+      recordingCanvasCtx.drawImage(canvasElement, 0, 0, cw, ch); recordingCanvasCtx.restore();
+      if (currentRecType === 'combo' && Date.now() - lastPunchTime > 2000) {
+          stopRecording(comboCounter >= 4); comboCounter = 0;
+      }
   }
-
-  if (results.poseLandmarks) {
-    const lm = results.poseLandmarks;
-    latestLandmarks = lm;
-    const skeletonColor = '#00ff00';
-    const pairs = [[11,13], [13,15], [12,14], [14,16], [11,12]];
-    pairs.forEach(p => { if(lm[p[0]] && lm[p[1]]) drawLine(canvasCtx, lm[p[0]], lm[p[1]], skeletonColor); });
-
-    if (lm[11] && lm[12]) {
-      const shoulderWidth = calculateDistance(lm[11], lm[12]);
-      let solarPlexusY = (lm[11].y + lm[12].y) / 2 + (shoulderWidth * 0.5);
-      const nose = lm[0];
-      const guardRadius = shoulderWidth * 0.8;
-
-      if (lm[15]) {
-         let dotColor = '#ff0000';
-         if (nose && calculateDistance(lm[15], nose) < guardRadius) dotColor = '#00ff00';
-         drawDot(canvasCtx, lm[15], dotColor, 8);
-      }
-      if (lm[16]) {
-         let dotColor = '#ff0000';
-         if (nose && calculateDistance(lm[16], nose) < guardRadius) dotColor = '#00ff00';
-         drawDot(canvasCtx, lm[16], dotColor, 8);
-      }
-
-      if (lm[15] && lm[13] && lm[15].visibility > 0.5) {
-        leftStage = processHand(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, solarPlexusY);
-      }
-      if (lm[16] && lm[14] && lm[16].visibility > 0.5) {
-        rightStage = processHand(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG, solarPlexusY);
-      }
-    }
-  }
-
+  
   // 敵方特效
   if (enemyState === 'WARNING') {
-      const w = canvasElement.width;
-      const h = canvasElement.height;
-      const isDesktop = w > 800;
-
       if (activeAttackType === 'STRAIGHT' && lockedTarget) {
-          const tx = lockedTarget.x * w;
-          const ty = lockedTarget.y * h;
-          const radius = Math.min(w * 0.06, 40); 
-          canvasCtx.beginPath();
-          canvasCtx.arc(tx, ty, radius, 0, 2 * Math.PI);
+          const tx = lockedTarget.x * cw; const ty = lockedTarget.y * ch;
+          canvasCtx.beginPath(); canvasCtx.arc(tx, ty, Math.min(cw * 0.06, 40), 0, 2 * Math.PI);
           canvasCtx.fillStyle = "rgba(255, 0, 0, 0.2)"; canvasCtx.fill();
-          canvasCtx.lineWidth = isDesktop ? 5 : w * 0.01; 
-          canvasCtx.strokeStyle = "rgba(255, 0, 0, 0.8)"; canvasCtx.stroke();
-          canvasCtx.shadowBlur = 20; canvasCtx.shadowColor = "red"; canvasCtx.stroke(); canvasCtx.shadowBlur = 0;
+          canvasCtx.lineWidth = cw > 800 ? 5 : cw * 0.01; canvasCtx.strokeStyle = "rgba(255, 0, 0, 0.8)"; canvasCtx.stroke();
       }
       if (activeAttackType === 'HOOK' && lockedDuckY !== null) {
-          const dy = lockedDuckY * h;
-          const maxLineLength = 800;
-          const lineLength = Math.min(w, maxLineLength);
-          const startX = (w - lineLength) / 2;
-          const endX = startX + lineLength;
-          const now = Date.now();
-          const flash = 0.3 + 0.7 * Math.abs(Math.sin(now / 150));
-          canvasCtx.beginPath(); canvasCtx.moveTo(startX, dy); canvasCtx.lineTo(endX, dy);
-          let gradient = canvasCtx.createLinearGradient(startX, 0, endX, 0);
-          gradient.addColorStop(0, `rgba(255, 0, 0, 0)`);
-          gradient.addColorStop(0.2, `rgba(255, 0, 0, ${0.6 * flash})`);
-          gradient.addColorStop(0.5, `rgba(255, 255, 255, ${0.9 * flash})`);
-          gradient.addColorStop(0.8, `rgba(255, 0, 0, ${0.6 * flash})`);
-          gradient.addColorStop(1, `rgba(255, 0, 0, 0)`);
-          canvasCtx.lineWidth = Math.min(h * 0.04, 20); 
-          canvasCtx.strokeStyle = gradient;
-          canvasCtx.shadowBlur = 30 * flash; canvasCtx.shadowColor = "red"; canvasCtx.stroke(); canvasCtx.shadowBlur = 0;
+          const dy = lockedDuckY * ch; const startX = (cw - Math.min(cw, 800)) / 2;
+          canvasCtx.beginPath(); canvasCtx.moveTo(startX, dy); canvasCtx.lineTo(startX + Math.min(cw, 800), dy);
+          let gradient = canvasCtx.createLinearGradient(startX, 0, startX + Math.min(cw, 800), 0);
+          gradient.addColorStop(0, `rgba(255, 0, 0, 0)`); gradient.addColorStop(0.5, `rgba(255, 255, 255, 0.9)`); gradient.addColorStop(1, `rgba(255, 0, 0, 0)`);
+          canvasCtx.strokeStyle = gradient; canvasCtx.lineWidth = Math.min(ch * 0.04, 20); canvasCtx.stroke();
       }
   }
   canvasCtx.restore();
-
-  // ===========================================
-  // [修正] 錄影畫面繪製區
-  // 必須每一幀都把主畫面畫到 recording_canvas
-  // ===========================================
-  if (isRecording) {
-      if (recordingCanvasElement.width !== canvasElement.width) {
-          recordingCanvasElement.width = canvasElement.width;
-          recordingCanvasElement.height = canvasElement.height;
-      }
-
-      recordingCanvasCtx.clearRect(0, 0, recordingCanvasElement.width, recordingCanvasElement.height);
-      
-      // 鏡像翻轉繪製 (保持所見即所得)
-      recordingCanvasCtx.save();
-      recordingCanvasCtx.translate(recordingCanvasElement.width, 0);
-      recordingCanvasCtx.scale(-1, 1);
-      recordingCanvasCtx.drawImage(canvasElement, 0, 0, recordingCanvasElement.width, recordingCanvasElement.height);
-      recordingCanvasCtx.restore();
-  }
 }
 </script>
 </body>
