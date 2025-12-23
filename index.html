@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>XMAS BOXING CHALLENGE - 錄影修正版</title>
+<title>XMAS BOXING CHALLENGE - 完美錄影版</title>
 <meta name="description" content="免下載 APP！開啟網頁即可透過鏡頭練習拳擊。支援手機/平板/電腦，快來挑戰極速閃躲與連擊！">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 /* =========================================
-   【全局與背景】
+   【CSS 樣式表】
    ========================================= */
 body { 
   font-family: 'Montserrat', sans-serif; 
@@ -52,16 +52,13 @@ body {
   100% { top: 110%; transform: translateX(20px); opacity: 0; }
 }
 
-/* =========================================
-   【UI 佈局】
-   ========================================= */
 .container { 
   position: relative; width: 100vw; height: 100vh; 
   transition: filter 0.2s ease-out;
   transform-origin: center center;
 }
 
-/* 受傷特效 */
+/* 受傷震動特效 */
 @keyframes shake-hard {
   0% { transform: translate(0, 0) rotate(0deg); }
   10% { transform: translate(-15px, -15px) rotate(-1deg); } 
@@ -169,7 +166,7 @@ video, canvas {
 .hl-action-btn:hover { transform: scale(1.02); }
 .btn-pdf { background: linear-gradient(135deg, #fbbf24, #d97706); color: #000; }
 
-/* --- 1. 初始選單與導覽精靈 (Wizard) --- */
+/* --- 1. 初始選單與導覽精靈 --- */
 #landing-layer {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 100;
@@ -207,34 +204,23 @@ video, canvas {
 .wizard-step { display: none; flex-direction: column; gap: 20px; }
 .wizard-step.active { display: flex; animation: fadeIn 0.3s; }
 .step-title { font-size: 18px; font-weight: 700; color: #fbbf24; margin-bottom: 5px; }
-
 .setting-row { display: flex; flex-direction: column; gap: 8px; text-align: left; }
 .setting-row label { font-size: 14px; font-weight: bold; color: #ddd; letter-spacing: 1px; }
 
 .setup-select {
   appearance: none; -webkit-appearance: none;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255,255,255,0.3);
-  color: #fff;
-  padding: 12px;
-  font-size: 16px;
-  border-radius: 8px;
-  width: 100%;
-  cursor: pointer;
-  text-align: center;
-  font-family: 'Montserrat', sans-serif;
+  background-color: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.3);
+  color: #fff; padding: 12px; font-size: 16px; border-radius: 8px; width: 100%;
+  cursor: pointer; text-align: center; font-family: 'Montserrat', sans-serif;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  background-size: 20px;
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 20px;
 }
 .setup-select:focus { outline: none; border-color: #00d2ff; background-color: rgba(0,0,0,0.5); }
 .setup-select option { background-color: #333; color: #fff; }
 
 .diff-btn {
   padding: 12px; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: #fff;
-  border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Montserrat';
-  transition: 0.2s;
+  border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Montserrat'; transition: 0.2s;
 }
 .diff-btn.selected { background: #fbbf24; color: #000; border-color: #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
 
@@ -250,10 +236,8 @@ video, canvas {
   display: none; 
   padding: 20px 40px; font-size: 22px; font-weight: 800; font-family: 'Montserrat', sans-serif;
   color: #fff; background: linear-gradient(135deg, #ef4444, #b91c1c);
-  border: 2px solid #fff; 
-  border-radius: 50px; cursor: pointer; 
-  box-shadow: 0 0 30px rgba(239, 68, 68, 0.8);
-  transition: all 0.3s; margin-top: 10px;
+  border: 2px solid #fff; border-radius: 50px; cursor: pointer; 
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.8); transition: all 0.3s; margin-top: 10px;
 }
 #start-btn:active { transform: scale(0.95); }
 
@@ -294,9 +278,7 @@ video, canvas {
   text-shadow: 1px 1px 2px black;
 }
 #combo-count {
-  font-size: 80px; font-weight: 900; font-style: italic;
-  color: #fff; line-height: 1;
-  transition: transform 0.1s;
+  font-size: 80px; font-weight: 900; font-style: italic; color: #fff; line-height: 1; transition: transform 0.1s;
 }
 .combo-normal { color: #fff; }
 .combo-burn { color: #ff9900 !important; text-shadow: 0 0 10px #ff4500; animation: burnPulse 1s infinite alternate; }
@@ -343,10 +325,8 @@ video, canvas {
 #result-layer h1 { margin: 0 0 20px 0; font-size: 50px; color: #fbbf24; }
 
 .score-table {
-  background: rgba(255,255,255,0.1);
-  padding: 20px; border-radius: 15px; border: 1px solid #555;
-  width: 80%; max-width: 400px;
-  margin-bottom: 30px;
+  background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; border: 1px solid #555;
+  width: 80%; max-width: 400px; margin-bottom: 30px;
 }
 .score-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.2); }
 .score-row:last-child { border-bottom: none; }
@@ -588,7 +568,7 @@ video, canvas {
 
 <script>
 // =========================================
-//   Privacy & Recorder Setup (修正版)
+//   Privacy & Recorder Setup (完全修正版)
 // =========================================
 const privacySplash = document.getElementById('privacy-splash');
 privacySplash.addEventListener('click', () => {
@@ -614,7 +594,7 @@ let recordingStartTime = 0;
 const recordingCanvasElement = document.getElementById('recording_canvas');
 const recordingCanvasCtx = recordingCanvasElement.getContext('2d');
 
-// 🔥 修正 1：開始錄影時強制偶數解析度
+// 🔥 修正 1：開始錄影時強制偶數解析度 (手機/電腦通用關鍵)
 async function startRecording(type) {
     if (isRecording) return;
     
@@ -667,6 +647,7 @@ async function startRecording(type) {
 }
 
 // 停止錄影並儲存
+// save = true (儲存), save = false (捨棄)
 async function stopRecording(save = true) {
     if (!isRecording || !videoEncoder || !muxer) return;
     
@@ -687,6 +668,8 @@ async function stopRecording(save = true) {
                 time: new Date().toLocaleTimeString()
             });
             console.log("MP4 Saved!");
+        } else {
+            console.log("MP4 Discarded (Condition failed)");
         }
     } catch (e) {
         console.error("Stop recording failed:", e);
@@ -859,7 +842,7 @@ async function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') await audioCtx.resume();
     try {
-        const response = await fetch('punch.mp3');
+        const response = await fetch('punch.mp3'); // 需自行準備音效或移除錯誤處理
         if (!response.ok) throw new Error("punch.mp3 not found");
         const arrayBuffer = await response.arrayBuffer();
         punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
@@ -1211,8 +1194,11 @@ function scheduleNextAttack() {
     }, delay);
 }
 
+// 🔥 閃躲錄影開始邏輯 (Attack Start)
 function launchAttack() {
     activeAttackType = Math.random() > 0.5 ? 'STRAIGHT' : 'HOOK';
+    
+    // Condition A1: 開始攻擊時開始錄影 (Dodge)
     startRecording('dodge');
 
     enemyState = 'WARNING';
@@ -1260,6 +1246,7 @@ function updateComboUI() {
     else comboCountEl.classList.add("combo-normal");
 }
 
+// 🔥 閃躲判定邏輯 (Dodge Check)
 function checkDefense() {
     if (!latestLandmarks) return; 
     const lm = latestLandmarks;
@@ -1279,15 +1266,18 @@ function checkDefense() {
     }
 
     if (isHit) {
+        // 失敗：不儲存，直接停止
         stopRecording(false);
         takeDamage();
     } else {
-       setTimeout(() => {
-         stopRecording(true);
-       }, 1500);
-       
+        // Condition B1: 閃躲成功拍攝照片
         captureScreenshot('dodge');
 
+        // Condition A1: 延遲 1.5 秒停止錄影，確保錄下閃躲後的動作
+        setTimeout(() => {
+            stopRecording(true); 
+        }, 1500);
+       
         dodgeCombo++;
         updateComboUI();
         let bonus = dodgeCombo * 20;
@@ -1361,6 +1351,70 @@ pose.onResults(onResults);
 const LEFT_HAND_CONFIG = { triggerRatio: 0.22, resetRatio: 0.28, minPunchAngle: 85, cooldownFrames: 3 };
 const RIGHT_HAND_CONFIG = { triggerRatio: 0.18, resetRatio: 0.24, minPunchAngle: 75, cooldownFrames: 2 };
 
+// 🔥 核心處理函式 (Process Hand) - 包含快拳邏輯
+function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, validYLimit) {
+  if (wrist.y > validYLimit) return currentStage;
+  if (selectedMode === 'sparring' && sparringConfig.state !== 'FIGHT') {
+      return currentStage;
+  }
+
+  const dist = calculateDistance(shoulder, wrist);
+  let ratio = dist / scale;
+  const armAngle = calculateAngle(shoulder, elbow, wrist);
+  const isArmStraight = armAngle > config.minPunchAngle;
+  let nextStage = currentStage;
+
+  if (currentStage === "down") {
+    if (ratio > config.triggerRatio && isArmStraight && cooldown === 0) {
+      nextStage = "punch";
+    }
+  }
+  else if (currentStage === "punch") {
+    const now = Date.now();
+    if (selectedMode === 'sparring') {
+        // Condition A2: 連擊錄影邏輯
+        if (now - lastPunchTime < 1500) {
+            comboCounter++;
+        } else {
+            // 超時視為新的一波連擊，從第1拳開始錄影
+            comboCounter = 1; 
+            if (!isRecording) startRecording('combo');
+        }
+        lastPunchTime = now;
+        
+        // Condition B2: 第 4 拳時截圖
+        if (comboCounter === 4) {
+             captureScreenshot('combo');
+        }
+    }
+
+    count++;
+    countElement.innerText = count;
+    
+    // UI 特效
+    const sb = document.querySelector('.score-board');
+    sb.classList.remove('pop-effect'); void sb.offsetWidth; sb.classList.add('pop-effect');
+    
+    playPunchSound(label === "L" ? 'light' : 'heavy');
+    
+    if (label === "L") leftCooldown = config.cooldownFrames;
+    else rightCooldown = config.cooldownFrames;
+    
+    const hitX = wrist.x * canvasElement.width;
+    const hitY = wrist.y * canvasElement.height;
+    const color = label === "L" ? "#00d2ff" : "#ff9900"; 
+    spawnFloatingText(hitX, hitY, label === "L" ? "JAB!" : "CROSS!", color, label === "L" ? 'PUNCH_L' : 'PUNCH_R');
+    
+    nextStage = "retract";
+  }
+  else if (currentStage === "retract") {
+    if (ratio < config.resetRatio) {
+      nextStage = "down"; 
+    }
+  }
+  return nextStage;
+}
+
 function onResults(results) {
   canvasElement.width = videoElement.videoWidth;
   canvasElement.height = videoElement.videoHeight;
@@ -1386,9 +1440,12 @@ function onResults(results) {
   if (leftCooldown > 0) leftCooldown--;
   if (rightCooldown > 0) rightCooldown--;
 
-  // 🔥 修正 2：Combo 錄影保存條件放寬為 2 拳就存
+  // 🔥 錄影監控：檢測快拳結束
+  // 如果距離上一拳超過 2 秒，停止錄影
   if (isRecording && currentRecType === 'combo' && Date.now() - lastPunchTime > 2000) {
-      stopRecording(comboCounter >= 2); 
+      console.log(`[REC] Combo 結束檢查: 連擊數 ${comboCounter}`);
+      // 關鍵判定：只有 >= 4 拳才儲存(true)，否則丟棄(false)
+      stopRecording(comboCounter >= 4); 
       comboCounter = 0;
   }
 
@@ -1425,6 +1482,7 @@ function onResults(results) {
     }
   }
 
+  // 敵方特效
   if (enemyState === 'WARNING') {
       const w = canvasElement.width;
       const h = canvasElement.height;
@@ -1463,88 +1521,27 @@ function onResults(results) {
   }
   canvasCtx.restore();
 
-  // 🔥 修正 3：錄影專用畫布同步與編碼 (使用 startRecording 設定的偶數寬高)
+  // 🔥 錄影幀寫入 (使用偶數解析度)
   if (isRecording && videoEncoder && videoEncoder.state === "configured") {
-      // 確保畫布尺寸正確才繪製 (防止當機)
       if (recordingCanvasElement.width !== videoEncoder.encodeQueueSize && recordingCanvasElement.width > 0) {
           recordingCanvasCtx.save();
           recordingCanvasCtx.clearRect(0, 0, recordingCanvasElement.width, recordingCanvasElement.height);
-          
           recordingCanvasCtx.translate(recordingCanvasElement.width, 0);
           recordingCanvasCtx.scale(-1, 1);
-          
-          // 使用 drawImage 自動縮放，將來源畫布畫到偶數尺寸的錄影畫布上
           recordingCanvasCtx.drawImage(canvasElement, 0, 0, recordingCanvasElement.width, recordingCanvasElement.height);
           recordingCanvasCtx.restore();
 
           const now = performance.now();
           const timestamp = (now - recordingStartTime) * 1000;
-          
           const frame = new VideoFrame(recordingCanvasElement, { 
               timestamp: timestamp,
               duration: 33333 
           });
-          
           const isKeyFrame = (Math.floor(timestamp / 33333) % 30 === 0);
           videoEncoder.encode(frame, { keyFrame: isKeyFrame });
-          
           frame.close();
       }
   }
-}
-
-function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, validYLimit) {
-  if (wrist.y > validYLimit) return currentStage;
-  if (selectedMode === 'sparring' && sparringConfig.state !== 'FIGHT') {
-      return currentStage;
-  }
-
-  const dist = calculateDistance(shoulder, wrist);
-  let ratio = dist / scale;
-  const armAngle = calculateAngle(shoulder, elbow, wrist);
-  const isArmStraight = armAngle > config.minPunchAngle;
-  let nextStage = currentStage;
-
-  if (currentStage === "down") {
-    if (ratio > config.triggerRatio && isArmStraight && cooldown === 0) {
-      nextStage = "punch";
-    }
-  }
-  else if (currentStage === "punch") {
-    const now = Date.now();
-    if (selectedMode === 'sparring') {
-        if (now - lastPunchTime < 1500) {
-            comboCounter++;
-        } else {
-            // 第一拳若未錄影，開始錄影
-            comboCounter = 1; 
-            if (!isRecording) startRecording('combo');
-        }
-        lastPunchTime = now;
-        if (comboCounter >= 4) {
-            if (comboCounter % 4 === 0) captureScreenshot('combo');
-        }
-    }
-
-    count++;
-    countElement.innerText = count;
-    const sb = document.querySelector('.score-board');
-    sb.classList.remove('pop-effect'); void sb.offsetWidth; sb.classList.add('pop-effect');
-    playPunchSound(label === "L" ? 'light' : 'heavy');
-    if (label === "L") leftCooldown = config.cooldownFrames;
-    else rightCooldown = config.cooldownFrames;
-    const hitX = wrist.x * canvasElement.width;
-    const hitY = wrist.y * canvasElement.height;
-    const color = label === "L" ? "#00d2ff" : "#ff9900"; 
-    spawnFloatingText(hitX, hitY, label === "L" ? "JAB!" : "CROSS!", color, label === "L" ? 'PUNCH_L' : 'PUNCH_R');
-    nextStage = "retract";
-  }
-  else if (currentStage === "retract") {
-    if (ratio < config.resetRatio) {
-      nextStage = "down"; 
-    }
-  }
-  return nextStage;
 }
 </script>
 </body>
