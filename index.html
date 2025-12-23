@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>XMAS BOXING CHALLENGE - 完美錄影版</title>
+<title>XMAS BOXING CHALLENGE - 完美錄影修正版</title>
 <meta name="description" content="免下載 APP！開啟網頁即可透過鏡頭練習拳擊。支援校正引導、自動錄影與精彩回顧。">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1229,9 +1229,14 @@ function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldow
     const now = Date.now();
     if (selectedMode === 'sparring') {
         if (now - lastPunchTime < 1500) comboCounter++;
-        else { comboCounter = 1; if (!isRecording) startRecording('combo'); }
+        else { 
+            comboCounter = 1; 
+            // 修正：只有在敵人未攻擊時才啟動連擊錄影
+            if (!isRecording && enemyState === 'IDLE') startRecording('combo'); 
+        }
         lastPunchTime = now;
-        if (comboCounter === 4) captureScreenshot('combo');
+        // 修正：門檻改為 8 拳
+        if (comboCounter === 8) captureScreenshot('combo');
     }
     count++; countElement.innerText = count;
     const sb = document.querySelector('.score-board'); sb.classList.remove('pop-effect'); void sb.offsetWidth; sb.classList.add('pop-effect');
@@ -1339,7 +1344,8 @@ function onResults(results) {
       recordingCanvasCtx.restore();
 
       if (currentRecType === 'combo' && Date.now() - lastPunchTime > 2000) {
-          stopRecording(comboCounter >= 4); comboCounter = 0;
+          // 修正：門檻改為 8 拳
+          stopRecording(comboCounter >= 8); comboCounter = 0;
       }
   }
   
