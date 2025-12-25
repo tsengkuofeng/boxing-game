@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>XMAS BOXING CHALLENGE - 101跨年 & 教學最終版</title>
+<title>XMAS BOXING CHALLENGE - 101 最終進化版</title>
 <meta name="description" content="免下載 APP！開啟網頁即可透過鏡頭練習拳擊。支援校正引導、自動錄影與精彩回顧。">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -338,7 +338,7 @@ video, canvas {
 @keyframes burnPulse { from { opacity: 0.8; transform: scale(1); } to { opacity: 1; transform: scale(1.1); } }
 @keyframes shake { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, -1px); } }
 
-/* --- 跨年模式專用層 --- */
+/* --- 跨年模式專用層 (升級版) --- */
 #newyear-layer {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     z-index: 40; pointer-events: none; display: none;
@@ -347,18 +347,45 @@ video, canvas {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
 }
 .tower-container {
-    position: absolute; bottom: -50px; left: 50%; transform: translateX(-50%);
-    width: 200px; height: 60%; opacity: 0.8; transition: transform 0.1s;
-    filter: drop-shadow(0 0 20px rgba(0, 210, 255, 0.5));
+    position: absolute; bottom: -80px; left: 50%; transform: translateX(-50%);
+    width: 200px; height: 65%; opacity: 0.95; transition: transform 0.1s;
+    filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.8));
 }
+/* 101 的 SVG 路徑樣式 */
+.tower-path {
+    fill: #0c4a6e; /* 建築本體色 */
+    stroke: #00d2ff; /* 初始線條色 */
+    stroke-width: 3;
+    transition: stroke 0.3s, filter 0.3s;
+}
+
+/* 能量充能等級特效 */
+.tower-level-0 { stroke: #00d2ff; filter: drop-shadow(0 0 5px #00d2ff); }
+.tower-level-1 { stroke: #fbbf24; filter: drop-shadow(0 0 15px #fbbf24); } /* 金色 */
+.tower-level-2 { stroke: #ff4500; filter: drop-shadow(0 0 25px #ff4500); } /* 紅色 */
+.tower-level-3 { 
+    stroke: #fff; 
+    filter: drop-shadow(0 0 30px #fff);
+    animation: rainbowStroke 0.5s linear infinite; 
+} /* 爆發彩虹 */
+
+@keyframes rainbowStroke {
+    0% { stroke: #ff0000; filter: drop-shadow(0 0 30px #ff0000); }
+    20% { stroke: #ffff00; filter: drop-shadow(0 0 30px #ffff00); }
+    40% { stroke: #00ff00; filter: drop-shadow(0 0 30px #00ff00); }
+    60% { stroke: #00ffff; filter: drop-shadow(0 0 30px #00ffff); }
+    80% { stroke: #0000ff; filter: drop-shadow(0 0 30px #0000ff); }
+    100% { stroke: #ff00ff; filter: drop-shadow(0 0 30px #ff00ff); }
+}
+
 .tower-hit {
     animation: towerShake 0.1s infinite;
-    filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.9)) brightness(1.5);
+    filter: brightness(1.5);
 }
 @keyframes towerShake {
     0% { transform: translateX(-50%) rotate(0deg); }
-    25% { transform: translateX(-52%) rotate(-2deg); }
-    75% { transform: translateX(-48%) rotate(2deg); }
+    25% { transform: translateX(-52%) rotate(-1deg); }
+    75% { transform: translateX(-48%) rotate(1deg); }
     100% { transform: translateX(-50%) rotate(0deg); }
 }
 #newyear-msg {
@@ -665,13 +692,22 @@ video, canvas {
   <div id="newyear-layer">
     <canvas id="fireworks_canvas"></canvas>
     <div id="taipei-101" class="tower-container">
-        <svg viewBox="0 0 100 400" preserveAspectRatio="xMidYMax">
-            <path d="M30,400 L30,100 L40,80 L40,60 L48,40 L48,0 L52,0 L52,40 L60,60 L60,80 L70,100 L70,400 Z" fill="#0c4a6e" stroke="#00d2ff" stroke-width="2"/>
-            <line x1="30" y1="150" x2="70" y2="150" stroke="#00d2ff" stroke-width="2"/>
-            <line x1="30" y1="200" x2="70" y2="200" stroke="#00d2ff" stroke-width="2"/>
-            <line x1="30" y1="250" x2="70" y2="250" stroke="#00d2ff" stroke-width="2"/>
-            <line x1="30" y1="300" x2="70" y2="300" stroke="#00d2ff" stroke-width="2"/>
-            <line x1="30" y1="350" x2="70" y2="350" stroke="#00d2ff" stroke-width="2"/>
+        <svg id="tower-svg" viewBox="0 0 200 600" preserveAspectRatio="xMidYMax">
+            <g class="tower-path tower-level-0">
+                <rect x="98" y="0" width="4" height="60" />
+                <rect x="90" y="60" width="20" height="40" />
+                
+                <polygon points="70,100 130,100 120,150 80,150" />
+                <polygon points="65,150 135,150 125,200 75,200" />
+                <polygon points="60,200 140,200 130,250 70,250" />
+                <polygon points="55,250 145,250 135,300 65,300" />
+                <polygon points="55,300 145,300 135,350 65,350" />
+                <polygon points="55,350 145,350 135,400 65,400" />
+                <polygon points="55,400 145,400 135,450 65,450" />
+                <polygon points="50,450 150,450 140,500 60,500" />
+                
+                <polygon points="40,500 160,500 170,600 30,600" />
+            </g>
         </svg>
     </div>
     <div id="newyear-msg">HAPPY NEW YEAR!</div>
@@ -1225,6 +1261,8 @@ function startGameActual() {
         sparringInfo.style.display = 'none'; 
         comboPanel.style.display = 'none';
         count = 0; countElement.innerText = "0";
+        // 重置塔的顏色
+        updateTowerVisuals(0);
     } else {
         resetBtn.style.display = 'flex';
         sparringInfo.style.display = 'none'; comboPanel.style.display = 'none';
@@ -1238,6 +1276,7 @@ function resetGame() {
     
     // Reset New Year
     document.getElementById('newyear-msg').classList.remove('show');
+    updateTowerVisuals(0); // 重置特效
     if (fireworkLoopId) cancelAnimationFrame(fireworkLoopId);
     particles = [];
     const ctx = document.getElementById('fireworks_canvas').getContext('2d');
@@ -1369,6 +1408,25 @@ function takeDamage() {
 let particles = [];
 let fireworkLoopId = null;
 
+function updateTowerVisuals(currentCount) {
+    const group = document.querySelector('.tower-path');
+    if (!group) return;
+    
+    // 移除所有等級class
+    group.classList.remove('tower-level-0', 'tower-level-1', 'tower-level-2', 'tower-level-3');
+    
+    // 根據分數加入等級class
+    if (currentCount >= 90) {
+        group.classList.add('tower-level-3'); // 爆發
+    } else if (currentCount >= 60) {
+        group.classList.add('tower-level-2'); // 紅
+    } else if (currentCount >= 30) {
+        group.classList.add('tower-level-1'); // 金
+    } else {
+        group.classList.add('tower-level-0'); // 藍
+    }
+}
+
 function triggerNewYearCelebration() {
     gameState = 'RESULT'; 
     stopRecording(true); 
@@ -1483,7 +1541,11 @@ function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldow
     // 跨年模式專屬邏輯
     if (selectedMode === 'newyear') {
         const tower = document.getElementById('taipei-101');
+        // 震動
         tower.classList.remove('tower-hit'); void tower.offsetWidth; tower.classList.add('tower-hit');
+        // 顏色充能更新
+        updateTowerVisuals(count);
+        
         if (count >= 101) triggerNewYearCelebration();
     }
 
