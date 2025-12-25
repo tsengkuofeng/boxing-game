@@ -522,7 +522,9 @@ window.onload = function() {
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
 };
-
+document.getElementById('loading-layer').style.display = 'none'; // 隱藏 Loading
+  document.getElementById('landing-layer').style.display = 'flex'; // 顯示主選單
+};
 function resizeCanvas() {
   outputCanvas.width = window.innerWidth;
   outputCanvas.height = window.innerHeight;
