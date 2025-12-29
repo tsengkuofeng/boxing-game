@@ -1510,8 +1510,8 @@ const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@medi
 pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 pose.onResults(onResults);
 
-const LEFT_HAND_CONFIG = { triggerRatio: 0.22, resetRatio: 0.28, minPunchAngle: 85, cooldownFrames: 3 };
-const RIGHT_HAND_CONFIG = { triggerRatio: 0.18, resetRatio: 0.24, minPunchAngle: 75, cooldownFrames: 2 };
+const LEFT_HAND_CONFIG = { triggerRatio: 0.12, resetRatio: 0.18, minPunchAngle: 50, cooldownFrames: 3 };
+const RIGHT_HAND_CONFIG = { triggerRatio: 0.12, resetRatio: 0.18, minPunchAngle: 50, cooldownFrames: 2 };
 
 function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, validYLimit) {
   if (wrist.y > validYLimit || (selectedMode === 'sparring' && sparringConfig.state !== 'FIGHT')) return currentStage;
