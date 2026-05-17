@@ -1,446 +1,1656 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>端午單足立蛋挑戰</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    
-    <style>
-        /* --- 簡約端午風格 CSS --- */
-        :root {
-            --bamboo-green: #4A7C59;
-            --bamboo-light: #C8D5B9;
-            --rice-white: #FAF9F6;
-            --ink-black: #333333;
-            --danger-red: #D64933;
-            --glass-bg: rgba(250, 249, 246, 0.85);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>XMAS BOXING CHALLENGE - 101 最終進化版</title>
+<meta name="description" content="免下載 APP！開啟網頁即可透過鏡頭練習拳擊。支援校正引導、自動錄影與精彩回顧。">
 
-        body {
-            margin: 0; padding: 0;
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #000; /* 背景設為黑色，適配 contain 時產生的黑邊 */
-            color: var(--ink-black);
-            overflow: hidden;
-            width: 100vw;
-            height: 100vh;
-            /* 修正手機畫面拉伸：整體使用 flex 置中 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
-        /* --- 攝影機為主畫面容器 --- */
-        #video_container {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            z-index: 1;
-            /* 修正手機畫面拉伸：容器本身也 Flex 置中 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #000;
-        }
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+/* =========================================
+   【CSS 樣式表】
+   ========================================= */
+body { 
+  font-family: 'Montserrat', sans-serif; 
+  text-align: center; margin: 0; overflow: hidden; 
+  color: #fff; background: #000;
+  overscroll-behavior: none; user-select: none; -webkit-user-select: none;
+}
+/* Loading 層 */
+#loading-layer {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999;
+  background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center;
+  transition: opacity 0.5s;
+}
+.spinner {
+  width: 50px; height: 50px; border: 5px solid #333; border-top: 5px solid #00d2ff; 
+  border-radius: 50%; animation: spin 1s linear infinite;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        #input_video { display: none; } /* 隱藏原始影片元件 */
+.scene-background {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  z-index: -1; overflow: hidden;
+  background: radial-gradient(circle at 50% 20%, #1a2a6c, #b21f1f00),
+              linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
+}
+.moon {
+  position: absolute; top: 40px; right: 40px; width: 100px; height: 100px;
+  background: #fff; border-radius: 50%;
+  box-shadow: 0 0 30px #fdfbf7, 0 0 80px rgba(255, 255, 255, 0.4);
+  filter: blur(0.5px);
+}
+.snow-ground {
+  position: absolute; bottom: 0; left: 0; width: 100%; height: 25%;
+  background: linear-gradient(to bottom, #eef2f3, #8e9eab);
+  border-radius: 100% 100% 0 0 / 30px 30px 0 0;
+  box-shadow: 0 -10px 20px rgba(255,255,255,0.2);
+}
+.snowflake {
+  position: absolute; top: -10px; background: white; border-radius: 50%; opacity: 0.9;
+  animation: fall linear infinite;
+  box-shadow: 0 0 8px rgba(255,255,255,0.9);
+}
+@keyframes fall {
+  0% { top: -10%; transform: translateX(0); opacity: 0; }
+  100% { top: 110%; transform: translateX(20px); opacity: 0; }
+}
 
-        /* 關鍵修正：解決拉伸變形 */
-        #output_canvas {
-            /* 保持骨架數據判定所需的內部解析度，但 CSS 上縮放 */
-            width: auto;
-            height: auto;
-            max-width: 100%; /* 寬度不可超過螢幕 */
-            max-height: 100%; /* 高度不可超過螢幕 */
-            
-            /* 參考參考程式碼：使用 contain 保持原比例，不變形 */
-            object-fit: contain; 
-            
-            transform: scaleX(-1); /* 鏡像翻轉 */
-        }
+.container { 
+  position: relative; width: 100vw; height: 100vh; 
+  transition: filter 0.2s ease-out;
+  transform-origin: center center;
+}
 
-        /* --- UI 浮層 (不受視訊變形影響) --- */
-        #ui-container {
-            position: absolute; top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            z-index: 10;
-            pointer-events: none; /* 讓點擊可以穿透到按鈕 */
-        }
+/* 受傷震動特效 */
+@keyframes shake-hard {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-10px, 10px) rotate(-1deg); }    
+  75% { transform: translate(10px, -10px) rotate(1deg); }   
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+.hit-shock {
+  animation: shake-hard 0.4s cubic-bezier(.36,.07,.19,.97) both;
+  filter: blur(4px) grayscale(0.8) contrast(1.2);
+}
 
-        /* 畫面層級 (毛玻璃效果) */
-        .screen {
-            background: var(--glass-bg);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            padding: 25px; border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            text-align: center;
-            width: 85%; max-width: 400px;
-            pointer-events: auto; /* 恢復按鈕點擊 */
-            border: 2px solid var(--bamboo-green);
-        }
+video, canvas { 
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+  object-fit: cover; transform: scaleX(-1); z-index: 0; 
+}
 
-        .hidden { display: none !important; }
+/* --- 校正引導層 --- */
+#calibration-layer {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 200; display: none;
+    flex-direction: column; justify-content: center; align-items: center;
+    background: rgba(0, 20, 40, 0.3);
+}
+.calib-guide-box {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 300px; height: 500px;
+    border: 4px dashed rgba(0, 210, 255, 0.3); border-radius: 100px 100px 0 0;
+    transition: all 0.3s; pointer-events: none;
+}
+.calib-guide-box.good { border-color: #00ff00; border-style: solid; box-shadow: 0 0 30px #00ff00; }
+.calib-status {
+    position: absolute; top: 15%; width: 100%; text-align: center;
+    font-size: 24px; font-weight: 900; color: #fff;
+    text-shadow: 0 0 10px #000;
+}
+.calib-sub-status {
+    position: absolute; bottom: 15%; width: 80%; text-align: center;
+    font-size: 16px; color: #ccc; background: rgba(0,0,0,0.6);
+    padding: 10px; border-radius: 10px;
+}
+.calib-headroom-line {
+    position: absolute; top: 15%; left: 0; width: 100%; height: 2px;
+    background: rgba(255, 0, 0, 0.5); display: none;
+}
+.calib-headroom-text {
+    position: absolute; top: 12%; right: 10px; color: rgba(255,0,0,0.8); font-size: 12px; font-weight: bold;
+    display: none;
+}
+.calib-target {
+    position: absolute; width: 80px; height: 80px;
+    border-radius: 50%; border: 4px solid #fff;
+    transform: translate(-50%, -50%);
+    display: none; justify-content: center; align-items: center;
+    box-shadow: 0 0 20px rgba(255,255,255,0.5);
+}
+.calib-target.active { border-color: #00ff00; background: rgba(0,255,0,0.2); }
+.calib-target::after { content: "HAND"; font-size: 12px; font-weight: bold; }
 
-        h1 { margin: 5px 0 15px 0; color: var(--bamboo-green); font-size: 24px; }
-        h2 { margin: 5px 0; font-size: 18px; }
-        h3 { margin: 5px 0; }
+/* 倒數遮罩 */
+#countdown-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 300; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);
+    display: none; justify-content: center; align-items: center;
+}
+.countdown-number {
+    font-size: 150px; font-weight: 900; color: #fbbf24;
+    animation: popIn 0.8s infinite;
+}
+@keyframes popIn { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
 
-        /* 按鈕風格 */
-        button {
-            background-color: var(--bamboo-green); color: white;
-            border: none; padding: 15px 30px; font-size: 18px;
-            border-radius: 12px; cursor: pointer; transition: 0.2s;
-            margin-top: 20px; font-weight: bold; width: 100%;
-            box-shadow: 0 4px 10px rgba(74, 124, 89, 0.4);
-        }
-        button:hover { background-color: #386044; transform: translateY(-2px); }
+/* --- 隱私權遮罩 --- */
+#privacy-splash {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.95); z-index: 9999;
+  display: flex; justify-content: center; align-items: center;
+  cursor: pointer; animation: fadeIn 0.5s;
+}
+.privacy-content {
+  max-width: 500px; padding: 30px; border: 2px solid #00d2ff;
+  border-radius: 20px; background: rgba(20, 30, 40, 0.9);
+  color: #fff; text-align: center; box-shadow: 0 0 30px rgba(0, 210, 255, 0.3); margin: 20px;
+}
+.privacy-text { font-size: 16px; line-height: 1.6; color: #ccc; }
+.privacy-text h2 { color: #00d2ff; margin-bottom: 20px; }
 
-        /* --- 遊戲進行中的上方狀態列 --- */
-        #game-ui {
-            position: absolute; top: 8%;
-            width: 90%; max-width: 400px;
-            text-align: center; pointer-events: none;
-            display: flex; flex-direction: column; align-items: center;
-        }
-        
-        #status-msg {
-            font-size: 18px; font-weight: bold; padding: 10px 20px;
-            background: var(--glass-bg); backdrop-filter: blur(5px);
-            border-radius: 30px; color: var(--ink-black);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            transition: 0.3s; margin-bottom: 15px;
-            border: 2px solid var(--bamboo-green);
-            width: 100%; box-sizing: border-box;
-        }
+/* --- 精彩時刻 Modal --- */
+#highlights-modal {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+  background: rgba(10, 15, 20, 0.98); z-index: 2000;
+  display: none; flex-direction: column; overflow: hidden; 
+}
+.hl-header { 
+  display: flex; justify-content: space-between; align-items: center; 
+  border-bottom: 1px solid #333; padding: 15px; flex-shrink: 0; 
+}
+.hl-header h2 { margin: 0; color: #fbbf24; font-style: italic; font-size: 20px; }
+.hl-close-btn { background: none; border: none; color: #fff; font-size: 30px; cursor: pointer; padding: 0 10px; }
+.hl-nav { 
+  display: flex; gap: 10px; padding: 10px; justify-content: center; flex-shrink: 0;
+  background: rgba(255,255,255,0.05);
+}
+.hl-tab {
+  padding: 8px 20px; background: #333; border: 1px solid #555; color: #aaa;
+  border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.3s; font-size: 14px;
+}
+.hl-tab.active { background: #00d2ff; color: #000; border-color: #00d2ff; }
+.hl-content { display: none; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+.hl-content.active { display: flex; }
+.hl-scroll-area { flex: 1; overflow-y: auto; padding: 15px; -webkit-overflow-scrolling: touch; }
+.hl-section-title { font-size: 16px; color: #fff; border-left: 4px solid #fbbf24; padding-left: 10px; margin: 15px 0 10px 0; text-align: left; }
+.media-card {
+  position: relative; border-radius: 8px; overflow: hidden; border: 2px solid transparent; cursor: pointer;
+  background: #000; aspect-ratio: 4/3; transition: transform 0.2s, border-color 0.2s; touch-action: pan-y;
+}
+.hl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding-bottom: 20px; }
+.media-card img, .media-card video { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; transition: 0.3s; }
+.media-card:hover img, .media-card:hover video { opacity: 1; }
+.media-card.selected { border-color: #00d2ff; box-shadow: 0 0 10px #00d2ff; }
+.media-card.selected img, .media-card.selected video { opacity: 1; }
+.media-badge {
+  position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.7);
+  color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; pointer-events: none;
+}
+.hl-actions { 
+  text-align: center; padding: 15px; border-top: 1px solid #333; background: #0a0f14; flex-shrink: 0; z-index: 10;
+  box-shadow: 0 -5px 20px rgba(0,0,0,0.5); padding-bottom: max(15px, env(safe-area-inset-bottom)); 
+}
+.hl-hint { color: #888; font-size: 12px; margin-bottom: 10px; margin-top: 0; }
+.hl-action-btn {
+  width: 100%; max-width: 300px; padding: 15px 0; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; border: none;
+  background: #fff; color: #000; transition: 0.2s;
+}
+.btn-pdf { background: linear-gradient(135deg, #fbbf24, #d97706); color: #000; }
 
-        #timer-display {
-            font-size: 56px; font-weight: 900; color: white;
-            text-shadow: 2px 2px 0px var(--bamboo-green), -2px -2px 0px var(--bamboo-green), 2px -2px 0px var(--bamboo-green), -2px 2px 0px var(--bamboo-green);
-            margin-bottom: 10px;
-        }
+/* --- 1. 初始選單 (修正) --- */
+#landing-layer {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  background: rgba(0, 0, 0, 0.35); backdrop-filter: blur(3px); transition: opacity 0.5s ease;
+  display: none; /* 初始隱藏，由 JS 控制顯示 */
+}
+.landing-title {
+  font-size: 36px; font-weight: 900; color: #00d2ff;
+  text-shadow: 0 0 20px rgba(0, 210, 255, 0.9), 2px 2px 5px rgba(0,0,0,0.8);
+  margin-bottom: 20px; letter-spacing: 2px; text-transform: uppercase; line-height: 1.2;
+}
+.mode-container { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
+.mode-box {
+  background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.5);
+  padding: 15px; border-radius: 15px; cursor: pointer; width: 130px; transition: all 0.3s;
+  backdrop-filter: blur(5px); box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+.mode-box:hover, .mode-box.selected {
+  background: rgba(0, 210, 255, 0.3); border-color: #00d2ff; transform: translateY(-5px); box-shadow: 0 0 20px rgba(0,210,255,0.6);
+}
+/* 跨年模式特別樣式 */
+.mode-box.newyear { border-color: #fbbf24; }
+.mode-box.newyear h3 { color: #fbbf24; }
+.mode-box.newyear:hover, .mode-box.newyear.selected { 
+  border-color: #fbbf24; background: rgba(251, 191, 36, 0.15); 
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+}
+.mode-box h3 { margin: 0 0 5px 0; font-size: 16px; color: #fff; text-shadow: 1px 1px 2px black; }
+.mode-box p { margin: 0; font-size: 11px; color: #eee; text-shadow: 1px 1px 2px black; }
 
-        /* --- 蛋的 CSS 特效 (縮小尺寸) --- */
-        #egg-container {
-            position: relative; width: 60px; height: 80px;
-            perspective: 1000px; margin-bottom: 10px;
-        }
+/* 教學按鈕 */
+.tutorial-btn {
+  margin-top: 10px; margin-bottom: 20px; padding: 8px 25px; border: 1px solid #fff; border-radius: 30px;
+  background: rgba(0,0,0,0.5); color: #fff; font-size: 14px; cursor: pointer;
+  transition: all 0.3s; display: flex; align-items: center; gap: 8px;
+}
+.tutorial-btn:hover { background: #fff; color: #000; }
 
-        .egg {
-            width: 100%; height: 100%; background-color: #Fdfbf7;
-            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-            box-shadow: inset -8px -8px 15px rgba(0,0,0,0.1), 0 5px 10px rgba(0,0,0,0.2);
-            transition: transform 0.1s ease-out; border: 2px solid #EBE6D9;
-        }
+#wizard-container {
+  display: none; background: rgba(0,0,0,0.85); padding: 25px; border-radius: 15px;
+  border: 1px solid #555; width: 85%; max-width: 320px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.wizard-step { display: none; flex-direction: column; gap: 20px; }
+.wizard-step.active { display: flex; animation: fadeIn 0.3s; }
+.step-title { font-size: 18px; font-weight: 700; color: #fbbf24; margin-bottom: 5px; }
+.setting-row { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.setting-row label { font-size: 14px; font-weight: bold; color: #ddd; letter-spacing: 1px; }
+.setup-select {
+  appearance: none; -webkit-appearance: none;
+  background-color: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.3);
+  color: #fff; padding: 12px; font-size: 16px; border-radius: 8px; width: 100%;
+  cursor: pointer; text-align: center; font-family: 'Montserrat', sans-serif;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 20px;
+}
+.diff-btn {
+  padding: 12px; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: #fff;
+  border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Montserrat'; transition: 0.2s;
+}
+.diff-btn.selected { background: #fbbf24; color: #000; border-color: #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
+.nav-btn {
+  padding: 12px 0; background: #334155; color: #fff; border: none; border-radius: 8px; margin-top: 5px; font-weight: bold; cursor: pointer; font-size: 16px;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .egg-warning {
-            animation: shake 0.3s infinite;
-            box-shadow: inset -8px -8px 15px rgba(214, 73, 51, 0.2), 0 0 20px rgba(214, 73, 51, 0.8);
-            border-color: var(--danger-red);
-        }
+#start-btn { 
+  display: none; padding: 20px 40px; font-size: 22px; font-weight: 800; font-family: 'Montserrat', sans-serif;
+  color: #fff; background: linear-gradient(135deg, #ef4444, #b91c1c);
+  border: 2px solid #fff; border-radius: 50px; cursor: pointer; box-shadow: 0 0 30px rgba(239, 68, 68, 0.8); transition: all 0.3s; margin-top: 10px;
+}
+#start-btn:active { transform: scale(0.95); }
 
-        .egg-broken {
-            background: linear-gradient(135deg, #Fdfbf7 45%, #555 48%, #333 50%, #555 52%, #Fdfbf7 55%);
-            transform: scale(1.1) rotate(15deg) !important;
-            filter: grayscale(0.5); box-shadow: none; border-color: #999;
-        }
+/* --- Tutorial Overlay (教學視窗) --- */
+#tutorial-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.95); z-index: 2000; display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+}
+.tutorial-card {
+  width: 90%; max-width: 500px; background: #111; border: 1px solid #333;
+  border-radius: 15px; padding: 20px; position: relative;
+  text-align: center; box-shadow: 0 0 30px rgba(0,255,0,0.1);
+}
+.tutorial-close {
+  position: absolute; top: 10px; right: 15px; font-size: 24px; color: #666; cursor: pointer;
+}
+.tutorial-slide { display: none; animation: fadeIn 0.3s; }
+.tutorial-slide.active { display: block; }
+.tutorial-img-placeholder {
+  width: 100%; aspect-ratio: 1/1; background: #222; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: #555; border: 2px dashed #444; margin-bottom: 15px; overflow: hidden;
+}
+.tutorial-img-placeholder img { width: 100%; height: 100%; object-fit: cover; }
+.tutorial-nav { display: flex; justify-content: space-between; margin-top: 20px; }
+.tut-nav-btn { background: #333; color: #fff; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+.tut-nav-btn:hover { background: #555; }
+.step-dots { display: flex; gap: 5px; justify-content: center; margin-top: 15px; }
+.dot { width: 8px; height: 8px; background: #444; border-radius: 50%; }
+.dot.active { background: #0f0; }
 
-        @keyframes shake {
-            0% { transform: translate(2px, 1px) rotate(0deg); }
-            20% { transform: translate(-2px, 0px) rotate(3deg); }
-            40% { transform: translate(1px, -1px) rotate(-3deg); }
-            60% { transform: translate(-2px, 1px) rotate(0deg); }
-            80% { transform: translate(-1px, -1px) rotate(3deg); }
-            100% { transform: translate(1px, -2px) rotate(-3deg); }
-        }
+/* --- HUD & Game UI --- */
+#game-hud {
+  position: absolute; top: 85px; right: 20px; z-index: 50;
+  display: none; text-align: right; pointer-events: none; 
+}
+.score-board { 
+  background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px);
+  padding: 10px 25px; border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.15); 
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  display: inline-block; text-align: center; margin-bottom: 10px;
+}
+#count { 
+  font-size: 60px; font-weight: 900; line-height: 1; 
+  background: -webkit-linear-gradient(#fff, #cbd5e1);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.count-label { font-size: 12px; color: #94a3b8; letter-spacing: 3px; font-weight: 700; margin-bottom: 5px; }
+#sparring-info {
+  display: none; background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 15px;
+  color: #fff; font-weight: bold; margin-top: 10px; flex-direction: column; align-items: center;
+}
+#timer { font-size: 32px; color: #fbbf24; font-family: monospace; }
+#round-display { font-size: 14px; color: #aaa; letter-spacing: 2px; }
 
-        ul { text-align: left; line-height: 1.6; font-size: 15px; color: #444; padding-left: 20px;}
-        li { margin-bottom: 8px; }
-        li strong { color: var(--danger-red); }
-    </style>
+#combo-panel {
+  position: absolute; top: 150px; left: 20px; z-index: 50; display: none; text-align: left; pointer-events: none;
+}
+.combo-label { font-size: 14px; color: #ccc; font-weight: 800; letter-spacing: 2px; margin-bottom: -5px; text-shadow: 1px 1px 2px black; }
+#combo-count { font-size: 80px; font-weight: 900; font-style: italic; color: #fff; line-height: 1; transition: transform 0.1s; }
+.combo-normal { color: #fff; }
+.combo-burn { color: #ff9900 !important; text-shadow: 0 0 10px #ff4500; animation: burnPulse 1s infinite alternate; }
+.combo-max { color: #ff0000 !important; text-shadow: 0 0 15px #ff0000; animation: shake 0.2s infinite; }
+@keyframes burnPulse { from { opacity: 0.8; transform: scale(1); } to { opacity: 1; transform: scale(1.1); } }
+@keyframes shake { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, -1px); } }
+
+/* --- 跨年模式專用層 (升級版) --- */
+#newyear-layer {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 40; pointer-events: none; display: none;
+}
+#fireworks_canvas {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+}
+.tower-container {
+    position: absolute; bottom: -80px; left: 50%; transform: translateX(-50%);
+    width: 200px; height: 65%; opacity: 0.95; transition: transform 0.1s;
+    filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.8));
+}
+/* 101 的 SVG 路徑樣式 */
+.tower-path {
+    fill: #0c4a6e; /* 建築本體色 */
+    stroke: #00d2ff; /* 初始線條色 */
+    stroke-width: 3;
+    transition: stroke 0.3s, filter 0.3s;
+}
+
+/* 能量充能等級特效 */
+.tower-level-0 { stroke: #00d2ff; filter: drop-shadow(0 0 5px #00d2ff); }
+.tower-level-1 { stroke: #fbbf24; filter: drop-shadow(0 0 15px #fbbf24); } /* 金色 */
+.tower-level-2 { stroke: #ff4500; filter: drop-shadow(0 0 25px #ff4500); } /* 紅色 */
+.tower-level-3 { 
+    stroke: #fff; 
+    filter: drop-shadow(0 0 30px #fff);
+    animation: rainbowStroke 0.5s linear infinite; 
+} /* 爆發彩虹 */
+
+@keyframes rainbowStroke {
+    0% { stroke: #ff0000; filter: drop-shadow(0 0 30px #ff0000); }
+    20% { stroke: #ffff00; filter: drop-shadow(0 0 30px #ffff00); }
+    40% { stroke: #00ff00; filter: drop-shadow(0 0 30px #00ff00); }
+    60% { stroke: #00ffff; filter: drop-shadow(0 0 30px #00ffff); }
+    80% { stroke: #0000ff; filter: drop-shadow(0 0 30px #0000ff); }
+    100% { stroke: #ff00ff; filter: drop-shadow(0 0 30px #ff00ff); }
+}
+
+.tower-hit {
+    animation: towerShake 0.1s infinite;
+    filter: brightness(1.5);
+}
+@keyframes towerShake {
+    0% { transform: translateX(-50%) rotate(0deg); }
+    25% { transform: translateX(-52%) rotate(-1deg); }
+    75% { transform: translateX(-48%) rotate(1deg); }
+    100% { transform: translateX(-50%) rotate(0deg); }
+}
+#newyear-msg {
+    position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) scale(0);
+    font-size: 50px; font-weight: 900; color: #fbbf24; text-align: center;
+    text-shadow: 0 0 30px #ff0000; width: 100%;
+    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+#newyear-msg.show { transform: translate(-50%, -50%) scale(1); }
+
+#enemy-attack-layer {
+  position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+  z-index: 60; pointer-events: none; display: none;
+}
+.attack-msg { font-size: 80px; font-weight: 900; text-transform: uppercase; text-shadow: 0 0 20px #000; animation: blink 0.2s infinite; }
+.attack-straight { color: #ff3333; }
+.attack-hook { color: #ffff00; }
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+#damage-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: radial-gradient(circle, rgba(255,0,0,0) 50%, rgba(255,0,0,0.8) 100%);
+  z-index: 80; pointer-events: none; opacity: 0; transition: opacity 0.1s;
+}
+.damage-flash { animation: flashRed 0.3s; }
+@keyframes flashRed { 0% { opacity: 0.8; } 100% { opacity: 0; } }
+
+#result-layer {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 110; background: rgba(0,0,0,0.9);
+  display: none; flex-direction: column; justify-content: center; align-items: center; color: #fff;
+}
+#result-layer h1 { margin: 0 0 20px 0; font-size: 50px; color: #fbbf24; }
+.score-table {
+  background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; border: 1px solid #555;
+  width: 80%; max-width: 400px; margin-bottom: 30px;
+}
+.score-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.2); }
+.score-row:last-child { border-bottom: none; }
+.score-row.total-row { border-top: 2px solid #fff; margin-top: 10px; font-weight: 900; font-size: 20px; color: #00d2ff; }
+.round-label { font-weight: bold; color: #aaa; }
+.round-score { font-weight: 700; font-family: monospace; font-size: 18px; }
+
+#reset-btn {
+  display: none;
+  position: absolute; top: 20px; right: 20px; z-index: 999;
+  background: rgba(255, 255, 255, 0.2); color: #fff; 
+  border: 1px solid rgba(255,255,255,0.4); 
+  width: 50px; height: 50px; border-radius: 50%;
+  font-size: 24px; font-weight: 700; 
+  cursor: pointer; backdrop-filter: blur(5px);
+  align-items: center; justify-content: center;
+}
+#reset-btn:hover { background: rgba(255, 255, 255, 0.35); }
+
+#rest-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 90; background: rgba(0, 100, 255, 0.5); backdrop-filter: blur(5px);
+  display: none; flex-direction: column; justify-content: center; align-items: center;
+}
+.rest-title { font-size: 60px; font-weight: 900; color: #fff; text-transform: uppercase; }
+
+@media (max-width: 768px) {
+  .landing-title { font-size: 28px; margin-bottom: 20px; }
+  .mode-box { width: 100px; padding: 10px; }
+  .mode-box h3 { font-size: 14px; }
+  #wizard-container { width: 90%; padding: 20px; }
+  #game-hud { top: 80px; right: 15px; }
+  .score-board { padding: 8px 20px; }
+  #count { font-size: 50px; }
+  .attack-msg { font-size: 50px; }
+  .score-table { width: 90%; }
+  .calib-guide-box { width: 60%; height: 50%; }
+}
+</style>
 </head>
-<body>
+<body onclick="tryInitAudio()">
 
-    <div id="video_container">
-        <video id="input_video" autoplay playsinline></video>
-        <canvas id="output_canvas" width="640" height="480"></canvas>
+<audio id="xmas-bgm" loop>
+  <source src="https://cdn.pixabay.com/download/audio/2022/11/22/audio_febc508520.mp3" type="audio/mp3">
+</audio>
+
+<div id="loading-layer">
+    <div class="spinner"></div>
+    <p style="margin-top:20px; color:#aaa; font-weight:bold;">INITIALIZING AI...</p>
+</div>
+
+<div id="privacy-splash">
+  <div class="privacy-content">
+    <h2>🔒 隱私權與安全性聲明</h2>
+    <div class="privacy-text">
+      <p>歡迎來到<br><strong>XMAS BOXING CHALLENGE</strong>。</p>
+      <p>為了提供最佳的互動體驗，本遊戲需要存取您的<strong>攝影機</strong>。</p>
+      <ul style="text-align:left; display:inline-block; margin: 10px 0;">
+        <li>✅ <strong>本機運算：</strong> 所有影像辨識皆在您的裝置上即時運算。</li>
+        <li>✅ <strong>資料不外洩：</strong> 我們<strong>沒有</strong>後端伺服器，您的影像絕不會被上傳。</li>
+        <li>✅ <strong>暫存即毀：</strong> 遊戲中的精彩截圖與錄影僅暫存於記憶體，關閉網頁即永久刪除。</li>
+      </ul>
+      <p style="color:#fbbf24; font-weight:bold;">點擊任意處開始遊戲</p>
+    </div>
+  </div>
+</div>
+
+<div id="highlights-modal">
+  <div class="hl-header">
+    <h2>BATTLE HIGHLIGHTS</h2>
+    <button class="hl-close-btn" onclick="closeHighlights()">×</button>
+  </div>
+  <div class="hl-nav">
+    <button class="hl-tab active" onclick="switchHighlightTab('video')">🎬 影片瞬間</button>
+    <button class="hl-tab" onclick="switchHighlightTab('image')">📸 圖片與報表</button>
+  </div>
+  <div id="hl-content-video" class="hl-content active">
+    <div class="hl-scroll-area">
+      <div class="hl-section-title">連擊快拳 (Combos)</div>
+      <div id="video-grid-combo" class="hl-grid"></div>
+      <div class="hl-section-title">極限閃躲 (Dodges)</div>
+      <div id="video-grid-dodge" class="hl-grid"></div>
+    </div>
+    <div class="hl-actions">
+      <p id="hl-hint-text" class="hl-hint">手機：長按預覽 / 輕點選取 | 電腦：雙擊預覽 / 單點選取</p>
+      <button class="hl-action-btn" onclick="downloadSelectedVideos()">下載選取的影片</button>
+    </div>
+  </div>
+  <div id="hl-content-image" class="hl-content">
+    <div class="hl-scroll-area">
+      <div class="hl-section-title">精彩截圖</div>
+      <div id="image-grid" class="hl-grid"></div>
+    </div>
+    <div class="hl-actions">
+      <p class="hl-hint">選取喜歡的照片，將連同戰績表生成 PDF</p>
+      <button class="hl-action-btn btn-pdf" onclick="generateBattleReport()">📄 輸出 PDF 戰報</button>
+    </div>
+  </div>
+</div>
+
+<div class="scene-background">
+  <div class="night-sky"><div class="moon"></div></div>
+  <div class="snowflake" style="left: 5%; width: 5px; height: 5px; animation-duration: 4s;"></div>
+  <div class="snowflake" style="left: 15%; width: 8px; height: 8px; animation-duration: 6s; animation-delay: 1s;"></div>
+  <div class="snowflake" style="left: 25%; width: 4px; height: 4px; animation-duration: 3.5s; animation-delay: 2s;"></div>
+  <div class="snowflake" style="left: 50%; width: 7px; height: 7px; animation-duration: 5s;"></div>
+  <div class="snowflake" style="left: 75%; width: 4px; height: 4px; animation-duration: 3.8s; animation-delay: 2.5s;"></div>
+  <div class="snow-ground"></div>
+</div>
+
+<div class="container">
+  
+  <div id="calibration-layer">
+    <div class="calib-headroom-line"></div>
+    <div class="calib-headroom-text">頭部請保持在此線下方</div>
+    <div id="calib-box" class="calib-guide-box"></div>
+    <div id="calib-msg" class="calib-status">偵測玩家中...</div>
+    <div id="calib-hint" class="calib-sub-status">請確保全身入鏡，手機建議直立放置</div>
+    <div id="target-l" class="calib-target">L</div>
+    <div id="target-r" class="calib-target">R</div>
+  </div>
+
+  <div id="countdown-overlay">
+    <div id="countdown-number" class="countdown-number">3</div>
+  </div>
+
+  <div id="landing-layer">
+    <div class="landing-title">XMAS BOXING<br>CHALLENGE</div>
+    
+    <div class="mode-container">
+      <div class="mode-box" onclick="selectMode('speed', this)">
+        <h3>快拳練習</h3>
+        <p>自由連擊</p>
+      </div>
+      <div class="mode-box" onclick="selectMode('sparring', this)">
+        <h3>真實對戰</h3>
+        <p>閃躲反擊</p>
+      </div>
+      <div class="mode-box newyear" onclick="selectMode('newyear', this)">
+        <h3>101 挑戰</h3>
+        <p>跨年煙火模式</p>
+      </div>
     </div>
 
-    <div id="ui-container">
-        
-        <div id="intro-screen" class="screen">
-            <h1>🌿 端午立蛋挑戰 🌿</h1>
-            <h2>— 開眼單足立 —</h2>
-            <ul>
-                <li><strong>定位步驟：</strong> 需在<strong>網路連線良好</strong>處，請退後讓<strong>全身（頭到腳）</strong>入鏡。</li>
-                <li><strong>開始方式：</strong> 定位完成後，將一腳抬起，<strong>腳踝貼在支撐腳膝蓋旁</strong>，自動計時！</li>
-                <li><strong>破關條件：</strong> 穩住核心。身體重心偏移太大，蛋就會破掉！</li>
-            </ul>
-            <button id="start-btn">開啟鏡頭並開始挑戰</button>
-        </div>
+    <button class="tutorial-btn" onclick="openTutorial()">
+      <span>?</span> 動作教學 / TUTORIAL
+    </button>
 
-        <div id="game-screen" class="hidden">
-            <div id="game-ui">
-                <div id="status-msg">請退後，讓全身完整入鏡...</div>
-                <div id="timer-display">0.00</div>
-                <div id="egg-container">
-                    <div id="egg" class="egg"></div>
-                </div>
-            </div>
+    <div id="wizard-container">
+      <div id="step-1" class="wizard-step active">
+        <div class="step-title">STEP 1/3: 回合設定</div>
+        <div class="setting-row">
+          <label>回合數 (Rounds)</label>
+          <select id="input-rounds" class="setup-select">
+            <option value="1">1 回合</option>
+            <option value="2">2 回合</option>
+            <option value="3" selected>3 回合 (標準)</option>
+            <option value="5">5 回合</option>
+          </select>
         </div>
-
-        <div id="result-screen" class="screen hidden">
-            <h1>💥 蛋破了！ 💥</h1>
-            <h2 id="final-time">堅持時間：0.00 秒</h2>
-            <hr style="border-top: 1px dashed #ccc; margin: 15px 0;">
-            <h3 style="color: var(--ink-black);">體適能常模評分：</h3>
-            <h2 id="rank-title" style="color: var(--danger-red); font-size: 26px;">稱號</h2>
-            <p id="rank-desc" style="color: #555; font-size: 15px;"></p>
-            <button id="retry-btn">再挑戰一次</button>
+        <div class="setting-row">
+          <label>每回合長度</label>
+          <select id="input-minutes" class="setup-select">
+            <option value="0.5">30秒</option>
+            <option value="1.0" selected>1分鐘 (標準)</option>
+            <option value="2.0">2分鐘</option>
+          </select>
         </div>
-
+        <button class="nav-btn" onclick="nextStep(2)">下一步</button>
+      </div>
+      <div id="step-2" class="wizard-step">
+        <div class="step-title">STEP 2/3: 休息設定</div>
+        <div class="setting-row">
+          <label>休息時間 (Rest)</label>
+          <select id="input-rest" class="setup-select">
+            <option value="0.5">30秒</option>
+            <option value="1.0" selected>1分鐘 (標準)</option>
+          </select>
+        </div>
+        <button class="nav-btn" onclick="nextStep(3)">下一步</button>
+      </div>
+      <div id="step-3" class="wizard-step">
+        <div class="step-title">STEP 3/3: 難易度</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <button class="diff-btn" onclick="setDifficulty('EASY', this)">簡單 (反應慢)</button>
+          <button class="diff-btn selected" onclick="setDifficulty('NORMAL', this)">普通 (標準)</button>
+          <button class="diff-btn" onclick="setDifficulty('HARD', this)">困難 (反應快)</button>
+        </div>
+        <button class="nav-btn" style="background:#059669;" onclick="finishSetup()">完成設定</button>
+      </div>
     </div>
+    <button id="start-btn" onclick="startCalibration()">準備完成 (START)</button>
+  </div>
 
-    <script type="module">
-        // DOM 元素綁定
-        const videoElement = document.getElementById('input_video');
-        const canvasElement = document.getElementById('output_canvas');
-        const canvasCtx = canvasElement.getContext('2d');
+  <div id="tutorial-overlay">
+    <div class="tutorial-card">
+        <div class="tutorial-close" onclick="closeTutorial()">×</div>
         
-        const introScreen = document.getElementById('intro-screen');
-        const gameScreen = document.getElementById('game-screen');
-        const resultScreen = document.getElementById('result-screen');
+        <div class="tutorial-slide active" data-step="0">
+            <h3>基本架式 (Stance)</h3>
+            <div class="tutorial-img-placeholder"><span>請插入架式圖片<br>1:1 正方形</span></div>
+            <p style="font-size:0.9rem; color:#ccc; text-align:left;">1. 左腳在前(12點)，右腳在後(2點)。<br>2. 手肘收緊貼肋骨，雙手護下巴。</p>
+        </div>
+        <div class="tutorial-slide" data-step="1">
+            <h3>刺拳 (Jab)</h3>
+            <div class="tutorial-img-placeholder"><span>請插入 JAB 圖片</span></div>
+            <p style="font-size:0.9rem; color:#ccc; text-align:left;">1. 前手快速直線伸出。<br>2. 拳頭旋轉，最後一刻拳眼朝上。</p>
+        </div>
+        <div class="tutorial-slide" data-step="2">
+            <h3>直拳 (Cross)</h3>
+            <div class="tutorial-img-placeholder"><span>請插入 CROSS 圖片</span></div>
+            <p style="font-size:0.9rem; color:#ccc; text-align:left;">1. 後手重拳出擊。<br>2. <strong>轉動後腳與腰部</strong>是力量來源。</p>
+        </div>
+        <div class="tutorial-slide" data-step="3">
+            <h3>左閃避 (Left Slip)</h3>
+            <div class="tutorial-img-placeholder"><span>請插入 左閃 圖片</span></div>
+            <p style="font-size:0.9rem; color:#ccc; text-align:left;">頭部向左前移動，像是用左肩碰膝蓋。</p>
+        </div>
+        <div class="tutorial-slide" data-step="4">
+            <h3>右閃避 (Right Slip)</h3>
+            <div class="tutorial-img-placeholder"><span>請插入 右閃 圖片</span></div>
+            <p style="font-size:0.9rem; color:#ccc; text-align:left;">頭部向右前移動，重心稍微壓在右腳。</p>
+        </div>
+        <div class="tutorial-slide" data-step="5">
+            <h3>下潛 (Duck)</h3>
+            <div class="tutorial-img-placeholder"><span>請插入 下潛 圖片</span></div>
+            <p style="font-size:0.9rem; color:#ccc; text-align:left;">利用膝蓋下蹲畫U字型，不要只彎腰。</p>
+        </div>
+
+        <div class="step-dots">
+            <div class="dot active"></div><div class="dot"></div><div class="dot"></div>
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+        <div class="tutorial-nav">
+            <button class="tut-nav-btn" onclick="changeSlide(-1)">Prev</button>
+            <button class="tut-nav-btn" onclick="changeSlide(1)">Next</button>
+        </div>
+    </div>
+  </div>
+
+  <div id="game-hud">
+    <div class="score-board">
+      <div class="count-label">SCORE</div>
+      <div id="count">0</div>
+    </div>
+    <div id="sparring-info">
+      <div id="timer">00:00</div>
+      <div id="round-display">R 1/1</div>
+    </div>
+  </div>
+
+  <div id="combo-panel">
+    <div class="combo-label">DODGE COMBO</div>
+    <div id="combo-count">0</div>
+  </div>
+
+  <div id="enemy-attack-layer">
+    <div id="attack-text" class="attack-msg"></div>
+  </div>
+
+  <div id="rest-overlay">
+    <div class="rest-title">REST</div>
+    <div id="rest-timer" style="font-size:40px; color:#fff;">00:00</div>
+  </div>
+
+  <div id="damage-overlay"></div>
+  
+  <div id="newyear-layer">
+    <canvas id="fireworks_canvas"></canvas>
+    <div id="taipei-101" class="tower-container">
+        <svg id="tower-svg" viewBox="0 0 200 600" preserveAspectRatio="xMidYMax">
+            <g class="tower-path tower-level-0">
+                <rect x="98" y="0" width="4" height="60" />
+                <rect x="90" y="60" width="20" height="40" />
+                
+                <polygon points="70,100 130,100 120,150 80,150" />
+                <polygon points="65,150 135,150 125,200 75,200" />
+                <polygon points="60,200 140,200 130,250 70,250" />
+                <polygon points="55,250 145,250 135,300 65,300" />
+                <polygon points="55,300 145,300 135,350 65,350" />
+                <polygon points="55,350 145,350 135,400 65,400" />
+                <polygon points="55,400 145,400 135,450 65,450" />
+                <polygon points="50,450 150,450 140,500 60,500" />
+                
+                <polygon points="40,500 160,500 170,600 30,600" />
+            </g>
+        </svg>
+    </div>
+    <div id="newyear-msg">HAPPY NEW YEAR!</div>
+  </div>
+
+  <div id="result-layer">
+    <h1>BATTLE REPORT</h1>
+    <div id="score-details" class="score-table"></div>
+    <div style="display:flex; gap:15px; margin-top:20px;">
+        <button class="mode-box" style="width:auto; background:#fbbf24; color:#000;" onclick="openHighlights()">精彩時刻</button>
+        <button class="mode-box" style="width:auto;" onclick="location.reload()">再玩一次</button>
+    </div>
+  </div>
+
+  <button id="reset-btn" onclick="resetGame()">↺</button>
+
+  <div class="video-container">
+    <video id="input_video" playsinline></video>
+    <canvas id="output_canvas"></canvas>
+    <canvas id="recording_canvas" style="display:none;"></canvas>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<script>
+// =========================================
+//   Game States & Init
+// =========================================
+let gameState = 'SETUP'; // SETUP, CALIBRATION, PLAYING, RESULT
+let calibrationHoldTimer = 0;
+const CALIBRATION_HOLD_TARGET = 45; 
+let calibrationCamera = null;
+
+// 修復：頁面載入後關閉 Loading
+window.onload = function() {
+  setTimeout(() => {
+    document.getElementById('loading-layer').style.opacity = 0;
+    setTimeout(() => { 
+        document.getElementById('loading-layer').style.display = 'none';
+        document.getElementById('landing-layer').style.display = 'flex';
+    }, 500);
+  }, 1000); // 模擬短暫加載
+};
+
+// =========================================
+//   Privacy & UI Setup
+// =========================================
+const privacySplash = document.getElementById('privacy-splash');
+privacySplash.addEventListener('click', () => {
+    privacySplash.style.opacity = '0';
+    setTimeout(() => { privacySplash.style.display = 'none'; }, 500);
+});
+
+const highlights = { videos: [], images: [] };
+
+// 媒體錄製相關
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+let currentRecType = null;
+let lastPunchTime = 0;
+let comboCounter = 0;
+const recordingCanvasElement = document.getElementById('recording_canvas');
+const recordingCanvasCtx = recordingCanvasElement.getContext('2d');
+
+function startRecording(type) {
+    if (isRecording) return;
+    recordingCanvasElement.width = canvasElement.width;
+    recordingCanvasElement.height = canvasElement.height;
+    const stream = recordingCanvasElement.captureStream(30);
+    
+    let mimeType = 'video/webm;codecs=vp9';
+    if (MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
+    else if (MediaRecorder.isTypeSupported('video/webm;codecs=h264')) mimeType = 'video/webm;codecs=h264';
+
+    try {
+        mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+    } catch (e) {
+        mediaRecorder = new MediaRecorder(stream);
+    }
+
+    isRecording = true;
+    currentRecType = type;
+    recordedChunks = [];
+    mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) recordedChunks.push(event.data);
+    };
+    mediaRecorder.start();
+}
+
+function stopRecording(save = true) {
+    if (!isRecording || !mediaRecorder) return;
+    mediaRecorder.onstop = () => {
+        if (save && recordedChunks.length > 0) {
+            const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+            const url = URL.createObjectURL(blob);
+            let ext = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
+            highlights.videos.push({ url: url, type: currentRecType, ext: ext, time: new Date().toLocaleTimeString() });
+        }
+        isRecording = false; mediaRecorder = null;
+    };
+    if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+}
+
+function captureScreenshot(type) {
+    const flash = document.createElement('div');
+    flash.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:9999;opacity:0.8;transition:opacity 0.2s;';
+    document.body.appendChild(flash);
+    setTimeout(() => flash.style.opacity = 0, 50);
+    setTimeout(() => flash.remove(), 250);
+
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvasElement.width;
+    tempCanvas.height = canvasElement.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.translate(tempCanvas.width, 0); tempCtx.scale(-1, 1);
+    tempCtx.drawImage(canvasElement, 0, 0);
+
+    highlights.images.push({ src: tempCanvas.toDataURL('image/jpeg', 0.8), type: type, time: new Date().toLocaleTimeString() });
+}
+
+function openHighlights() {
+    document.getElementById('result-layer').style.display = 'none';
+    document.getElementById('highlights-modal').style.display = 'flex';
+    switchHighlightTab('video');
+}
+function closeHighlights() {
+    document.getElementById('highlights-modal').style.display = 'none';
+    document.getElementById('result-layer').style.display = 'flex';
+}
+function switchHighlightTab(tab) {
+    document.querySelectorAll('.hl-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.hl-content').forEach(c => c.classList.remove('active'));
+    const hintText = document.getElementById('hl-hint-text');
+
+    if (tab === 'video') {
+        document.querySelector('.hl-tab:first-child').classList.add('active');
+        document.getElementById('hl-content-video').classList.add('active');
+        hintText.innerText = "手機：長按預覽 / 輕點選取 | 電腦：雙擊預覽 / 單點選取";
+        const gridCombo = document.getElementById('video-grid-combo');
+        const gridDodge = document.getElementById('video-grid-dodge');
+        gridCombo.innerHTML = ''; gridDodge.innerHTML = '';
+        highlights.videos.forEach((vid, idx) => {
+            const el = createMediaCard(vid, idx, 'video');
+            if (vid.type === 'combo') gridCombo.appendChild(el);
+            else gridDodge.appendChild(el);
+        });
+    } else {
+        document.querySelector('.hl-tab:last-child').classList.add('active');
+        document.getElementById('hl-content-image').classList.add('active');
+        hintText.innerText = "輕點選取照片，將連同戰績表生成 PDF";
+        const grid = document.getElementById('image-grid');
+        grid.innerHTML = '';
+        highlights.images.forEach((img, idx) => {
+            grid.appendChild(createMediaCard(img, idx, 'image'));
+        });
+    }
+}
+
+function createMediaCard(item, idx, type) {
+    const div = document.createElement('div');
+    div.className = 'media-card'; div.dataset.index = idx;
+    if (type === 'video') {
+        const v = document.createElement('video'); v.src = item.url; v.muted = true; v.loop = true; div.appendChild(v);
+    } else {
+        const img = document.createElement('img'); img.src = item.src; div.appendChild(img);
+    }
+    const badge = document.createElement('div'); badge.className = 'media-badge'; badge.innerText = item.time; div.appendChild(badge);
+
+    let pressTimer; let isLongPress = false; let startX, startY;
+    div.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX; startY = e.touches[0].clientY; isLongPress = false;
+        pressTimer = setTimeout(() => {
+            isLongPress = true;
+            if (type === 'video') {
+                const v = div.querySelector('video');
+                if (v.paused) v.play(); else v.pause();
+                div.style.transform = "scale(1.05)"; div.style.zIndex = "10";
+                setTimeout(() => { div.style.transform = ""; div.style.zIndex = ""; }, 300);
+            }
+        }, 600);
+    }, { passive: true });
+    div.addEventListener('touchmove', (e) => {
+        if (Math.abs(e.touches[0].clientX - startX) > 10 || Math.abs(e.touches[0].clientY - startY) > 10) clearTimeout(pressTimer);
+    }, { passive: true });
+    div.addEventListener('touchend', (e) => {
+        clearTimeout(pressTimer);
+        if (isLongPress && e.cancelable) e.preventDefault();
+    });
+    div.addEventListener('click', () => { div.classList.toggle('selected'); });
+    div.addEventListener('dblclick', () => { if (type === 'video') { const v = div.querySelector('video'); if (v.paused) v.play(); else v.pause(); } });
+    div.oncontextmenu = function(e) { e.preventDefault(); e.stopPropagation(); return false; };
+    return div;
+}
+
+function downloadSelectedVideos() {
+    const selected = document.querySelectorAll('#hl-content-video .media-card.selected');
+    if (selected.length === 0) { alert("請先選取影片！"); return; }
+    selected.forEach(card => {
+        const vid = highlights.videos[card.dataset.index];
+        const a = document.createElement('a');
+        a.href = vid.url; a.download = `boxing_${vid.type}_${Date.now()}.${vid.ext || 'webm'}`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    });
+}
+
+function generateBattleReport() {
+    const selected = document.querySelectorAll('#hl-content-image .media-card.selected');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(22); doc.text("XMAS BOXING CHALLENGE", 105, 20, { align: "center" });
+    doc.setFontSize(14); doc.text(`Total Score: ${count}`, 20, 40); doc.text(`Date: ${new Date().toLocaleDateString()}`, 150, 40);
+    const tableBody = roundScores.map((s, i) => [`Round ${i+1}`, s]);
+    tableBody.push(['Total', count]);
+    doc.autoTable({ startY: 50, head: [['Round', 'Score']], body: tableBody, theme: 'grid' });
+    let currentY = doc.lastAutoTable.finalY + 20;
+    if (selected.length > 0) {
+        doc.text("Highlights:", 20, currentY); currentY += 10;
+        selected.forEach((card) => {
+            const idx = card.dataset.index;
+            if (currentY > 250) { doc.addPage(); currentY = 20; }
+            doc.addImage(highlights.images[idx].src, 'JPEG', 25, currentY, 160, 120);
+            currentY += 130;
+        });
+    }
+    doc.save("Battle_Report.pdf");
+}
+
+// =========================================
+//   Audio Engine
+// =========================================
+let audioCtx = null;
+let punchBuffer = null; 
+let fadeInterval = null; 
+const xmasAudio = document.getElementById('xmas-bgm');
+xmasAudio.volume = 0.5;
+
+function tryInitAudio() {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (xmasAudio.paused) {
+      xmasAudio.play().catch(e => console.log("Auto-play blocked"));
+  }
+}
+
+function switchBGM(mode) {
+    if (fadeInterval) clearInterval(fadeInterval);
+    if (xmasAudio.paused) xmasAudio.play().catch(e => console.log("Play failed", e));
+    let targetVol = 0.5; 
+    if (mode === 'FIGHT') targetVol = 0.2; 
+    else if (mode === 'REST') targetVol = 0.6;
+    fadeInterval = setInterval(() => {
+        let current = xmasAudio.volume;
+        if (Math.abs(current - targetVol) < 0.05) {
+            xmasAudio.volume = targetVol;
+            clearInterval(fadeInterval);
+        } else if (current < targetVol) {
+            xmasAudio.volume = Math.min(1, current + 0.05);
+        } else {
+            xmasAudio.volume = Math.max(0, current - 0.05);
+        }
+    }, 100);
+}
+
+async function initSFX() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    try {
+        const response = await fetch('punch.mp3'); 
+        if (response.ok) {
+           const arrayBuffer = await response.arrayBuffer();
+           punchBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        }
+    } catch (e) { }
+}
+function playPunchSound(type) {
+    if (!audioCtx) return;
+    if (punchBuffer) {
+        const source = audioCtx.createBufferSource();
+        source.buffer = punchBuffer;
+        source.playbackRate.value = (type === 'heavy') ? 0.9 : 1.1;
+        source.connect(audioCtx.destination); source.start(0);
+    } else {
+        const t = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.1);
+        gain.gain.setValueAtTime(0.5, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.1);
+    }
+}
+function synthWarning() {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.type = 'square'; osc.frequency.setValueAtTime(800, t); osc.frequency.linearRampToValueAtTime(600, t + 0.1);
+    gain.gain.setValueAtTime(0.1, t); gain.gain.linearRampToValueAtTime(0, t + 0.3);
+    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.3);
+}
+function synthDamage() {
+    if (!audioCtx) return;
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, t); osc.frequency.exponentialRampToValueAtTime(10, t + 0.3);
+    gain.gain.setValueAtTime(0.5, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.3);
+}
+
+// =========================================
+//   Game Logic
+// =========================================
+let selectedMode = null; 
+let count = 0;
+let roundScores = [];
+let leftStage = "down"; rightStage = "down";
+let leftCooldown = 0; rightCooldown = 0;
+let floatingTexts = []; 
+let sparringConfig = { totalRounds: 1, secondsPerRound: 60, restTime: 60, currentRound: 1, timeLeft: 0, difficulty: 'HARD', state: 'READY' };
+let gameTimerInterval = null;
+let enemyState = 'IDLE'; activeAttackType = null; latestLandmarks = null; dodgeCombo = 0;
+let lockedTarget = null; lockedDuckY = null;
+
+const videoElement = document.getElementById('input_video');
+const canvasElement = document.getElementById('output_canvas');
+const canvasCtx = canvasElement.getContext('2d');
+const countElement = document.getElementById('count');
+const startBtn = document.getElementById('start-btn');
+const landingLayer = document.getElementById('landing-layer');
+const wizardContainer = document.getElementById('wizard-container');
+const gameHud = document.getElementById('game-hud');
+const resetBtn = document.getElementById('reset-btn');
+const sparringInfo = document.getElementById('sparring-info');
+const timerDisplay = document.getElementById('timer');
+const roundDisplay = document.getElementById('round-display');
+const enemyLayer = document.getElementById('enemy-attack-layer');
+const attackText = document.getElementById('attack-text');
+const damageOverlay = document.getElementById('damage-overlay');
+const resultLayer = document.getElementById('result-layer');
+const scoreDetailsEl = document.getElementById('score-details');
+const comboPanel = document.getElementById('combo-panel');
+const comboCountEl = document.getElementById('combo-count');
+const restOverlay = document.getElementById('rest-overlay');
+const restTimerEl = document.getElementById('rest-timer');
+const newyearLayer = document.getElementById('newyear-layer');
+
+// Calibration Elements
+const calibLayer = document.getElementById('calibration-layer');
+const calibBox = document.getElementById('calib-box');
+const calibMsg = document.getElementById('calib-msg');
+const calibHint = document.getElementById('calib-hint');
+const calibTargetL = document.getElementById('target-l');
+const calibTargetR = document.getElementById('target-r');
+const calibLine = document.querySelector('.calib-headroom-line');
+const calibText = document.querySelector('.calib-headroom-text');
+
+// Tutorial Logic
+let currentSlideIndex = 0;
+const slides = document.querySelectorAll('.tutorial-slide');
+const dots = document.querySelectorAll('.dot');
+function openTutorial() {
+    document.getElementById('tutorial-overlay').style.display = 'flex';
+    currentSlideIndex = 0; updateSlides();
+}
+function closeTutorial() { document.getElementById('tutorial-overlay').style.display = 'none'; }
+function changeSlide(n) {
+    currentSlideIndex += n;
+    if(currentSlideIndex < 0) currentSlideIndex = slides.length - 1;
+    if(currentSlideIndex >= slides.length) currentSlideIndex = 0;
+    updateSlides();
+}
+function updateSlides() {
+    slides.forEach((s, i) => {
+        s.classList.remove('active');
+        if(i === currentSlideIndex) s.classList.add('active');
+    });
+    dots.forEach((d, i) => {
+        d.classList.remove('active');
+        if(i === currentSlideIndex) d.classList.add('active');
+    });
+}
+
+function selectMode(mode, element) {
+    selectedMode = mode;
+    document.querySelectorAll('.mode-box').forEach(el => el.classList.remove('selected'));
+    element.classList.add('selected');
+    startBtn.style.display = 'none'; wizardContainer.style.display = 'none';
+    
+    if (xmasAudio.paused) xmasAudio.play();
+
+    if (mode === 'newyear') {
+        newyearLayer.style.display = 'block';
+        startBtn.innerText = "挑戰 101 START"; startBtn.style.display = 'block';
+    } else {
+        newyearLayer.style.display = 'none';
+        if (mode === 'sparring') {
+            wizardContainer.style.display = 'block'; showStep(1);
+        } else {
+            startBtn.innerText = "快拳練習 START"; startBtn.style.display = 'block';
+        }
+    }
+}
+
+function showStep(stepNum) {
+    document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
+    document.getElementById(`step-${stepNum}`).classList.add('active');
+}
+function nextStep(targetStep) { showStep(targetStep); }
+function setDifficulty(diff, btn) {
+    sparringConfig.difficulty = diff;
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+}
+function finishSetup() {
+    wizardContainer.style.display = 'none';
+    startBtn.innerText = "準備完成 (START)"; startBtn.style.display = 'block';
+}
+
+async function startCalibration() {
+    await initSFX();
+    landingLayer.style.display = 'none';
+    calibLayer.style.display = 'flex';
+    calibLine.style.display = 'block';
+    calibText.style.display = 'block';
+    
+    gameState = 'CALIBRATION';
+    calibrationHoldTimer = 0;
+
+    const camera = new Camera(videoElement, {
+        onFrame: async () => { await pose.send({image: videoElement}); },
+        width: 640, height: 480
+    });
+    calibrationCamera = camera;
+    camera.start();
+}
+
+function updateCalibration(lm) {
+    const nose = lm[0];
+    const leftShoulder = lm[11]; const rightShoulder = lm[12];
+    const leftWrist = lm[15]; const rightWrist = lm[16];
+    
+    if (!nose || !leftShoulder || !rightShoulder) return;
+
+    const shoulderWidth = Math.abs(leftShoulder.x - rightShoulder.x);
+    const midShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+    const targetY = nose.y + (midShoulderY - nose.y) * 0.6; 
+    const targetLX = leftShoulder.x + 0.02; 
+    const targetRX = rightShoulder.x - 0.02;
+    
+    calibTargetL.style.display = 'flex'; calibTargetR.style.display = 'flex';
+    calibTargetL.style.top = (targetY * 100) + '%'; calibTargetL.style.left = ((1-targetLX) * 100) + '%';
+    calibTargetR.style.top = (targetY * 100) + '%'; calibTargetR.style.left = ((1-targetRX) * 100) + '%';
+
+    let status = "WAIT"; 
+    if (shoulderWidth > 0.45) status = "NEAR";
+    else if (shoulderWidth < 0.15) status = "FAR";
+    if (nose.y < 0.15 && status === "WAIT") status = "HEAD_HIGH";
+
+    calibBox.classList.remove('good');
+    calibTargetL.classList.remove('active'); calibTargetR.classList.remove('active');
+    
+    if (status === "NEAR") {
+        calibMsg.innerText = "太近了！"; calibMsg.style.color = "#ff3333";
+        calibHint.innerText = "請後退一點，直到肩膀進入框線";
+        calibrationHoldTimer = 0;
+    } else if (status === "FAR") {
+        calibMsg.innerText = "太遠了！"; calibMsg.style.color = "#ff3333";
+        calibHint.innerText = "請靠近一點";
+        calibrationHoldTimer = 0;
+    } else if (status === "HEAD_HIGH") {
+        calibMsg.innerText = "頭部太高！"; calibMsg.style.color = "#ffff00";
+        calibHint.innerText = "請調整鏡頭角度，讓頭部低於紅線";
+        calibrationHoldTimer = 0;
+    } else {
+        calibBox.classList.add('good');
+        const distL = Math.hypot(leftWrist.x - targetLX, leftWrist.y - targetY);
+        const distR = Math.hypot(rightWrist.x - targetRX, rightWrist.y - targetY);
+        const inPos = (distL < 0.15 && distR < 0.15);
+
+        if (inPos) {
+            calibMsg.innerText = "保持姿勢..."; calibMsg.style.color = "#00ff00";
+            calibHint.innerText = "HOLD POSE TO START";
+            calibTargetL.classList.add('active'); calibTargetR.classList.add('active');
+            calibrationHoldTimer++;
+            const progress = Math.min(calibrationHoldTimer / CALIBRATION_HOLD_TARGET, 1);
+            calibMsg.innerText = `READY... ${Math.ceil((1-progress)*3)}`;
+            if (calibrationHoldTimer >= CALIBRATION_HOLD_TARGET) {
+                beginGameCountdown();
+            }
+        } else {
+            calibMsg.innerText = "護住下巴 (GUARDS UP)"; calibMsg.style.color = "#fff";
+            calibHint.innerText = "雙手握拳，放在綠色圈圈位置";
+            calibrationHoldTimer = 0;
+        }
+    }
+}
+
+function beginGameCountdown() {
+    if (gameState !== 'CALIBRATION') return;
+    gameState = 'COUNTDOWN';
+    calibLayer.style.display = 'none';
+    const cdOverlay = document.getElementById('countdown-overlay');
+    const cdNum = document.getElementById('countdown-number');
+    cdOverlay.style.display = 'flex';
+    let n = 3; cdNum.innerText = n;
+    
+    if(audioCtx) { 
+        const osc = audioCtx.createOscillator(); osc.frequency.value = 400; 
+        osc.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.1);
+    }
+
+    let iv = setInterval(() => {
+        n--;
+        if (n > 0) {
+            cdNum.innerText = n;
+            cdNum.style.animation = 'none';
+            void cdNum.offsetWidth;
+            cdNum.style.animation = 'popIn 0.8s infinite';
+            if(audioCtx) { 
+                 const osc = audioCtx.createOscillator(); osc.frequency.value = 400; 
+                 osc.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.1);
+            }
+        } else {
+            clearInterval(iv);
+            cdOverlay.style.display = 'none';
+            startGameActual();
+        }
+    }, 1000);
+}
+
+function startGameActual() {
+    gameState = 'PLAYING';
+    gameHud.style.display = 'block';
+    switchBGM('FIGHT'); 
+    
+    if (selectedMode === 'sparring') {
+        let rounds = parseInt(document.getElementById('input-rounds').value) || 1;
+        let mins = parseFloat(document.getElementById('input-minutes').value) || 1;
+        let restMins = parseFloat(document.getElementById('input-rest').value) || 1;
+        sparringConfig.totalRounds = rounds;
+        sparringConfig.secondsPerRound = mins * 60;
+        sparringConfig.restTime = restMins * 60;
+        sparringConfig.currentRound = 1;
+        sparringConfig.timeLeft = sparringConfig.secondsPerRound;
+        sparringConfig.state = 'FIGHT';
+        roundScores = [];
+        sparringInfo.style.display = 'flex'; comboPanel.style.display = 'block';
+        updateTimerDisplay(); startSparringLoop();
+    } else if (selectedMode === 'newyear') {
+        // 跨年模式
+        resetBtn.style.display = 'flex';
+        sparringInfo.style.display = 'none'; 
+        comboPanel.style.display = 'none';
+        count = 0; countElement.innerText = "0";
+        // 重置塔的顏色
+        updateTowerVisuals(0);
+    } else {
+        resetBtn.style.display = 'flex';
+        sparringInfo.style.display = 'none'; comboPanel.style.display = 'none';
+    }
+}
+
+function resetGame() {
+    count = 0; countElement.innerText = count; dodgeCombo = 0; updateComboUI();
+    leftStage = "down"; rightStage = "down";
+    roundScores = []; isRecording = false; highlights.videos = []; highlights.images = [];
+    
+    // Reset New Year
+    document.getElementById('newyear-msg').classList.remove('show');
+    updateTowerVisuals(0); // 重置特效
+    if (fireworkLoopId) cancelAnimationFrame(fireworkLoopId);
+    particles = [];
+    const ctx = document.getElementById('fireworks_canvas').getContext('2d');
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+}
+
+function updateTimerDisplay() {
+    let m = Math.floor(sparringConfig.timeLeft / 60);
+    let s = Math.floor(sparringConfig.timeLeft % 60);
+    timerDisplay.innerText = `${m}:${s < 10 ? '0'+s : s}`;
+    roundDisplay.innerText = `ROUND ${sparringConfig.currentRound} / ${sparringConfig.totalRounds}`;
+}
+
+function startSparringLoop() {
+    if (gameTimerInterval) clearInterval(gameTimerInterval); 
+    gameTimerInterval = setInterval(() => {
+        if (gameState !== 'PLAYING') return;
+        if (sparringConfig.state === 'FIGHT') {
+            sparringConfig.timeLeft--; updateTimerDisplay();
+            if (sparringConfig.timeLeft <= 0) {
+                if (sparringConfig.currentRound < sparringConfig.totalRounds) startRest();
+                else endGame();
+            }
+        } else if (sparringConfig.state === 'REST') {
+             sparringConfig.timeLeft--;
+             let m = Math.floor(sparringConfig.timeLeft / 60); let s = Math.floor(sparringConfig.timeLeft % 60);
+             restTimerEl.innerText = `${m}:${s < 10 ? '0'+s : s}`;
+             if (sparringConfig.timeLeft <= 0) endRest();
+        }
+    }, 1000);
+    scheduleNextAttack();
+}
+
+function startRest() {
+    roundScores.push(count); sparringConfig.state = 'REST'; sparringConfig.timeLeft = sparringConfig.restTime;
+    restOverlay.style.display = 'flex'; 
+    switchBGM('REST'); 
+}
+function endRest() {
+    restOverlay.style.display = 'none'; count = 0; countElement.innerText = count; dodgeCombo = 0; updateComboUI();
+    sparringConfig.state = 'FIGHT'; sparringConfig.currentRound++;
+    let mins = parseFloat(document.getElementById('input-minutes').value) || 1;
+    sparringConfig.timeLeft = mins * 60; updateTimerDisplay(); 
+    switchBGM('FIGHT'); 
+    scheduleNextAttack(); 
+}
+function endGame() {
+    gameState = 'RESULT'; switchBGM('MENU'); stopRecording(false); clearInterval(gameTimerInterval);
+    roundScores.push(count); resultLayer.style.display = 'flex';
+    let html = ''; let total = 0;
+    roundScores.forEach((score, index) => {
+        total += score;
+        html += `<div class="score-row"><span class="round-label">ROUND ${index + 1}</span><span class="round-score">${score}</span></div>`;
+    });
+    let avg = roundScores.length > 0 ? Math.round(total / roundScores.length) : 0;
+    html += `<div class="score-row total-row"><span>TOTAL</span><span>${total}</span></div><div class="score-row"><span class="round-label">AVG</span><span class="round-score">${avg}</span></div>`;
+    scoreDetailsEl.innerHTML = html;
+}
+
+function scheduleNextAttack() {
+    if (gameState !== 'PLAYING' || sparringConfig.state !== 'FIGHT') return;
+    let delay = Math.random() * 3000 + 2000;
+    setTimeout(() => { if (gameState === 'PLAYING' && sparringConfig.state === 'FIGHT') launchAttack(); }, delay);
+}
+function launchAttack() {
+    activeAttackType = Math.random() > 0.5 ? 'STRAIGHT' : 'HOOK';
+    // 錄影邏輯：閃躲優先
+    startRecording('dodge'); 
+    enemyState = 'WARNING'; synthWarning(); enemyLayer.style.display = 'block';
+    
+    if (activeAttackType === 'STRAIGHT') {
+        attackText.innerText = "STRAIGHT! SLIP!"; attackText.className = "attack-msg attack-straight";
+        if (latestLandmarks && latestLandmarks[0]) lockedTarget = { x: latestLandmarks[0].x, y: latestLandmarks[0].y };
+    } else {
+        attackText.innerText = "HOOK! DUCK!"; attackText.className = "attack-msg attack-hook";
+        if (latestLandmarks && latestLandmarks[11] && latestLandmarks[12]) {
+            let currentShoulderY = (latestLandmarks[11].y + latestLandmarks[12].y) / 2;
+            lockedDuckY = currentShoulderY - 0.05; 
+        }
+    }
+    let reactionTime = (sparringConfig.difficulty === 'EASY') ? 1500 : (sparringConfig.difficulty === 'NORMAL') ? 1000 : 800;
+    setTimeout(() => {
+        if (gameState !== 'PLAYING' || sparringConfig.state !== 'FIGHT') return;
+        checkDefense();
+        setTimeout(() => {
+            enemyLayer.style.display = 'none'; lockedTarget = null; lockedDuckY = null; enemyState = 'IDLE'; scheduleNextAttack(); 
+        }, 500);
+    }, reactionTime);
+}
+
+function updateComboUI() {
+    comboCountEl.innerText = dodgeCombo; comboCountEl.className = ""; 
+    if (dodgeCombo >= 10) comboCountEl.classList.add("combo-max");
+    else if (dodgeCombo >= 5) comboCountEl.classList.add("combo-burn");
+    else comboCountEl.classList.add("combo-normal");
+}
+
+function checkDefense() {
+    if (!latestLandmarks) return; 
+    const lm = latestLandmarks; let nose = lm[0]; let isHit = false;
+    if (activeAttackType === 'STRAIGHT') {
+        if (lockedTarget && nose) {
+            let dist = Math.sqrt(Math.pow(nose.x - lockedTarget.x, 2) + Math.pow(nose.y - lockedTarget.y, 2));
+            if (dist < 0.1) isHit = true;
+        }
+    } else if (activeAttackType === 'HOOK') {
+        if (lockedDuckY !== null && nose) { if (nose.y < lockedDuckY) isHit = true; }
+    }
+
+    if (isHit) { stopRecording(false); takeDamage(); } 
+    else {
+        captureScreenshot('dodge'); setTimeout(() => { stopRecording(true); }, 1500);
+        dodgeCombo++; updateComboUI(); count += (100 + dodgeCombo * 20); countElement.innerText = count;
+        spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "DODGE!", "#00ff00");
+    }
+}
+
+function takeDamage() {
+    synthDamage(); dodgeCombo = 0; updateComboUI();
+    damageOverlay.classList.remove('damage-flash'); void damageOverlay.offsetWidth; damageOverlay.classList.add('damage-flash');
+    const gameContainer = document.querySelector('.container');
+    gameContainer.classList.remove('hit-shock'); void gameContainer.offsetWidth; gameContainer.classList.add('hit-shock');
+    setTimeout(() => { gameContainer.classList.remove('hit-shock'); }, 400);
+    count -= 50; if (count < 0) count = 0; countElement.innerText = count;
+    spawnFloatingText(canvasElement.width/2, canvasElement.height/2, "HIT! -50", "#ff0000");
+}
+
+// 跨年煙火系統
+let particles = [];
+let fireworkLoopId = null;
+
+function updateTowerVisuals(currentCount) {
+    const group = document.querySelector('.tower-path');
+    if (!group) return;
+    
+    // 移除所有等級class
+    group.classList.remove('tower-level-0', 'tower-level-1', 'tower-level-2', 'tower-level-3');
+    
+    // 根據分數加入等級class
+    if (currentCount >= 90) {
+        group.classList.add('tower-level-3'); // 爆發
+    } else if (currentCount >= 60) {
+        group.classList.add('tower-level-2'); // 紅
+    } else if (currentCount >= 30) {
+        group.classList.add('tower-level-1'); // 金
+    } else {
+        group.classList.add('tower-level-0'); // 藍
+    }
+}
+
+function triggerNewYearCelebration() {
+    gameState = 'RESULT'; 
+    stopRecording(true); 
+    document.getElementById('newyear-msg').classList.add('show');
+    
+    if(audioCtx) {
+        const osc = audioCtx.createOscillator();
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.5);
+        osc.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 1);
+    }
+    loopFireworks();
+}
+
+function loopFireworks() {
+    const ctx = document.getElementById('fireworks_canvas').getContext('2d');
+    const fwCanvas = document.getElementById('fireworks_canvas');
+    fwCanvas.width = window.innerWidth;
+    fwCanvas.height = window.innerHeight;
+    
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillRect(0, 0, fwCanvas.width, fwCanvas.height);
+    ctx.globalCompositeOperation = 'lighter';
+
+    if (Math.random() < 0.1) {
+        createParticles(Math.random() * fwCanvas.width, Math.random() * fwCanvas.height / 2);
+    }
+    updateFireworks(ctx);
+    fireworkLoopId = requestAnimationFrame(loopFireworks);
+}
+
+function createParticles(x, y) {
+    for (let i = 0; i < 50; i++) {
+        particles.push({
+            x: x, y: y,
+            vx: Math.cos(i * 2 * Math.PI / 50) * Math.random() * 8,
+            vy: Math.sin(i * 2 * Math.PI / 50) * Math.random() * 8,
+            alpha: 1, hue: Math.random() * 360
+        });
+    }
+}
+
+function updateFireworks(ctx) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.alpha -= 0.02;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${p.hue}, 100%, 50%, ${p.alpha})`; ctx.fill();
+        if (p.alpha <= 0) particles.splice(i, 1);
+    }
+}
+
+// Draw Utils
+function calculateDistance(a, b) { return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)); }
+function calculateAngle(a, b, c) {
+    const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+    let angle = Math.abs(radians * 180.0 / Math.PI); if (angle > 180.0) angle = 360 - angle; return angle;
+}
+function drawVisualText(ctx, text, visualX, visualY, color) {
+  ctx.save(); const internalX = ctx.canvas.width - visualX;
+  ctx.translate(internalX, visualY); ctx.scale(-1, 1); 
+  ctx.font = `900 40px 'Montserrat', sans-serif`; ctx.fillStyle = color; 
+  ctx.strokeStyle = "white"; ctx.lineWidth = 3; ctx.strokeText(text, 0, 0); ctx.fillText(text, 0, 0); 
+  ctx.restore();
+}
+function spawnFloatingText(x, y, text, color, type='standard') {
+  floatingTexts.push({ x, y, text, color, life: 30, offsetY: 0, offsetX: 0, opacity: 1, type });
+}
+function drawLine(ctx, a, b, color) {
+    ctx.beginPath(); ctx.moveTo(a.x * ctx.canvas.width, a.y * ctx.canvas.height);
+    ctx.lineTo(b.x * ctx.canvas.width, b.y * ctx.canvas.height);
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+}
+function drawDot(ctx, lm, color, radius=5) {
+    const x = lm.x * ctx.canvas.width; const y = lm.y * ctx.canvas.height;
+    ctx.beginPath(); ctx.arc(x, y, radius, 0, 2 * Math.PI); ctx.fillStyle = color; ctx.fill(); ctx.stroke(); 
+}
+
+const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
+pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+pose.onResults(onResults);
+
+const LEFT_HAND_CONFIG = { triggerRatio: 0.12, resetRatio: 0.18, minPunchAngle: 50, cooldownFrames: 3 };
+const RIGHT_HAND_CONFIG = { triggerRatio: 0.12, resetRatio: 0.18, minPunchAngle: 50, cooldownFrames: 2 };
+
+function processHand(shoulder, elbow, wrist, scale, currentStage, label, cooldown, config, validYLimit) {
+  if (wrist.y > validYLimit || (selectedMode === 'sparring' && sparringConfig.state !== 'FIGHT')) return currentStage;
+  const dist = calculateDistance(shoulder, wrist);
+  let ratio = dist / scale; const armAngle = calculateAngle(shoulder, elbow, wrist);
+  const isArmStraight = armAngle > config.minPunchAngle; let nextStage = currentStage;
+
+  if (currentStage === "down") {
+    if (ratio > config.triggerRatio && isArmStraight && cooldown === 0) nextStage = "punch";
+  } else if (currentStage === "punch") {
+    const now = Date.now();
+    // 跨年模式或快拳模式的連擊錄影判定
+    if (selectedMode === 'sparring' || selectedMode === 'speed' || selectedMode === 'newyear') {
+        if (now - lastPunchTime < 1500) comboCounter++;
+        else { 
+            comboCounter = 1; 
+            // 修正：只有在敵人未攻擊時(IDLE)才啟動連擊錄影
+            if (!isRecording && enemyState === 'IDLE') startRecording('combo'); 
+        }
+        lastPunchTime = now;
+        // 修正：門檻改為 8 拳
+        if (comboCounter === 8) captureScreenshot('combo');
+    }
+    
+    count++; countElement.innerText = count;
+    
+    // 跨年模式專屬邏輯
+    if (selectedMode === 'newyear') {
+        const tower = document.getElementById('taipei-101');
+        // 震動
+        tower.classList.remove('tower-hit'); void tower.offsetWidth; tower.classList.add('tower-hit');
+        // 顏色充能更新
+        updateTowerVisuals(count);
         
-        const startBtn = document.getElementById('start-btn');
-        const retryBtn = document.getElementById('retry-btn');
-        const timerDisplay = document.getElementById('timer-display');
-        const statusMsg = document.getElementById('status-msg');
-        const eggElement = document.getElementById('egg');
+        if (count >= 101) triggerNewYearCelebration();
+    }
 
-        // 遊戲狀態機
-        let gameState = 'INIT'; 
-        let startTime = 0;
-        let elapsedTime = 0;
-        let timerInterval = null;
+    const sb = document.querySelector('.score-board'); sb.classList.remove('pop-effect'); void sb.offsetWidth; sb.classList.add('pop-effect');
+    playPunchSound(label === "L" ? 'light' : 'heavy');
+    if (label === "L") leftCooldown = config.cooldownFrames; else rightCooldown = config.cooldownFrames;
+    const hitX = wrist.x * canvasElement.width; const hitY = wrist.y * canvasElement.height;
+    const color = label === "L" ? "#00d2ff" : "#ff9900"; 
+    spawnFloatingText(hitX, hitY, label === "L" ? "JAB!" : "CROSS!", color, label === "L" ? 'PUNCH_L' : 'PUNCH_R');
+    nextStage = "retract";
+  } else if (currentStage === "retract") {
+    if (ratio < config.resetRatio) nextStage = "down"; 
+  }
+  return nextStage;
+}
 
-        // 判定參數
-        const VISIBILITY_THRESHOLD = 0.5;  // 降低门槛，方便手機定位
-        const START_DIST_THRESHOLD = 0.15;
-        const BREAK_DIST_THRESHOLD = 0.20;
-        const SWAY_WARNING = 0.05;
-        const SWAY_FAIL = 0.10;
+function onResults(results) {
+  canvasElement.width = videoElement.videoWidth;
+  canvasElement.height = videoElement.videoHeight;
+  const cw = canvasElement.width; const ch = canvasElement.height;
+  canvasCtx.save(); canvasCtx.clearRect(0, 0, cw, ch); canvasCtx.drawImage(results.image, 0, 0, cw, ch);
 
-        // 1. 初始化 MediaPipe Pose (參考範例使用符合手機效能的設定)
-        const pose = new Pose({locateFile: (file) => {
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
-        }});
-        
-        pose.setOptions({
-            modelComplexity: 0, /* 改為 0 提高手機運算效能，雖然精度略降但更流暢 */
-            smoothLandmarks: true,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
-        });
-        pose.onResults(onResults);
+  if (results.poseLandmarks) {
+      const lm = results.poseLandmarks;
+      latestLandmarks = lm;
+      
+      if (gameState === 'CALIBRATION') {
+          updateCalibration(lm);
+          canvasCtx.restore();
+          return;
+      }
+      if (gameState === 'COUNTDOWN') {
+          canvasCtx.restore();
+          return;
+      }
 
-        // 初始化相機 (適配手機和電腦，參考範例使用較低解析度提高效能)
-        const camera = new Camera(videoElement, {
-            onFrame: async () => {
-                if(gameState !== 'GAMEOVER' && gameState !== 'INIT') {
-                    await pose.send({image: videoElement});
-                }
-            },
-            facingMode: "user",
-            width: 640, /* 使用 4:3 解析度 */
-            height: 480
-        });
+      const skeletonColor = '#00ff00';
+      const pairs = [[11,13], [13,15], [12,14], [14,16], [11,12]];
+      pairs.forEach(p => { if(lm[p[0]] && lm[p[1]]) drawLine(canvasCtx, lm[p[0]], lm[p[1]], skeletonColor); });
 
-        // 按鈕事件
-        startBtn.addEventListener('click', () => {
-            introScreen.classList.add('hidden');
-            gameScreen.classList.remove('hidden');
-            gameState = 'POSITIONING'; 
-            updateStatus("初始化攝影機中...", "var(--glass-bg)", "var(--ink-black)", "var(--bamboo-green)");
-            camera.start().catch(err => {
-                updateStatus("無法開啟攝影機，請檢查權限設定", "var(--danger-red)", "white", "var(--danger-red)");
-            });
-        });
+      if (lm[11] && lm[12]) {
+        const shoulderWidth = calculateDistance(lm[11], lm[12]);
+        let solarPlexusY = (lm[11].y + lm[12].y) / 2 + (shoulderWidth * 0.5);
+        const nose = lm[0]; const guardRadius = shoulderWidth * 0.8;
 
-        retryBtn.addEventListener('click', () => {
-            resultScreen.classList.add('hidden');
-            gameScreen.classList.remove('hidden');
-            resetGame();
-        });
-
-        function resetGame() {
-            gameState = 'POSITIONING';
-            elapsedTime = 0;
-            timerDisplay.innerText = "0.00";
-            eggElement.className = "egg";
-            eggElement.style.transform = `rotate(0deg)`;
-            updateStatus("請退後，讓全身完整入鏡...", "var(--glass-bg)", "var(--ink-black)", "var(--bamboo-green)");
-            clearInterval(timerInterval);
+        if (lm[15]) {
+            let dotColor = '#ff0000'; if (nose && calculateDistance(lm[15], nose) < guardRadius) dotColor = '#00ff00';
+            drawDot(canvasCtx, lm[15], dotColor, 8);
+        }
+        if (lm[16]) {
+            let dotColor = '#ff0000'; if (nose && calculateDistance(lm[16], nose) < guardRadius) dotColor = '#00ff00';
+            drawDot(canvasCtx, lm[16], dotColor, 8);
         }
 
-        function updateStatus(text, bg, color, borderColor) {
-            statusMsg.innerText = text;
-            statusMsg.style.background = bg;
-            statusMsg.style.color = color;
-            statusMsg.style.borderColor = borderColor;
-        }
+        if (lm[15] && lm[13] && lm[15].visibility > 0.5) leftStage = processHand(lm[11], lm[13], lm[15], shoulderWidth, leftStage, "L", leftCooldown, LEFT_HAND_CONFIG, solarPlexusY);
+        if (lm[16] && lm[14] && lm[16].visibility > 0.5) rightStage = processHand(lm[12], lm[14], lm[16], shoulderWidth, rightStage, "R", rightCooldown, RIGHT_HAND_CONFIG, solarPlexusY);
+      }
+  }
 
-        // 2. 核心迴圈：處理 AI 數據與繪圖
-        function onResults(results) {
-            // 在 Canvas 上繪製視訊畫面 (不使用 drawUtils 以節省資源)
-            canvasCtx.save();
-            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-            
-            if (results.poseLandmarks) {
-                // 如果需要除錯，可以取消註解下方這行來顯示格線
-                // drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: '#ffffff', lineWidth: 2});
-                
-                processGameLogic(results.poseLandmarks);
-            }
-            canvasCtx.restore();
-        }
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    let ft = floatingTexts[i]; ft.life--; 
+    if (ft.type === 'PUNCH_L') { ft.offsetX -= 2; ft.offsetY -= 1; }
+    else if (ft.type === 'PUNCH_R') { ft.offsetX += 2; ft.offsetY -= 1; }
+    else { ft.offsetY -= 5; }
+    ft.opacity -= 0.03;
+    canvasCtx.globalAlpha = Math.max(0, ft.opacity);
+    drawVisualText(canvasCtx, ft.text, cw - (ft.x + ft.offsetX), ft.y + ft.offsetY, ft.color);
+    canvasCtx.globalAlpha = 1.0;
+    if (ft.life <= 0) floatingTexts.splice(i, 1);
+  }
+  if (leftCooldown > 0) leftCooldown--; if (rightCooldown > 0) rightCooldown--;
 
-        function processGameLogic(landmarks) {
-            if(gameState === 'GAMEOVER' || gameState === 'INIT') return;
+  if (enemyState === 'WARNING') {
+      if (activeAttackType === 'STRAIGHT' && lockedTarget) {
+          const tx = lockedTarget.x * cw; const ty = lockedTarget.y * ch;
+          canvasCtx.beginPath(); canvasCtx.arc(tx, ty, Math.min(cw * 0.06, 40), 0, 2 * Math.PI);
+          canvasCtx.fillStyle = "rgba(255, 0, 0, 0.2)"; canvasCtx.fill();
+          canvasCtx.lineWidth = cw > 800 ? 5 : cw * 0.01; canvasCtx.strokeStyle = "rgba(255, 0, 0, 0.8)"; canvasCtx.stroke();
+      }
+      if (activeAttackType === 'HOOK' && lockedDuckY !== null) {
+          const dy = lockedDuckY * ch; const startX = (cw - Math.min(cw, 800)) / 2;
+          canvasCtx.beginPath(); canvasCtx.moveTo(startX, dy); canvasCtx.lineTo(startX + Math.min(cw, 800), dy);
+          let gradient = canvasCtx.createLinearGradient(startX, 0, startX + Math.min(cw, 800), 0);
+          gradient.addColorStop(0, `rgba(255, 0, 0, 0)`); gradient.addColorStop(0.5, `rgba(255, 255, 255, 0.9)`); gradient.addColorStop(1, `rgba(255, 0, 0, 0)`);
+          canvasCtx.strokeStyle = gradient; canvasCtx.lineWidth = Math.min(ch * 0.04, 20); canvasCtx.stroke();
+      }
+  }
 
-            // 取出關鍵點
-            const nose = landmarks[0];
-            const leftHip = landmarks[23];
-            const rightHip = landmarks[24];
-            const leftKnee = landmarks[25];
-            const rightKnee = landmarks[26];
-            const leftAnkle = landmarks[27];
-            const rightAnkle = landmarks[28];
+  if (isRecording) {
+      if (recordingCanvasElement.width !== cw) { recordingCanvasElement.width = cw; recordingCanvasElement.height = ch; }
+      recordingCanvasCtx.clearRect(0, 0, cw, ch);
+      recordingCanvasCtx.save(); 
+      recordingCanvasCtx.translate(cw, 0); 
+      recordingCanvasCtx.scale(-1, 1);
+      recordingCanvasCtx.drawImage(canvasElement, 0, 0, cw, ch); 
+      recordingCanvasCtx.restore();
 
-            // 檢查關鍵點是否存在且可见度符合门槛
-            if (!nose || !leftHip || !rightHip || !leftKnee || !rightKnee || !leftAnkle || !rightAnkle) return;
-
-            const isFullBodyVisible = (nose.visibility > VISIBILITY_THRESHOLD && 
-                                       leftAnkle.visibility > VISIBILITY_THRESHOLD && 
-                                       rightAnkle.visibility > VISIBILITY_THRESHOLD);
-
-            // 狀態 1：全身定位中
-            if (gameState === 'POSITIONING') {
-                if (isFullBodyVisible) {
-                    gameState = 'READY';
-                    updateStatus("✅ 定位完成！請抬起單腳", "var(--bamboo-green)", "white", "var(--bamboo-green)");
-                } else {
-                    updateStatus("❌ 請調整距離，讓頭部與雙腳入鏡", "rgba(214, 73, 51, 0.9)", "white", "var(--danger-red)");
-                    return; 
-                }
-            }
-
-            // 狀態 2 & 3：遊戲開始與進行
-            if (gameState === 'READY' || gameState === 'PLAYING') {
-                
-                // 判斷支撐腳與抬起腳
-                let standAnkle, standKnee, raisedAnkle;
-                if (leftAnkle.y > rightAnkle.y) {
-                    standAnkle = leftAnkle; standKnee = leftKnee; raisedAnkle = rightAnkle;
-                } else {
-                    standAnkle = rightAnkle; standKnee = rightKnee; raisedAnkle = leftAnkle;
-                }
-
-                // 計算抬起腳踝與支撐腳膝蓋旁目標點的 X 軸與 Y 軸距離 (簡化邏輯適配手機)
-                const footDistY = Math.abs(raisedAnkle.y - standKnee.y); // Y軸距離膝蓋高度
-                
-                // 計算左右平衡 Sway
-                const hipCenterX = (leftHip.x + rightHip.x) / 2;
-                const sway = nose.x - hipCenterX; 
-                const absSway = Math.abs(sway);
-
-                // --- 邏輯判定 ---
-                if (gameState === 'READY') {
-                    // 抬起腳踝高度靠近膝蓋高度
-                    if (footDistY < 0.1) { 
-                        startGame();
-                    }
-                } 
-                else if (gameState === 'PLAYING') {
-                    // 視覺回饋：搖晃蛋
-                    let tiltAngle = sway * 300; 
-                    eggElement.style.transform = `rotate(${tiltAngle}deg)`;
-
-                    // 1. 檢查搖晃
-                    if (absSway > SWAY_FAIL) {
-                        endGame("重心偏移過大！");
-                        return;
-                    } else if (absSway > SWAY_WARNING) {
-                        eggElement.className = "egg egg-warning";
-                        updateStatus("⚠️ 穩住，太晃了！", "rgba(214, 73, 51, 0.9)", "white", "var(--danger-red)");
-                    } else {
-                        eggElement.className = "egg";
-                        updateStatus("完美平衡中...", "var(--bamboo-green)", "white", "var(--bamboo-green)");
-                    }
-
-                    // 2. 檢查抬起腳是否掉落
-                    if (footDistY > 0.2) {
-                        endGame("腳落地了！");
-                    }
-                }
-            }
-        }
-
-        function startGame() {
-            gameState = 'PLAYING';
-            startTime = Date.now();
-            updateStatus("開始計時，穩住！", "var(--bamboo-green)", "white", "var(--bamboo-green)");
-            
-            if(timerInterval) clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                elapsedTime = (Date.now() - startTime) / 1000;
-                timerDisplay.innerText = elapsedTime.toFixed(2);
-            }, 100); /* 降低 UI 更新頻率提高手機效能 */
-        }
-
-        function endGame(reason) {
-            gameState = 'GAMEOVER';
-            clearInterval(timerInterval);
-            
-            eggElement.className = "egg egg-broken";
-            updateStatus(reason, "rgba(51, 51, 51, 0.9)", "white", "#999");
-
-            setTimeout(showResultScreen, 1200);
-        }
-
-        function showResultScreen() {
-            gameScreen.classList.add('hidden');
-            resultScreen.classList.remove('hidden');
-            
-            document.getElementById('final-time').innerText = `堅持時間：${elapsedTime.toFixed(2)} 秒`;
-            
-            const rankTitle = document.getElementById('rank-title');
-            const rankDesc = document.getElementById('rank-desc');
-
-            if (elapsedTime < 5) {
-                rankTitle.innerText = "屈原的嘆息 (0-5秒)";
-                rankDesc.innerText = "哎呀，這蛋殼有點脆！再多練習核心，下次一定行！";
-                rankTitle.style.color = "var(--danger-red)";
-            } else if (elapsedTime < 15) {
-                rankTitle.innerText = "雄黃蛋 (5-15秒)";
-                rankDesc.innerText = "及格了！核心還不夠穩，勉強保住蛋殼。";
-                rankTitle.style.color = "#D68C33";
-            } else if (elapsedTime < 30) {
-                rankTitle.innerText = "龍舟舵手 (15-30秒)";
-                rankDesc.innerText = "不錯喔！符合成人平均常模，是個健康的立蛋家。";
-                rankTitle.style.color = "#3376D6";
-            } else {
-                rankTitle.innerText = "平衡宗師 (30秒以上)";
-                rankDesc.innerText = "太神了！這顆蛋是不是裝了陀螺儀？端午節立蛋王非你莫屬！";
-                rankTitle.style.color = "var(--bamboo-green)";
-            }
-        }
-    </script>
+      if (currentRecType === 'combo' && Date.now() - lastPunchTime > 2000) {
+          // 錄影停止修正：門檻改為 8 拳
+          stopRecording(comboCounter >= 8); comboCounter = 0;
+      }
+  }
+  
+  canvasCtx.restore();
+}
+</script>
 </body>
 </html>
